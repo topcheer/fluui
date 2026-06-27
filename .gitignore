@@ -32,3 +32,8 @@ coverage.html
 # OS
 Thumbs.db
 .ggcode/
+
+# Test binaries
+/chat
+/*.test
+/demo*
