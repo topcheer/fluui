@@ -1,0 +1,34 @@
+# Secrets — NEVER commit
+.env
+*.env
+secrets/
+
+# Build artifacts
+/bin/
+/fluui
+/minimal
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Backup files
+*.bak
+*.bak2
+*.wip
+
+# Test
+coverage.out
+coverage.html
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.ggcode/
