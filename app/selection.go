@@ -377,9 +377,7 @@ func (sm *SelectionManager) ApplyHighlight(buf *buffer.Buffer) {
 		for x := startX; x <= endX; x++ {
 			cell := buf.GetCell(x, y)
 			// Swap Fg and Bg for reverse-video effect.
-			oldFg := cell.Fg
-			cell.Fg = cell.Bg
-			cell.Bg = oldFg
+			cell.Fg, cell.Bg = cell.Bg, cell.Fg
 			buf.SetCell(x, y, cell)
 		}
 	}

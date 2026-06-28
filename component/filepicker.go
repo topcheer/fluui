@@ -571,11 +571,9 @@ func (fp *FilePicker) Paint(buf *buffer.Buffer) {
 		buf.SetCell(x+1, rowY, buffer.Cell{Rune: checkboxRune, Width: 1, Fg: style.Checkbox.Fg, Bg: cellStyle.Bg, Flags: buffer.Bold})
 
 		// Draw icon
-		iconRune := ' '
+		iconRune := ' ' // assigned below but initialized for safety
 		if entry.IsDir {
 			iconRune = '▸'
-		} else {
-			iconRune = ' '
 		}
 		buf.SetCell(x+2, rowY, buffer.Cell{Rune: iconRune, Width: 1, Fg: cellStyle.Fg, Bg: cellStyle.Bg, Flags: cellStyle.Flags})
 

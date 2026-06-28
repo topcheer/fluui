@@ -352,7 +352,6 @@ func (tb *TabBar) Paint(buf *buffer.Buffer) {
 		x++
 		if x < b.X+b.W {
 			buf.SetCell(x, b.Y, buffer.NewCell('+', tb.style.Active))
-			x++
 		}
 	}
 }

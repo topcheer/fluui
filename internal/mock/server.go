@@ -166,7 +166,7 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		data, _ := json.Marshal(chunk)
-		fmt.Fprintf(w, "data: %s\n\n", data)
+		fmt.Fprintf(w, "data: %s\n\n", data) //nolint:errcheck
 		flusher.Flush()
 		s.mu.Lock()
 		s.chunkCount++

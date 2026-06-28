@@ -65,7 +65,7 @@ func Open() (*Terminal, error) {
 
 	// Enter raw mode.
 	if err := t.enterRawMode(); err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, err
 	}
 
@@ -114,14 +114,14 @@ func (t *Terminal) Close() error {
 	}
 
 	if t.oldState != nil {
-		unix.IoctlSetTermios(t.fd, ioctlSetTermios, t.oldState)
+		_ = unix.IoctlSetTermios(t.fd, ioctlSetTermios, t.oldState)
 	}
 
 	signal.Stop(t.sigCh)
 
 	// Close the tty file.
 	if closer, ok := t.w.(io.Closer); ok {
-		closer.Close()
+		_ = closer.Close()
 	}
 
 	return nil
@@ -136,7 +136,7 @@ func (t *Terminal) Write(b []byte) (int, error) {
 
 // WriteRaw writes a string directly to the terminal.
 func (t *Terminal) WriteRaw(s string) {
-	t.Write([]byte(s))
+	_, _ = t.Write([]byte(s))
 }
 
 // Read reads raw bytes from the terminal (input).

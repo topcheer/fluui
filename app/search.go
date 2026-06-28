@@ -170,7 +170,7 @@ func buildSnippet(text string, matchIdx, matchLen int) string {
 		snippet = "..." + snippet
 	}
 	if end < len(text) {
-		snippet = snippet + "..."
+		snippet += "..."
 	}
 
 	// Replace newlines with spaces for single-line display
