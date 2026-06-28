@@ -97,18 +97,6 @@ High-level AI chat interface.
 | `RedoCount() int` | Number of redo states |
 | `ClearUndoHistory()` | Clear all undo/redo state |
 
-**InputLine Undo/Redo:**
-
-| Method | Description |
-|---|---|
-| `Undo() bool` | Undo last edit (Ctrl+Z) |
-| `Redo() bool` | Redo last undo (Ctrl+Shift+Z or Ctrl+Y) |
-| `CanUndo() bool` | Check if undo is available |
-| `CanRedo() bool` | Check if redo is available |
-| `UndoCount() int` | Number of undo states |
-| `RedoCount() int` | Number of redo states |
-| `ClearUndoHistory()` | Clear all undo/redo history |
-
 **Scrolling:**
 
 | Method | Description |
@@ -138,6 +126,25 @@ High-level AI chat interface.
 | `OnMouse(fn func(*MouseEvent))` | Custom mouse handler |
 | `OnClipboard(fn func(string))` | Clipboard paste handler |
 | `OnQuit(fn func())` | Quit handler |
+
+**CommandPalette (Phase 20):**
+
+| Method | Description |
+|---|---|
+| `ToggleCommandPalette() bool` | Show/hide command palette (Ctrl+P) |
+| `CommandPalette() *component.CommandPalette` | Direct palette access |
+| `SetCommandPalette(cp *component.CommandPalette)` | Set custom palette |
+| `IsCommandPaletteVisible() bool` | Check if palette is shown |
+
+**Spinner (Phase 20):**
+
+| Method | Description |
+|---|---|
+| `StartSpinner(label string)` | Show loading spinner with label |
+| `StopSpinner()` | Hide loading spinner |
+| `Spinner() *component.Spinner` | Direct spinner access |
+| `SetSpinner(s *component.Spinner)` | Set custom spinner |
+| `IsSpinnerActive() bool` | Check if spinner is running |
 
 **Theme:**
 
