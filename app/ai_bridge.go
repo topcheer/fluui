@@ -142,19 +142,19 @@ func (b *AIBridge) streamConversation(msgs []ai.Message, sysPrompt string, clien
 	// Build callbacks that route AI deltas to block dispatcher
 	callbacks := ai.StreamCallbacks{
 		OnContent: func(text string) {
-			dispatcher.Dispatch(block.StreamDelta{
+			_ = dispatcher.Dispatch(block.StreamDelta{
 				Type:    "text",
 				Content: text,
 			})
 		},
 		OnReasoning: func(text string) {
-			dispatcher.Dispatch(block.StreamDelta{
+			_ = dispatcher.Dispatch(block.StreamDelta{
 				Type:    "thinking",
 				Content: text,
 			})
 		},
 		OnToolCall: func(tc ai.ToolCall) {
-			dispatcher.Dispatch(block.StreamDelta{
+			_ = dispatcher.Dispatch(block.StreamDelta{
 				Type:     "tool_call",
 				ToolName: tc.Function.Name,
 				ToolArgs: tc.Function.Arguments,

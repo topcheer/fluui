@@ -64,7 +64,7 @@ func LoadConfig(envPath ...string) (*Config, error) {
 	}
 
 	if cfg.APIKey == "" {
-		return nil, fmt.Errorf("FLUUI_LLM_API_KEY not set. Configure .env or set environment variable. See .env.example")
+		return nil, fmt.Errorf("FLUUI_LLM_API_KEY not set, configure .env or set environment variable (see .env.example)")
 	}
 
 	return cfg, nil
@@ -78,7 +78,7 @@ func loadDotEnv(path string) {
 	if err != nil {
 		return // file doesn't exist, that's OK
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -103,7 +103,7 @@ func loadDotEnv(path string) {
 
 		// Don't overwrite existing env vars
 		if os.Getenv(key) == "" {
-			os.Setenv(key, value)
+			_ = os.Setenv(key, value)
 		}
 	}
 }

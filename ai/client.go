@@ -150,11 +150,11 @@ func (c *Client) ChatStreamExWithContext(
 	if err != nil {
 		return fmt.Errorf("http request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API error %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("api error %d: %s", resp.StatusCode, string(body))
 	}
 
 	return parseSSEStreamEx(resp.Body, callbacks)

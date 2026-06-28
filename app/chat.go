@@ -291,7 +291,7 @@ func (a *ChatApp) StreamDelta(delta block.StreamDelta) {
 	defer a.mu.Unlock()
 
 	dispatcher := block.NewStreamDispatcher(a.container)
-	dispatcher.Dispatch(delta)
+	_ = dispatcher.Dispatch(delta)
 }
 
 // ScrollUp scrolls the content up by one line.
@@ -725,7 +725,7 @@ func (a *ChatApp) SendUserMessage(text string) {
 	}
 
 	// Add user message block immediately
-	a.AddUserMessage(text)
+	_ = a.AddUserMessage(text)
 
 	// Send to AI
 	bridge.SendUserMessage(text)

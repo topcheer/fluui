@@ -120,7 +120,7 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	// Parse request
 	body, _ := io.ReadAll(r.Body)
 	var req ChatRequest
-	json.Unmarshal(body, &req)
+	_ = json.Unmarshal(body, &req)
 	s.mu.Lock()
 	s.RequestLog = append(s.RequestLog, req)
 	s.mu.Unlock()
@@ -174,8 +174,8 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Final [DONE] marker
-	fmt.Fprintf(w, "data: [DONE]\n\n")
-	flusher.Flush()
+	fmt.Fprintf(w, "data: [DONE]\n\n") //nolint:errcheck // best-effort SSE write
+	flusher.Flush() //nolint:errcheck // best-effort flush
 }
 
 // --- SSE Stream Reader (Client Side) ---

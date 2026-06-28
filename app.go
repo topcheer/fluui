@@ -146,7 +146,7 @@ func (a *App) Run() error {
 		if a.onPaint != nil {
 			a.onPaint(a.renderer.Back())
 		}
-		a.renderer.EndFrame()
+		_ = a.renderer.EndFrame()
 		return true
 	})
 
@@ -259,7 +259,7 @@ func (a *App) FillRect(rect buffer.Rect, cell buffer.Cell) {
 
 // Errorf prints an error message to stderr without disrupting the TUI.
 func (a *App) Errorf(format string, args ...any) {
-	fmt.Fprintf(a.terminal, format, args...)
+	_, _ = fmt.Fprintf(a.terminal, format, args...)
 }
 
 // Copy copies text to the system clipboard using OSC52 escape sequences.

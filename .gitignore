@@ -38,3 +38,5 @@ Thumbs.db
 /*.test
 /demo*
 /ai-agent
+/component.test
+/interrupt_test

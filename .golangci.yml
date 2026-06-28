@@ -1,0 +1,54 @@
+# golangci-lint v2 configuration for Fluui
+# https://golangci-lint.run/usage/configuration/
+
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - gocritic
+    - misspell
+    - unconvert
+    - gocyclo
+    - unparam
+
+  settings:
+    gocyclo:
+      min-complexity: 50  # TUI event handlers (HandleKey/Paint) are naturally complex
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+      disabled-checks:
+        - hugeParam
+        - rangeValCopy
+        - ifElseChain       # TUI code uses if-else chains for key dispatch
+        - appendCombine     # Readability preference
+        - appendAssign      # False positives with slice aliases
+        - builtinShadowDecl # max/min helpers are intentional
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+
+  exclusions:
+    rules:
+      # Exclude test files from strict linters
+      - path: _test\.go
+        linters: [errcheck, gocritic, gocyclo, unparam, unconvert]
+      # Exclude demo/example files from strict linters
+      - path: cmd/|examples/
+        linters: [errcheck, gocritic, gocyclo, unparam]
+      # Theme definitions are intentionally similar
+      - path: theme/builtin\.go
+        linters: [dupl, gocritic]
+      # Goldmark n.Text is deprecated but we use it intentionally
+      - path: markdown/renderer\.go
+        text: "SA1019.*deprecated"
+        linters: [staticcheck]
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
