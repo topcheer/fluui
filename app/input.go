@@ -30,6 +30,9 @@ type InputLine struct {
 
 	// tab completion (nil if not configured)
 	completion *CompletionManager
+
+	// undo/redo stack
+	undo *undoStack
 }
 
 // NewInputLine creates an InputLine with the given prompt and no submit handler.
@@ -44,6 +47,7 @@ func NewInputLineWithHandler(prompt string, onSubmit func(string)) *InputLine {
 		prompt:     prompt,
 		onSubmit:   onSubmit,
 		maxHistory: 100,
+		undo:       newUndoStack(),
 		promptStyle: buffer.Style{
 			Fg:    theme.Get().PromptFg,
 			Flags: buffer.Bold,
@@ -136,7 +140,14 @@ func (i *InputLine) Paint(buf *buffer.Buffer) {
 //   - Ctrl+U: clear all
 //   - Ctrl+W: delete previous word
 //   - Enter: call onSubmit, add to history, then clear
+//   - Ctrl+Z: undo last edit
+//   - Ctrl+Shift+Z or Ctrl+Y: redo
 func (i *InputLine) HandleKey(key *term.KeyEvent) bool {
+	// --- Undo/Redo (checked first, before other Ctrl shortcuts) ---
+	if i.handleUndoKey(key) {
+		return true
+	}
+
 	// --- Ctrl shortcuts ---
 	if key.Modifiers == term.ModCtrl && key.Rune != 0 {
 		switch key.Rune {
@@ -147,11 +158,13 @@ func (i *InputLine) HandleKey(key *term.KeyEvent) bool {
 			i.cursor = len(i.buf)
 			return true
 		case 'u':
+			i.saveUndo()
 			i.buf = i.buf[:0]
 			i.cursor = 0
 			i.historyIdx = -1
 			return true
 		case 'w':
+			i.saveUndo()
 			i.deleteWordBack()
 			return true
 		}
@@ -183,6 +196,7 @@ func (i *InputLine) HandleKey(key *term.KeyEvent) bool {
 			i.completion.Cancel()
 		}
 		if i.cursor > 0 {
+			i.saveUndo()
 			i.buf = append(i.buf[:i.cursor-1], i.buf[i.cursor:]...)
 			i.cursor--
 		}
@@ -242,6 +256,7 @@ func (i *InputLine) HandleKey(key *term.KeyEvent) bool {
 	if key.Rune != 0 && key.Key == term.KeyUnknown && key.Modifiers == 0 {
 		// Any typed character exits history browsing.
 		i.historyIdx = -1
+		i.saveUndo()
 		i.insertRune(key.Rune)
 		return true
 	}

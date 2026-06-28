@@ -422,8 +422,11 @@ func (a *ChatApp) HandleKey(key *term.KeyEvent) bool {
 		return true
 	}
 
-	// Ctrl+T: cycle theme forward
-	// Ctrl+Shift+T (Ctrl+T with Shift): cycle theme backward
+	// Ctrl+T / Ctrl+Shift+T: cycle theme
+	// Ctrl+] / Ctrl+\: alternate theme cycling keys
+	if a.handleThemeKey(key) {
+		return true
+	}
 	if key.Modifiers&term.ModCtrl != 0 && (key.Rune == 't' || key.Rune == 'T') {
 		if key.Rune == 'T' {
 			a.CycleThemeBack()
