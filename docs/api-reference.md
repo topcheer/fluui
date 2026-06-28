@@ -559,3 +559,92 @@ The ChatApp integrates P15 StatusBar, TabBar, and SelectionManager components wi
 | `Alt+[` | Previous session |
 | `Alt+W` | Close active session |
 | `Alt+1` to `Alt+9` | Switch to session N |
+
+## Phase 17: VirtualScroller + Pagination
+
+### VirtualScroller
+
+| Method | Description |
+|---|---|
+| `NewVirtualScroller()` | Create with defaults |
+| `SetItems(items []VirtualItem)` | Set data source |
+| `SetCursor(n int)` | Move cursor to item |
+| `Cursor() int` | Current cursor position |
+| `ScrollTo(n int)` | Scroll viewport to position |
+| `VisibleRange() (start, end int)` | Get visible window |
+| `Filter(q string) []VirtualItem` | Filter items by text |
+| `SetHeader(text string)` | Set header label |
+| `SetBounds(Rect) / Paint(*buffer.Buffer)` | Component interface |
+
+### Pagination
+
+| Method | Description |
+|---|---|
+| `NewPagination()` | Create with defaults |
+| `SetTotalItems(n int)` | Total item count |
+| `SetItemsPerPage(n int)` | Items per page |
+| `SetPage(n int)` | Jump to page |
+| `CurrentPage() int` | Active page (0-based) |
+| `TotalPages() int` | Total page count |
+| `PageStartIndex() / PageEndIndex() int` | Item range on current page |
+
+## Phase 18: Dialog + AutoComplete + Wizard
+
+### Dialog
+
+| Method | Description |
+|---|---|
+| `NewDialog(dt DialogType, title, msg string)` | Create dialog |
+| `NewConfirmDialog(title, msg string)` | Yes/No dialog |
+| `NewInfoDialog(title, msg string)` | Single OK button |
+| `NewPromptDialog(title, msg, default string)` | Text input + OK/Cancel |
+| `SetTitle(string) / SetMessage(string)` | Update content |
+| `AddButton(DialogButton) / SetButtons([]DialogButton)` | Manage buttons |
+| `Cursor() / SetCursor(int)` | Button cursor |
+| `MoveLeft() / MoveRight()` | Navigate buttons (wraps) |
+| `InputValue() / SetInputValue(string)` | Prompt input text |
+| `InsertRune(rune) / Backspace() / Delete()` | Edit input |
+| `Confirm() bool` | Confirm (false if OnConfirm rejects) |
+| `Cancel() / PressButton()` | Other actions |
+| `Show() / Hide() / Visible() bool` | Visibility |
+| `Result() DialogResult` | OK/Cancel/Custom |
+| `HandleKey(*term.KeyEvent) bool` | Esc/Enter/Tab/Left/Right/printable |
+
+### AutoComplete
+
+| Method | Description |
+|---|---|
+| `NewAutoComplete()` | Create autocomplete |
+| `SetItems([]CompletionItem)` | Set candidate items |
+| `AddItem(item CompletionItem)` | Add single item |
+| `Items() / ItemCount() / Clear()` | Item queries |
+| `SetQuery(string) / Query()` | Set/get filter text |
+| `FilteredCount() / HasResults() / FilteredItems()` | Filter results |
+| `Cursor() / SetCursor(int)` | Result cursor |
+| `MoveUp() / MoveDown() / CurrentItem()` | Navigate results |
+| `Show(x, y int) / Hide() / Visible()` | Popup control |
+| `Select()` | Select current item (fires OnSelect) |
+| `SetOnSelect(func(CompletionItem)) / SetOnDismiss(func())` | Callbacks |
+| `SetMaxVisible(int) / SetCaseSensitive(bool)` | Configuration |
+| `HandleKey(*term.KeyEvent) bool` | Up/Down/Tab/Enter/Esc |
+
+### Wizard
+
+| Method | Description |
+|---|---|
+| `NewWizard(steps []*WizardStep)` | Create wizard |
+| `NewWizardStep(id, title string)` | Create step (chainable) |
+| `SetDescription / SetContent / SetSkippable` | Step configuration |
+| `SetOnEnter(func(*Wizard) error) / SetOnLeave(func(*Wizard) error)` | Lifecycle hooks |
+| `Next() error / Back() error` | Navigate (error blocks) |
+| `SetCurrentStep(idx int) error` | Jump to step |
+| `Reset()` | Return to step 0 |
+| `Finish() / Cancel()` | Complete/cancel wizard |
+| `StepCount() / CurrentStepIndex()` | Step queries |
+| `CurrentStep() / Steps() []*WizardStep` | Get steps |
+| `IsFirstStep() / IsLastStep() / IsCompleted() / IsCancelled()` | State queries |
+| `SelectedButton() / SetSelectedButton(WizardButton)` | Button focus |
+| `ButtonOrder() []WizardButton` | Dynamic buttons |
+| `SetOnFinish(func(*Wizard)) / SetOnCancel(func(*Wizard))` | Completion callbacks |
+| `SetOnStepChange(func(*Wizard, int))` | Step change callback |
+| `HandleKey(*term.KeyEvent) bool` | Tab/Left/Right/Enter/Esc/Ctrl+N/Ctrl+B |

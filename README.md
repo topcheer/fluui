@@ -3,7 +3,7 @@
 > **流畅 (fluent) + UI** — An AI-native TUI library for Go, built from scratch.
 
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev)
-[![Tests](https://img.shields.io/badge/tests-1917-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-2244-brightgreen)](#testing)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#license)
 
 Fluui is a terminal UI framework designed specifically for AI chat interfaces. Every layer — from the input parser to the render engine — is optimized for streaming content, semantic content blocks, and zero-flicker updates.
@@ -273,14 +273,15 @@ go test ./... -bench=. -benchmem
 
 ## Stats
 
-- 239 Go source files
-- ~66,649 lines of code
-- 1917 tests (race-clean)
-- 20 benchmarks
-- 37 packages (incl. docs + examples)
-- 10+ interactive demos
+- 258 Go source files
+- ~76,535 lines of code
+- 2244 tests (race-clean)
+- 54 benchmarks
+- 40 packages (incl. docs + examples)
+- 12 interactive demos
 - 10 documentation files
 - 5 code examples
+- CI/CD: GitHub Actions + golangci-lint
 
 ## License
 
