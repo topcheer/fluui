@@ -19,6 +19,12 @@ type AssistantTextBlock struct {
 	renderer    *markdown.MarkdownRenderer
 	highlighter *markdown.Highlighter
 	renderW     int // width the renderer was created for
+
+	// P24-D render cache: avoid re-parsing markdown on every Paint/Measure call.
+	// The cache is invalidated when content changes or render width changes.
+	cachedBlocks []*markdown.Block
+	cachedText   string
+	cachedW      int
 }
 
 // NewAssistantTextBlock creates an assistant text block in streaming state.
@@ -46,7 +52,29 @@ func (b *AssistantTextBlock) AppendDelta(delta string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.content.WriteString(delta)
+	b.cachedText = "" // invalidate cache
 	b.markDirtyLocked()
+}
+
+// getCachedBlocks returns the rendered markdown blocks, using a cache to avoid
+// re-parsing when neither the text nor the width has changed. This dramatically
+// reduces allocations in Container.Paint (100+ blocks) where Paint/Measure are
+// called repeatedly without content changes.
+func (b *AssistantTextBlock) getCachedBlocks(text string, width int) []*markdown.Block {
+	if len(b.cachedBlocks) > 0 && b.cachedText == text && b.cachedW == width {
+		return b.cachedBlocks
+	}
+	blocks, err := b.renderer.Render(text)
+	if err != nil || len(blocks) == 0 {
+		b.cachedBlocks = nil
+		b.cachedText = ""
+		b.cachedW = 0
+		return nil
+	}
+	b.cachedBlocks = blocks
+	b.cachedText = text
+	b.cachedW = width
+	return blocks
 }
 
 // Content returns the full text so far.
@@ -71,8 +99,8 @@ func (b *AssistantTextBlock) Measure(cs component.Constraints) component.Size {
 	}
 
 	b.ensureRenderer(maxW)
-	blocks, err := b.renderer.Render(text)
-	if err != nil || len(blocks) == 0 {
+	blocks := b.getCachedBlocks(text, maxW)
+	if blocks == nil {
 		// Fallback: plain text line count
 		lines := strings.Count(text, "\n") + 1
 		return component.Size{W: maxW, H: lines}
@@ -132,10 +160,10 @@ func (b *AssistantTextBlock) Paint(buf *buffer.Buffer) {
 		return
 	}
 
-	// Render markdown to blocks of styled cell lines
+	// Render markdown to blocks of styled cell lines (cached)
 	b.ensureRenderer(bounds.W)
-	mdBlocks, err := b.renderer.Render(text)
-	if err != nil || len(mdBlocks) == 0 {
+	mdBlocks := b.getCachedBlocks(text, bounds.W)
+	if mdBlocks == nil {
 		// Fallback: plain text render
 		style := buffer.Style{Fg: theme.Get().AssistantFg}
 		rowIdx := 0
