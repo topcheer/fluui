@@ -1,20 +1,30 @@
 package render
 
 import (
+	"unicode/utf8"
+
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/topcheer/fluui/internal/term"
 )
 
+// asciiChars pre-computes single-character strings for ASCII runes
+// to avoid per-cell string(rune) allocation in the hot render path.
+var asciiChars [128]string
+
+func init() {
+	for i := 0; i < 128; i++ {
+		asciiChars[i] = string(rune(i))
+	}
+}
+
 // Renderer implements double-buffer diff rendering.
-// It maintains a front buffer (last rendered state) and a back buffer
-// (currently building state). On EndFrame, it diffs the two and outputs
-// only the changed cells.
 type Renderer struct {
-	tw     *term.Writer
-	front  *buffer.Buffer
-	back   *buffer.Buffer
-	width  int
-	height int
+	tw      *term.Writer
+	front   *buffer.Buffer
+	back    *buffer.Buffer
+	width   int
+	height  int
+	runeBuf [4]byte // reusable buffer for rune-to-utf8 encoding
 }
 
 // New creates a new Renderer.
@@ -44,9 +54,12 @@ func (r *Renderer) Back() *buffer.Buffer {
 	return r.back
 }
 
+// Front returns the front buffer (previous frame).
+func (r *Renderer) Front() *buffer.Buffer {
+	return r.front
+}
+
 // BeginFrame resets the back buffer for a new frame.
-// It allocates a fresh buffer so the previous front buffer is preserved
-// for diffing. The old back buffer is recycled into the front.
 func (r *Renderer) BeginFrame() {
 	if r.back.Width != r.width || r.back.Height != r.height {
 		r.back = buffer.NewBuffer(r.width, r.height)
@@ -59,10 +72,14 @@ func (r *Renderer) BeginFrame() {
 func (r *Renderer) EndFrame() error {
 	ops := buffer.Diff(r.front, r.back)
 
+	// Fast path: no changes detected — skip all terminal I/O and buffer copy.
+	if len(ops) == 0 {
+		return nil
+	}
+
 	for _, op := range ops {
 		cell := op.Cell
-		// Skip padding cells (Width==0) — they are the trailing half of a
-		// wide CJK character already rendered by the preceding cell.
+		// Skip padding cells (Width==0) — trailing half of wide CJK chars.
 		if cell.Width == 0 {
 			continue
 		}
@@ -74,7 +91,14 @@ func (r *Renderer) EndFrame() error {
 		}
 		r.tw.SetStyle(style)
 		if cell.Rune != 0 {
-			r.tw.WriteString(string(cell.Rune))
+			// Fast path for ASCII — use pre-computed string (zero allocation).
+			if cell.Rune < 128 {
+				r.tw.WriteString(asciiChars[cell.Rune])
+			} else {
+				// Encode rune to UTF-8 bytes in stack buffer, write as raw bytes.
+				n := utf8.EncodeRune(r.runeBuf[:], cell.Rune)
+				r.tw.WriteRaw(r.runeBuf[:n])
+			}
 		} else {
 			r.tw.WriteString(" ")
 		}
@@ -86,9 +110,7 @@ func (r *Renderer) EndFrame() error {
 		return err
 	}
 
-	// Swap buffers: copy back's contents into front so they don't
-	// share the same underlying array. On the next BeginFrame, back
-	// will be filled with blanks independently.
+	// Sync front buffer with back.
 	if r.front == nil || r.front.Width != r.back.Width || r.front.Height != r.back.Height {
 		r.front = buffer.NewBuffer(r.back.Width, r.back.Height)
 	}

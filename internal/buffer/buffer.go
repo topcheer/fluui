@@ -170,9 +170,46 @@ type DiffOp struct {
 // Diff compares front (old) and back (new) buffers, returning ops to transform
 // front into back.
 func Diff(front, back *Buffer) []DiffOp {
+	return DiffInto(front, back, nil)
+}
+
+// cellFastEqual is a fast inlined comparison for the common case where
+// cells have no links. Falls back to Equal() only when links are present.
+func cellFastEqual(a, b Cell) bool {
+	// Fast path: if all fields are ==, cells are definitely equal.
+	// This covers all cells without links (the vast majority).
+	// NOTE: Cell contains a *Link pointer, so == compares pointer values.
+	// If both are nil (common), the comparison is correct.
+	// If pointers differ but URLs match, we need the full Equal() check.
+	if a.Rune == b.Rune && a.Width == b.Width &&
+		a.Fg == b.Fg && a.Bg == b.Bg &&
+		a.Flags == b.Flags {
+		// Quick nil check: if both links are nil, cells are equal.
+		if a.Link == nil && b.Link == nil {
+			return true
+		}
+		// If only one is nil, or both are non-nil with same pointer, use ==.
+		if a.Link == b.Link {
+			return true
+		}
+		// Different pointers — need full URL comparison.
+		return a.Equal(b)
+	}
+	return false
+}
+
+// DiffInto is like Diff but appends to a provided slice (which may have
+// remaining capacity) to avoid per-frame allocation. The returned slice
+// shares the provided base's underlying array.
+func DiffInto(front, back *Buffer, base []DiffOp) []DiffOp {
+	ops := base
+
 	if front.Width != back.Width || front.Height != back.Height {
 		// Size changed — return everything.
-		var ops []DiffOp
+		total := back.Width * back.Height
+		if cap(ops) < total {
+			ops = make([]DiffOp, 0, total)
+		}
 		for y := 0; y < back.Height; y++ {
 			for x := 0; x < back.Width; x++ {
 				ops = append(ops, DiffOp{X: x, Y: y, Cell: back.GetCell(x, y)})
@@ -181,12 +218,11 @@ func Diff(front, back *Buffer) []DiffOp {
 		return ops
 	}
 
-	var ops []DiffOp
 	for y := 0; y < back.Height; y++ {
 		rowStart := y * back.Width
 		rowSame := true
 		for x := 0; x < back.Width; x++ {
-			if !front.Cells[rowStart+x].Equal(back.Cells[rowStart+x]) {
+			if !cellFastEqual(front.Cells[rowStart+x], back.Cells[rowStart+x]) {
 				rowSame = false
 				break
 			}
@@ -197,7 +233,7 @@ func Diff(front, back *Buffer) []DiffOp {
 		for x := 0; x < back.Width; x++ {
 			fc := front.Cells[rowStart+x]
 			bc := back.Cells[rowStart+x]
-			if !fc.Equal(bc) {
+			if !cellFastEqual(fc, bc) {
 				ops = append(ops, DiffOp{X: x, Y: y, Cell: bc})
 			}
 		}
