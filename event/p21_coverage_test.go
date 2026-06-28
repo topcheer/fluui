@@ -2,6 +2,7 @@ package event
 
 import (
 	"io"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -167,6 +168,9 @@ func TestP21_Run_RendersWhenDirty(t *testing.T) {
 }
 
 func TestP21_Run_RunningFlag(t *testing.T) {
+	if os.Getenv("RUN_TERMINAL_TESTS") == "" {
+		t.Skip("skipping terminal loop test in non-interactive environment")
+	}
 	loop := newBlockingLoop(nil)
 
 	if loop.running.Load() {
