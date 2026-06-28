@@ -187,6 +187,8 @@ func DetectLinks(text string, lineIdx, yOffset int) []LinkRange {
 		url := text[i:end]
 		displayURL := url
 		if isWWW {
+			// Prepend https:// for www. links.
+			// This is the only string allocation per www. link.
 			displayURL = "https://" + url
 		}
 		if ranges == nil {
@@ -208,10 +210,22 @@ func DetectLinks(text string, lineIdx, yOffset int) []LinkRange {
 
 // ScanText scans multiple lines of text for URLs and stores the results.
 // Previous links are cleared.
+//
+// Optimization: reuses the existing links slice capacity when possible,
+// avoiding a fresh allocation when the slice already has enough room.
 func (lm *LinkManager) ScanText(lines []string) {
-	detected := make([]LinkRange, 0)
+	// Reuse existing slice capacity, falling back to a modest pre-allocation.
+	// This helps repeated calls (same LinkManager, growing/shrinking text)
+	// avoid re-allocating the backing array.
+	detected := lm.links[:0:cap(lm.links)]
+	if cap(detected) < 8 {
+		detected = make([]LinkRange, 0, 8)
+	}
 	for i, line := range lines {
-		detected = append(detected, DetectLinks(line, i, i)...)
+		found := DetectLinks(line, i, i)
+		if len(found) > 0 {
+			detected = append(detected, found...)
+		}
 	}
 	lm.mu.Lock()
 	lm.links = detected
@@ -269,6 +283,9 @@ func (lm *LinkManager) ClickLink(x, y int) bool {
 // AnnotateBuffer marks cells in the given buffer that correspond to tracked links.
 // Cells within link ranges get their Link pointer set and their style updated.
 // The startX/startY parameters specify the buffer offset where line 0 begins.
+//
+// Optimization: all cells within the same link share a single *buffer.Link
+// allocation, reducing total allocations from N_cells to N_links.
 func (lm *LinkManager) AnnotateBuffer(buf *buffer.Buffer, startX, startY int) {
 	if buf == nil {
 		return
@@ -283,19 +300,25 @@ func (lm *LinkManager) AnnotateBuffer(buf *buffer.Buffer, startX, startY int) {
 		if y < 0 || y >= buf.Height {
 			continue
 		}
+		// Allocate one shared Link pointer for all cells in this link range.
+		link := &buffer.Link{
+			URL:  lr.URL,
+			Text: lr.Text,
+		}
 		for x := lr.StartX; x < lr.EndX; x++ {
 			bx := startX + x
 			if bx < 0 || bx >= buf.Width {
 				continue
 			}
-			cell := buf.GetCell(bx, y)
-			cell.Link = &buffer.Link{
-				URL:  lr.URL,
-				Text: lr.Text,
+			// Direct cell manipulation via index for zero-copy access.
+			idx := y*buf.Width + bx
+			if idx < 0 || idx >= len(buf.Cells) {
+				continue
 			}
+			cell := &buf.Cells[idx]
+			cell.Link = link
 			cell.Fg = style.Fg
 			cell.Flags |= style.Flags
-			buf.SetCell(bx, y, cell)
 		}
 	}
 }
