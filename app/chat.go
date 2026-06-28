@@ -77,6 +77,10 @@ type ChatApp struct {
 
 	// P16: SelectionManager integration (nil = not attached)
 	selectionMgr *SelectionManager
+
+	// P20: CommandPalette + Spinner integration (nil = not attached)
+	commandPalette *component.CommandPalette
+	spinner        *component.Spinner
 }
 
 // SetTheme updates the active theme. All components that reference

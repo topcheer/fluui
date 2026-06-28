@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/topcheer/fluui/event"
@@ -23,6 +24,8 @@ type App struct {
 
 	width  int
 	height int
+
+	mu sync.Mutex // protects width/height during concurrent resize
 
 	// User-facing callbacks
 	onKey     func(*term.KeyEvent)
@@ -93,7 +96,11 @@ func (a *App) Loop() *event.Loop { return a.loop }
 func (a *App) Dispatcher() *event.Dispatcher { return a.dispatcher }
 
 // Size returns the terminal dimensions.
-func (a *App) Size() (int, int) { return a.width, a.height }
+func (a *App) Size() (int, int) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.width, a.height
+}
 
 // OnKey sets a keyboard handler.
 func (a *App) OnKey(fn func(*term.KeyEvent)) {
@@ -226,9 +233,11 @@ func (a *App) setupHandlers() {
 
 	// Resize handler
 	a.dispatcher.OnResize(func(e event.Event) bool {
+		a.mu.Lock()
 		a.width = e.Width
 		a.height = e.Height
 		a.renderer.Resize(e.Width, e.Height)
+		a.mu.Unlock()
 		if a.onResize != nil {
 			a.onResize(e.Width, e.Height)
 		}

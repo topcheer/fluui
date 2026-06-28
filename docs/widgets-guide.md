@@ -388,6 +388,285 @@ The `renderP16()` method handles layout:
 
 ---
 
+## Dialog (Phase 18)
+
+The `Dialog` component provides modal dialogs with 4 types: Confirm, Info, Prompt, and Custom.
+
+### Basic Usage
+
+```go
+// Confirm dialog
+dialog := component.NewConfirmDialog("Delete File", "Are you sure?")
+dialog.OnConfirm = func() { os.Remove(path) }
+dialog.OnCancel = func() { /* cleanup */ }
+overlay.Show(dialog)
+```
+
+### Prompt Dialog
+
+```go
+prompt := component.NewPromptDialog("Username", "Enter name:", "")
+prompt.OnConfirm = func() {
+    name := prompt.InputValue()
+    fmt.Println("Got:", name)
+}
+overlay.Show(prompt)
+```
+
+### Keyboard
+- `Esc` — cancel
+- `Enter` — confirm (or default button)
+- `Tab` / `Left` / `Right` — navigate between buttons
+
+### Paint Layout
+- Centered modal with border and title
+- Message text wrapped below title
+- Buttons rendered at bottom, cursor highlighted
+
+---
+
+## AutoComplete (Phase 18)
+
+The `AutoComplete` component shows fuzzy-filtered suggestions as you type.
+
+### Basic Usage
+
+```go
+ac := component.NewAutoComplete()
+ac.SetItems([]component.CompletionItem{
+    {Label: "@alice", Detail: "user"},
+    {Label: "@bob", Detail: "user"},
+    {Label: "/help", Detail: "command"},
+})
+ac.SetQuery("@a")
+ac.Show(x, y)
+ac.OnSelect = func(item component.CompletionItem) {
+    input.InsertText(item.Label + " ")
+}
+```
+
+### Keyboard
+- `Up` / `Down` — navigate candidates
+- `Tab` / `Enter` — select current candidate
+- `Esc` — dismiss without selection
+
+### Paint Layout
+- Popup at specified (x, y) position
+- Filtered items shown with matched text highlighted
+- `MaxVisible` controls scroll window (default 8)
+
+---
+
+## Wizard (Phase 18)
+
+The `Wizard` component guides users through multi-step flows.
+
+### Basic Usage
+
+```go
+wizard := component.NewWizard([]*component.WizardStep{
+    component.NewWizardStep("welcome", "Welcome").
+        SetDescription("Let's set up your project"),
+    component.NewWizardStep("config", "Configuration").
+        SetDescription("Choose your settings"),
+    component.NewWizardStep("done", "Complete").
+        SetDescription("All done!"),
+})
+wizard.SetOnFinish(func(w *component.Wizard) { startApp() })
+wizard.SetOnCancel(func(w *component.Wizard) { os.Exit(0) })
+```
+
+### Lifecycle Hooks
+
+```go
+step := component.NewWizardStep("config", "Configuration")
+step.OnEnter = func(s *component.WizardStep) { /* pre-fill */ }
+step.OnLeave = func(s *component.WizardStep) error {
+    if s.Title() == "" { return errors.New("required") }
+    return nil // nil = allow navigation
+}
+```
+
+### Keyboard
+- `Tab` / `Right` / `Ctrl+N` — next step
+- `Left` / `Ctrl+B` — previous step
+- `Enter` — activate focused button
+- `Esc` — cancel wizard
+
+### Paint Layout
+- Step title + description centered
+- Progress indicator (Step 2/3)
+- Buttons at bottom: Back | Next/Finish | Cancel
+
+---
+
+## Checkbox (Phase 19)
+
+The `Checkbox` component renders a multi-select checklist.
+
+### Basic Usage
+
+```go
+cb := component.NewCheckbox([]component.CheckboxItem{
+    {Label: "Enable streaming"},
+    {Label: "Show thinking"},
+    {Label: "Verbose mode", Checked: true},
+})
+cb.OnChange = func(items []component.CheckboxItem) {
+    for _, it := range items {
+        if it.Checked { fmt.Println("Checked:", it.Label) }
+    }
+}
+```
+
+### Keyboard
+- `Space` / `Enter` — toggle current item
+- `j` / `Down` — move down (wraps around, skips disabled)
+- `k` / `Up` — move up (wraps around, skips disabled)
+- `Ctrl+A` — check all
+- `Ctrl+D` — uncheck all
+
+### API Reference
+- `Items()` / `SetItems()` — get/set items
+- `CheckedItems()` / `CheckedLabels()` — get checked items
+- `SetDisabled(idx, bool)` — disable/enable an item
+
+---
+
+## RadioGroup (Phase 19)
+
+The `RadioGroup` component renders mutually exclusive options.
+
+### Basic Usage
+
+```go
+rg := component.NewRadioGroup([]component.RadioItem{
+    {Label: "GPT-4", Value: "gpt-4"},
+    {Label: "Claude-3", Value: "claude-3"},
+    {Label: "Gemini", Value: "gemini"},
+})
+rg.OnChange = func(item component.RadioItem) {
+    config.Model = item.Value
+}
+```
+
+### Keyboard
+- `Space` / `Enter` — select current item (clears previous)
+- `j` / `Down` — move down (wraps around, skips disabled)
+- `k` / `Up` — move up (wraps around, skips disabled)
+
+### API Reference
+- `SelectedIndex()` / `SelectedValue()` — get current selection
+- `SetSelected(idx)` — set selection programmatically
+- `SetDisabled(idx, bool)` — disable an item (clears if active)
+
+---
+
+## Slider (Phase 19)
+
+The `Slider` component provides a range slider with configurable step.
+
+### Basic Usage
+
+```go
+slider := component.NewSlider()
+slider.SetRange(0, 100)
+slider.SetValue(50)
+slider.SetStep(5)
+slider.SetOrientation(component.SliderHorizontal)
+slider.OnChange = func(val int) {
+    fmt.Printf("Value: %d (%.0f%%)\n", val, slider.Ratio()*100)
+}
+```
+
+### Keyboard
+- `Left` / `Right` (or `h` / `l`) — decrement/increment by step
+- `Up` / `Down` — fine step (step/2)
+- `Home` — jump to min
+- `End` — jump to max
+
+### API Reference
+- `Value()` / `SetValue(int)` — get/set value
+- `Min()` / `Max()` / `SetRange(min, max)` — range
+- `Step()` / `SetStep(int)` — step size
+- `Ratio() float64` — current ratio (0.0-1.0)
+- `SetFromRatio(float64)` — set by percentage
+
+---
+
+## CommandPalette (Phase 19)
+
+The `CommandPalette` provides a VS Code-style fuzzy command search.
+
+### Basic Usage
+
+```go
+palette := component.NewCommandPalette()
+palette.SetCommands([]component.Command{
+    {ID: "file.new", Label: "New File", Category: "File"},
+    {ID: "file.save", Label: "Save File", Category: "File"},
+    {ID: "theme.cycle", Label: "Cycle Theme", Category: "Settings"},
+})
+palette.OnExecute = func(cmd component.Command) {
+    fmt.Println("Executing:", cmd.ID)
+    palette.Hide()
+}
+palette.Show()
+```
+
+### Keyboard
+- Printable chars — filter commands by fuzzy match
+- `Up` / `Down` / `Tab` — navigate filtered results (wrap-around)
+- `Enter` — execute command at cursor
+- `Esc` — dismiss palette
+- `Backspace` — edit query
+
+### API Reference
+- `SetQuery(string)` / `Query()` — search text
+- `FilteredCommands()` / `FilteredCount()` — filtered results
+- `SetMaxVisible(int)` — scroll window size
+- `SetStyle(CommandPaletteStyle)` — customize Normal/Matched/Selected/Prompt styles
+- `OnExecute` / `OnDismiss` — callbacks
+
+---
+
+## Spinner (Phase 19)
+
+The `Spinner` component displays an animated loading indicator.
+
+### Basic Usage
+
+```go
+spinner := component.NewSpinner()
+spinner.SetLabel("Loading...")
+spinner.SetPrefix("[")
+spinner.SetSuffix("]")
+spinner.SetFrameStyle(component.SpinnerFramesDots)
+spinner.Start()
+// In render loop:
+spinner.Update(dt) // advances frame, returns if changed
+spinner.Paint(buf)
+// When done:
+spinner.Stop()
+```
+
+### Frame Styles
+- `SpinnerFramesDots` — `⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏`
+- `SpinnerFramesArc` — `◐◓◑◒`
+- `SpinnerFramesLine` — `|/-\`
+- `SpinnerFramesBounce` — `⠁⠂⠄⠂`
+- `SpinnerFramesBars` — `▁▃▄▅▆▇█▇▆▅▄▃`
+
+### API Reference
+- `SetLabel(string)` / `Label()` — text after spinner
+- `SetPrefix(string)` / `Prefix()` — text before frame
+- `SetFrameStyle(SpinnerFrames)` — change animation style
+- `Start()` / `Stop()` / `Running()` — animation control
+- `Update(delta time.Duration) bool` — advance frame
+- `SetFrameIndex(int)` / `FrameIndex()` — direct frame control
+
+---
+
 ## Phase 18-19 Components
 
 ### Dialog (Phase 18)
