@@ -116,7 +116,10 @@ func (l *Loop) Run() error {
 	defer renderTick.Stop()
 
 	// Terminal resize notifications.
-	resizeCh := l.terminal.ResizeCh()
+	var resizeCh <-chan struct{}
+	if l.terminal != nil {
+		resizeCh = l.terminal.ResizeCh()
+	}
 
 	for {
 		select {
@@ -167,6 +170,9 @@ func (l *Loop) renderIfDirty() {
 // readRaw runs in a separate goroutine. It blocks on terminal.Read
 // and sends raw bytes to rawCh. Exits cleanly when doneCh is closed.
 func (l *Loop) readRaw() {
+	if l.terminal == nil {
+		return
+	}
 	buf := make([]byte, 4096)
 	for {
 		n, err := l.terminal.Read(buf)
