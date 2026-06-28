@@ -408,6 +408,11 @@ func (a *ChatApp) HandleKey(key *term.KeyEvent) bool {
 		return true
 	}
 
+	// P20: Route to command palette / spinner keys (Ctrl+P etc.)
+	if a.handleP20Key(key) {
+		return true
+	}
+
 	// Route to InputLine before scroll keys.
 	if inputLine != nil {
 		if inputLine.HandleKey(key) {
