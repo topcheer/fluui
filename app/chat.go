@@ -66,6 +66,17 @@ type ChatApp struct {
 
 	// Search (nil = not created yet, created on first Ctrl+F)
 	search *SearchMode
+
+	// P16: StatusBar integration (nil = not attached)
+	statusBar       *component.StatusBar
+	statusBarHeight int
+
+	// P16: TabBar integration (nil = not attached)
+	tabBar       *component.TabBar
+	tabBarHeight int
+
+	// P16: SelectionManager integration (nil = not attached)
+	selectionMgr *SelectionManager
 }
 
 // SetTheme updates the active theme. All components that reference

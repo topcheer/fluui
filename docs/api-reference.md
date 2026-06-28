@@ -305,3 +305,257 @@ type Component interface {
 | `Remove(id string)` | Remove overlay |
 | `Top() Overlay` | Topmost overlay |
 | `Paint(buf *Buffer)` | Paint all overlays bottom-to-top |
+
+---
+
+## `component` (package: `github.com/topcheer/fluui/component`)
+
+### Phase 15 Components
+
+#### FilePicker
+
+File browser with fuzzy filtering, multi-select, and vim-style keybindings.
+
+| Method | Description |
+|---|---|
+| `NewFilePicker(dir string) *FilePicker` | Create from directory |
+| `MoveDown()` / `MoveUp()` | Navigate cursor |
+| `EnterDir()` / `GoUp()` | Directory navigation |
+| `Cwd() string` | Current working directory |
+| `SetFilter(s string)` / `Filter() string` | Set/get filter pattern |
+| `AppendFilter(r rune)` / `BackspaceFilter()` | Incremental filtering |
+| `FilteredCount() int` | Number of filtered entries |
+| `ToggleSelect()` / `IsSelected(path string) bool` | Multi-select |
+| `SelectedFiles() []FileEntry` | Get all selected files |
+| `ClearSelection()` | Clear all selections |
+| `Entries() []FileEntry` | All visible entries |
+| `Cursor() int` / `CurrentEntry() (FileEntry, bool)` | Cursor state |
+| `SetOnSelect(fn)` / `SetOnConfirm(fn)` / `SetOnError(fn)` | Callbacks |
+| `SetStyle(FilePickerStyle)` / `Style() FilePickerStyle` | Styling |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard input |
+| `Measure(Constraints) Size` | Measure size |
+| `SetBounds(Rect)` / `Bounds() Rect` | Set/get bounds |
+| `Paint(*buffer.Buffer)` | Render to buffer |
+| `Children() []Component` | Child components |
+
+#### StatusBar
+
+Status bar with left/center/right item alignment.
+
+| Method | Description |
+|---|---|
+| `NewStatusBar() *StatusBar` | Create status bar |
+| `AddItem(item StatusItem)` | Add item with alignment |
+| `AddLeft(item)` / `AddCenter(item)` / `AddRight(item)` | Add to position |
+| `RemoveItem(id string)` | Remove item by ID |
+| `Clear()` | Remove all items |
+| `Items() []StatusItem` | Get all items (copy) |
+| `ItemCount() int` | Number of items |
+| `SetItemText(id, text string)` | Update item text |
+| `SetItemStyle(id string, style buffer.Style)` | Update item style |
+| `SetSeparator(sep string)` / `Separator() string` | Separator between items |
+| `SetModel(model string)` | Set AI model display |
+| `SetTokenRate(rate int)` | Set token rate ("1.5k tok/s") |
+| `SetContextWindow(used, total int)` | Set context window display |
+| `SetClock(time string)` | Set clock display |
+| `SetHeight(h int)` | Set bar height (min 1) |
+| `SetStyle(StatusBarStyle)` / `Style() StatusBarStyle` | Styling |
+| `Measure(Constraints) Size` | Measure size |
+| `SetBounds(Rect)` / `Bounds() Rect` | Set/get bounds |
+| `Paint(*buffer.Buffer)` | Render to buffer |
+
+#### TabBar
+
+Tab management with close buttons and keyboard navigation.
+
+| Method | Description |
+|---|---|
+| `NewTabBar() *TabBar` | Create tab bar |
+| `AddTab(id, title string)` | Add a tab |
+| `AddClosableTab(id, title string)` | Add a closable tab |
+| `RemoveTab(id string)` | Remove tab by ID |
+| `Tabs() []Tab` | Get all tabs |
+| `TabCount() int` | Number of tabs |
+| `SetActive(index int)` / `Active() int` | Set/get active tab |
+| `NextTab()` / `PrevTab()` | Cycle tabs |
+| `SetStyle(TabBarStyle)` / `Style() TabBarStyle` | Styling |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard input |
+| `HitTest(mx, my int) (int, bool)` | Mouse hit test |
+| `ClickAt(mx, my int) bool` | Click handling |
+| `IsCloseButton(mx, my int) (int, bool)` | Check close button hit |
+| `Measure(Constraints) Size` | Measure size |
+| `SetBounds(Rect)` / `Bounds() Rect` | Set/get bounds |
+| `Paint(*buffer.Buffer)` | Render to buffer |
+
+#### DiffPreview
+
+Scrollable diff viewer with syntax highlighting.
+
+| Method | Description |
+|---|---|
+| `NewDiffPreview() *DiffPreview` | Create diff viewer |
+| `SetDiff(text string)` | Set diff content |
+| `Lines() []DiffLine` | Get classified lines |
+| `LineCount() int` | Number of lines |
+| `Stats() DiffStats` | Diff statistics |
+| `IsEmpty() bool` / `HasChanges() bool` | Content state |
+| `DiffSummary() string` | Human-readable summary |
+| `ScrollDown(n int)` / `ScrollUp(n int)` | Scroll by lines |
+| `ScrollTo(row int)` / `ScrollY() int` | Set/get scroll position |
+| `ScrollPageDown(vh int)` / `ScrollPageUp(vh int)` | Page scroll |
+| `VisibleRange() (int, int)` | Visible line range |
+| `SetTitle(title string)` / `Title() string` | Set/get title |
+| `SetStyle(DiffPreviewStyle)` | Styling |
+| `SetShowLineNumbers(bool)` / `ShowLineNumbers() bool` | Line number display |
+| `Measure(Constraints) Size` | Measure size |
+| `SetBounds(Rect)` / `Bounds() Rect` | Set/get bounds |
+| `Paint(*buffer.Buffer)` | Render to buffer |
+| `Children() []Component` | Child components |
+
+#### LinkManager
+
+URL detection, OSC8 hyperlinks, and click handling.
+
+| Method | Description |
+|---|---|
+| `NewLinkManager() *LinkManager` | Create link manager |
+| `DetectLinks(text string, row int) []LinkRange` | Detect URLs in text |
+| `AddLink(link LinkRange)` | Add a link manually |
+| `Links() []LinkRange` | Get all links |
+| `LinkAt(x, y int) (LinkRange, bool)` | Find link at position |
+| `ClickLink(x, y int) bool` | Click link at position |
+| `AnnotateBuffer(buf *buffer.Buffer)` | Apply OSC8 to buffer |
+| `ScanText(text string, row int) []LinkRange` | Scan for URLs |
+| `SetStyle(LinkStyle)` | Styling |
+| `SetOnClick(fn func(string))` | Set click callback |
+
+### Constants and Types
+
+```go
+// DiffType
+type DiffType uint8
+const (
+    DiffContext DiffType = iota
+    DiffAdd
+    DiffDel
+    DiffHunk
+    DiffFile
+    DiffMeta
+)
+
+// StatusItemAlignment
+type StatusItemAlignment int
+const (
+    StatusAlignLeft   StatusItemAlignment = 0
+    StatusAlignCenter StatusItemAlignment = 1
+    StatusAlignRight  StatusItemAlignment = 2
+)
+
+// FileEntry
+type FileEntry struct {
+    Name    string
+    Path    string
+    IsDir   bool
+    Size    int64
+    Mode    os.FileMode
+    ModTime int64
+}
+
+// DiffStats
+type DiffStats struct {
+    Additions  int
+    Deletions  int
+    Files      int
+    Hunks      int
+    TotalLines int
+}
+
+// Tab
+type Tab struct {
+    ID       string
+    Title    string
+    Closable bool
+    Active   bool
+}
+```
+
+---
+
+## `app/selection` (package: `github.com/topcheer/fluui/app`)
+
+### SelectionManager
+
+Text selection with mouse and keyboard support, plus OSC52 clipboard copy.
+
+| Method | Description |
+|---|---|
+| `NewSelectionManager() *SelectionManager` | Create manager |
+| `StartSelection(x, y int)` | Begin mouse selection |
+| `ExtendSelection(x, y int)` | Extend to position |
+| `EndSelection()` | End selection |
+| `StartKeyboardSelection(x, y int)` | Begin keyboard selection |
+| `ExtendKeyboardSelection(dx, dy, bw, bh int)` | Extend by delta |
+| `HasSelection() bool` | Check if selection active |
+| `Selection() Selection` | Get normalized selection |
+| `Cursor() SelectionPoint` | Current cursor position |
+| `Anchor() SelectionPoint` | Selection anchor point |
+| `Clear()` | Clear selection |
+| `SelectedText(lines []string) string` | Extract selected text |
+
+---
+
+## ChatApp P16 Integration (package: `github.com/topcheer/fluui/app`)
+
+The ChatApp integrates P15 StatusBar, TabBar, and SelectionManager components with a unified mouse/key handler.
+
+### StatusBar Integration
+
+| Method | Description |
+|---|---|
+| `SetStatusBar(sb *component.StatusBar)` | Attach/detach status bar (nil to detach) |
+| `StatusBar() *component.StatusBar` | Get attached status bar |
+| `SetModel(name string)` | Set AI model name in status bar |
+| `SetTokenRate(rate int)` | Set token generation rate (auto-formats k notation) |
+| `SetContextWindow(used, total int)` | Set context window usage display |
+| `UpdateClock()` | Refresh clock to current time |
+
+### TabBar Integration (Multi-Session)
+
+| Method | Description |
+|---|---|
+| `SetTabBar(tb *component.TabBar)` | Attach/detach tab bar |
+| `TabBar() *component.TabBar` | Get attached tab bar |
+| `AddSession(name string) int` | Create new session tab (returns index, -1 if no tab bar) |
+| `SwitchSession(idx int)` | Switch to session at index |
+| `NextSession() / PrevSession()` | Switch to next/prev session (wraps around) |
+| `CloseSession()` | Close active session tab |
+| `SessionCount() int` | Number of open sessions |
+| `ActiveSession() int` | Active session index |
+| `ActiveSessionName() string` | Active session title |
+| `Sessions() []SessionInfo` | All session metadata (ID, Name, Index) |
+
+### SelectionManager Integration
+
+| Method | Description |
+|---|---|
+| `SetSelectionManager(sm *SelectionManager)` | Attach/detach selection manager |
+| `SelectionManager() *SelectionManager` | Get attached selection manager |
+| `HasSelection() bool` | Check if text selection is active |
+| `ClearSelection()` | Clear current selection |
+
+### Enhanced Event Handling
+
+| Method | Description |
+|---|---|
+| `HandleMouseP16(mouse *term.MouseEvent) bool` | Unified mouse routing: overlays -> tabs -> selection -> scroll -> custom |
+| `handleP16Keys(key *term.KeyEvent) bool` | Alt+[/] next/prev session, Alt+W close, Alt+1-9 switch |
+| `renderP16(buf *buffer.Buffer, w, h int)` | Paint tab bar (top) + status bar (bottom) + selection highlights |
+
+### Keyboard Shortcuts
+
+| Key | Action |
+|---|---|
+| `Alt+]` | Next session |
+| `Alt+[` | Previous session |
+| `Alt+W` | Close active session |
+| `Alt+1` to `Alt+9` | Switch to session N |

@@ -3,7 +3,7 @@
 > **流畅 (fluent) + UI** — An AI-native TUI library for Go, built from scratch.
 
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev)
-[![Tests](https://img.shields.io/badge/tests-1026-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-1917-brightgreen)](#testing)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#license)
 
 Fluui is a terminal UI framework designed specifically for AI chat interfaces. Every layer — from the input parser to the render engine — is optimized for streaming content, semantic content blocks, and zero-flicker updates.
@@ -29,6 +29,11 @@ Fluui is a terminal UI framework designed specifically for AI chat interfaces. E
 | Search in conversation (Ctrl+F) | Yes | No | No |
 | Conversation save/load (serialization) | Yes | No | No |
 | Terminal capability detection (termcompat) | Yes | No | No |
+| File browser (FilePicker) | Yes | No | No |
+| Tab management (TabBar) | Yes | No | No |
+| Status bar (StatusBar) | Yes | No | No |
+| Diff viewer (DiffPreview) | Yes | No | No |
+| Text selection + OSC52 copy | Yes | No | No |
 | No TUI framework dependency | Yes (100% from scratch) | N/A | N/A |
 
 ## Quick Start
@@ -114,7 +119,8 @@ func main() {
 │  App (terminal + renderer + event loop)     │
 ├─────────────────────────────────────────────┤
 │              app/chat.go                     │  Layer 5: ChatApp API
-│  ChatApp + AIBridge + InputLine + Mouse     │
+│  ChatApp + AIBridge + InputLine + StatusBar │
+│  TabBar + Selection + MouseHandler         │
 ├─────────────────────────────────────────────┤
 │     block/          overlay/      focus/    │  Layer 4.5: Content + Interaction
 │  ThinkingBlock      Modal         Manager   │
@@ -122,7 +128,9 @@ func main() {
 │  AssistantText      OverlayManager          │
 ├─────────────────────────────────────────────┤
 │          component/     component/layout/   │  Layer 4: Component System
-│  Text  Border  ScrollView   Flex            │
+│  Text  Border  ScrollView  Flex  Table      │
+│  Tree  Form  FilePicker  TabBar  StatusBar  │
+│  DiffPreview  Links  Selection  Gauge        │
 ├─────────────────────────────────────────────┤
 │          markdown/    animation/            │  Layer 3.5: Rendering
 │  goldmark AST    Spinner  FadeIn            │
@@ -148,16 +156,18 @@ func main() {
 | `internal/buffer/` | Cell, Color, Style, Buffer, Diff, wcwidth (CJK support) | 55 |
 | `render/` | Double-buffer diff renderer | 8 |
 | `event/` | Channel-driven event loop + dispatcher | 5 |
-| `component/` | Component interface, Text, Border, ScrollView | 23 |
-| `component/layout/` | Flex layout (Row/Column) | 9 |
+| `component/` | Component interface, 20+ widgets (Table, Tree, Form, FilePicker, TabBar, StatusBar, DiffPreview, Links, Gauge, Sparkline, Badge, ProgressBar, ContextMenu, Tooltip, SplitPane, HelpOverlay, Notification, TextArea, Selection) | 850+ |
+| `component/layout/` | Flex layout (Row/Column/Stack/Center/Padding) | 9 |
 | `markdown/` | goldmark AST renderer, chroma highlighter, CJK wrap, OSC8 links, table alignment | 73 |
 | `block/` | AI content blocks + container + stream dispatcher + serializer | 189 |
 | `overlay/` | Overlay manager, Modal dialog, Popup viewer | 29 |
 | `focus/` | Focus manager (Tab traversal, focus ring) | 9 |
 | `hit/` | Hit testing (Region, RegionTree) | 12 |
 | `animation/` | Spinner, FadeIn, Manager | 16 |
-| `app/` | ChatApp API, InputLine, MouseHandler, AIBridge, Clipboard, Search | 137 |
+| `app/` | ChatApp API, InputLine, MouseHandler, AIBridge, Clipboard, Search, Selection | 170+ |
 | `ai/` | OpenAI-compatible streaming client, config loader | 12 |
+| `internal/hotkey/` | Configurable hotkey manager with key sequences | 54 |
+| `internal/fuzzy/` | Fuzzy subsequence matcher with scoring | 44 |
 | `theme/` | 5 built-in themes, theme cycling, hot-swap, search colors | 18 |
 | `internal/termcompat/` | Terminal capability detection (OSC52, true color, tmux) | 25 |
 | `internal/term/` | Terminal abstraction + ANSI writer | 78 |
@@ -187,6 +197,18 @@ go run ./cmd/demo2/
 
 # Phase 3: AI chat simulation (streaming blocks)
 go run ./cmd/demo3/
+
+# Phase 10: TextArea + Command Palette + Tab Completion
+go run ./cmd/demo7/
+
+# Phase 12: Table/Tree/Form/ProgressBar widgets
+go run ./cmd/demo8/
+
+# Phase 13: Gauge/Sparkline/Badge/Notification widgets
+go run ./cmd/demo9/
+
+# Phase 14-15: ContextMenu/Tooltip/SplitPane/Help + FilePicker/TabBar/StatusBar
+go run ./cmd/demo10/
 
 # Phase 4: ChatApp + overlay + mouse interaction
 go run ./cmd/demo4/
@@ -219,7 +241,8 @@ Full documentation is available in [`docs/`](docs/):
 - [Architecture](docs/architecture.md) — 6-layer design overview
 - [API Reference](docs/api-reference.md) — Complete public API
 - [Tutorial](docs/tutorial.md) — Step-by-step AI Agent tutorial
-- [Components](docs/components.md) — Widget system guide
+- [Components](docs/components.md) — Widget system guide (20+ components)
+- [Widgets Guide](docs/widgets-guide.md) — FilePicker/TabBar/StatusBar/DiffPreview tutorials
 - [Blocks](docs/blocks.md) — Content block types and lifecycle
 - [Themes](docs/themes.md) — Theme system and customization
 - [Best Practices](docs/best-practices.md) — Concurrency, performance, tips
@@ -237,7 +260,7 @@ go test ./internal/term/ -v -race
 go test ./... -bench=. -benchmem
 ```
 
-**1026 tests** across 31 packages, all passing with `-race`. Plus 20 benchmarks across render, buffer, block, and term packages.
+**1917 tests** across 37 packages, all passing with `-race`. Plus 20 benchmarks across render, buffer, block, and term packages.
 
 ## Design Decisions
 
@@ -250,13 +273,13 @@ go test ./... -bench=. -benchmem
 
 ## Stats
 
-- 175 Go source files
-- ~36,800 lines of code
-- 865 tests (race-clean)
+- 239 Go source files
+- ~66,649 lines of code
+- 1917 tests (race-clean)
 - 20 benchmarks
-- 31 packages (incl. docs + examples)
-- 7 interactive demos
-- 8 documentation files
+- 37 packages (incl. docs + examples)
+- 10+ interactive demos
+- 10 documentation files
 - 5 code examples
 
 ## License
