@@ -85,6 +85,42 @@ type MyWidget struct {
 | **SelectionManager** | Text selection with OSC52 clipboard copy |
 | **Notification** | Toast notifications with auto-expiry (4 levels) |
 
+### Form & Dialog Components (Phase 18)
+
+| Component | Description |
+|---|---|
+| **Dialog** | Modal dialog: Confirm, Info, Prompt, Custom types |
+| **AutoComplete** | Popup fuzzy-filtered completion suggestions |
+| **Wizard** | Multi-step wizard with lifecycle hooks |
+
+### Advanced Widgets (Phase 19)
+
+| Component | Description |
+|---|---|
+| **Checkbox** | Multi-item checkbox list with check/uncheck all |
+| **RadioGroup** | Mutually exclusive single-selection group |
+| **Slider** | Range slider with H/V orientation and vim keys |
+| **CommandPalette** | Fuzzy-search command palette (Ctrl+P style) |
+| **Spinner** | Animated loading spinner with frame styles |
+
+### Dialog & Flow Components (Phase 18)
+
+| Component | Description |
+|---|---|
+| **Dialog** | Modal dialog (Confirm/Info/Prompt/Custom) with callbacks |
+| **AutoComplete** | Popup fuzzy autocomplete with OnSelect/OnDismiss |
+| **Wizard** | Multi-step wizard with lifecycle hooks and dynamic buttons |
+
+### Form & Input Components (Phase 19)
+
+| Component | Description |
+|---|---|
+| **Checkbox** | Multi-item checkbox list with CheckAll/UncheckAll, j/k nav |
+| **RadioGroup** | Mutually exclusive selection with vim-style navigation |
+| **Slider** | Range slider (horizontal/vertical) with step, Home/End, h/l keys |
+| **CommandPalette** | Fuzzy-search palette with highlighted matches, scroll, callbacks |
+| **Spinner** | Animated spinner (dots/arc/line/bounce/bars) with label/prefix |
+
 ## Size & Constraints
 
 ```go
@@ -372,6 +408,252 @@ if link, ok := mgr.LinkAt(mx, my); ok {
 ```
 
 URL detection with OSC8 hyperlink annotation. `DetectLinks()` finds URLs in text, `LinkManager` manages link ranges, annotation, and click handling.
+
+## Dialog (Phase 18)
+
+```go
+dialog := component.NewConfirmDialog("Delete File?", "Are you sure?")
+dialog.OnConfirm = func() { os.Remove(path) }
+dialog.Show()
+// HandleKey: Enter=confirm, Esc=cancel, Tab/Left/Right=navigate buttons
+```
+
+Modal dialog with 4 types: `DialogConfirm` (Yes/No), `DialogInfo` (OK only), `DialogPrompt` (text input + OK/Cancel), and `DialogCustom` (arbitrary buttons). Supports `OnConfirm`/`OnCancel`/`OnCustom` callbacks. Prompt dialogs have full text editing (InsertRune, Backspace, Delete).
+
+## AutoComplete (Phase 18)
+
+```go
+ac := component.NewAutoComplete()
+ac.SetItems([]component.CompletionItem{
+    {Label: "gpt-4", Detail: "OpenAI"},
+    {Label: "claude-3", Detail: "Anthropic"},
+})
+ac.SetQuery("gp")
+ac.Show(x, y)
+// HandleKey: Up/Down navigate, Tab/Enter select, Esc dismiss
+```
+
+Popup autocomplete with fuzzy filtering, configurable `MaxVisible`, case-insensitive matching by default, and `OnSelect`/`OnDismiss` callbacks.
+
+## Wizard (Phase 18)
+
+```go
+wizard := component.NewWizard([]*component.WizardStep{
+    component.NewWizardStep("welcome", "Welcome").
+        SetDescription("Let's set up your project"),
+    component.NewWizardStep("config", "Configuration").
+        SetDescription("Choose your settings"),
+    component.NewWizardStep("done", "Complete").
+        SetDescription("All done!"),
+})
+wizard.OnFinish = func(w *component.Wizard) { startApp() }
+// HandleKey: Tab/Right=Next, Left=Back, Enter=select, Esc=cancel
+```
+
+Multi-step wizard with `OnEnter`/`OnLeave` lifecycle hooks per step (can block navigation by returning error), `OnFinish`/`OnCancel` callbacks, and dynamic button ordering based on step position.
+
+## Checkbox (Phase 19)
+
+```go
+checkbox := component.NewCheckbox()
+checkbox.AddItem("Enable streaming", false)
+checkbox.AddItem("Show thinking", false)
+checkbox.AddItem("Verbose mode", true)
+// HandleKey: Space/Enter=toggle, j/Down=next, k/Up=prev
+//             Ctrl+A=check all, Ctrl+D=uncheck all
+checkbox.OnChange = func(idx int, checked bool) {}
+```
+
+Multi-item checkbox list with toggle (Space/Enter), check all (Ctrl+A), uncheck all (Ctrl+D), j/k navigation with wrap-around, disabled item skipping, and `OnChange` callback per item.
+
+## RadioGroup (Phase 19)
+
+```go
+radio := component.NewRadioGroup()
+radio.AddItem("GPT-4", "gpt-4")
+radio.AddItem("Claude-3", "claude-3")
+radio.AddItem("Gemini", "gemini")
+radio.SetSelected("gpt-4")
+// HandleKey: Up/Down/j/k navigate, Enter/Space=select
+radio.OnChange = func(value string) { fmt.Println("Selected:", value) }
+```
+
+Mutually exclusive single-selection group. `SetDisabled(value)` disables an item and clears it if active. Vim-style j/k navigation with wrap-around, disabled item skipping, and `OnChange` callback.
+
+## Slider (Phase 19)
+
+```go
+slider := component.NewSlider()
+slider.SetMin(0).SetMax(100).SetValue(50)
+slider.SetStep(5)
+slider.Horizontal()
+// HandleKey: Left/Right or h/l=step, Up/Down=large step
+//             Home=min, End=max
+slider.OnChange = func(value float64) { fmt.Printf("%.0f%%\n", value) }
+```
+
+Range slider with horizontal/vertical orientation, configurable min/max/step, `SetFromRatio(ratio)` for percentage-based control, Home/End shortcuts, h/j/k/l vim keys, and `OnChange` callback.
+
+## CommandPalette (Phase 19)
+
+```go
+palette := component.NewCommandPalette()
+palette.AddCommand(component.Command{
+    ID: "settings.theme",
+    Label: "Change Theme",
+    Category: "Settings",
+    Action: func() { openThemePicker() },
+})
+palette.AddCommand(component.Command{
+    ID: "file.new",
+    Label: "New File",
+    Category: "File",
+})
+palette.Show(x, y)
+// HandleKey: printable=filter, Up/Down/Tab=navigate (wrap)
+//             Enter=execute, Esc=dismiss, Backspace=edit query
+palette.OnExecute = func(cmd component.Command) {}
+```
+
+Fuzzy-search command palette with highlighted match segments (via `internal/fuzzy`), cursor navigation with wrap-around, scroll management with configurable `MaxVisible`, `OnExecute`/`OnDismiss` callbacks, and configurable styles per state (Normal/Matched/Selected/Prompt).
+
+## Spinner (Phase 19)
+
+```go
+spinner := component.NewSpinner()
+spinner.SetLabel("Loading...")
+spinner.SetFrameStyle(animation.SpinnerDots)
+spinner.Start()
+// In render loop:
+spinner.Update(dt) // advance frame
+spinner.Paint(buf)
+// When done:
+spinner.Stop()
+```
+
+Animated spinner integrating `animation.Spinner` with frame styles (dots, arc, line, bounce, bars). `Start()`/`Stop()` control, `Update(dt)` advances frames and returns whether frame changed (for efficient redraws), configurable label and prefix, `SetFrameIndex(idx)` with wrap, and `SetFrameStyle(style)` for dynamic switching.
+
+## Dialog (Phase 18)
+
+```go
+dialog := component.NewConfirmDialog("Delete File", "Are you sure?")
+dialog.OnConfirm = func() { fmt.Println("Confirmed") }
+dialog.Show()
+// HandleKey: Esc=cancel, Enter=confirm, Tab/Left/Right=navigate buttons
+```
+
+Modal dialog with 4 types: Confirm (Yes/No), Info (OK only), Prompt (text input + OK/Cancel), and custom. Features button navigation with wrap, cursor highlighting, and optional text input field.
+
+```go
+prompt := component.NewPromptDialog("Username", "Enter your name:", "")
+prompt.SetInputValue("default")
+if prompt.Confirm() {
+    name := prompt.InputValue()
+}
+```
+
+## AutoComplete (Phase 18)
+
+```go
+ac := component.NewAutoComplete()
+ac.SetItems([]component.CompletionItem{
+    {Label: "golang", Detail: "Programming Language"},
+    {Label: "python", Detail: "Programming Language"},
+})
+ac.SetQuery("go")
+ac.Show(x, y)
+// HandleKey: Up/Down=navigate, Tab/Enter=select, Esc=dismiss
+```
+
+Popup autocomplete with fuzzy-filtered candidates. Supports keyboard navigation (Up/Down/Tab/Enter/Esc), configurable max visible items, case sensitivity toggle, and `OnSelect`/`OnDismiss` callbacks.
+
+## Wizard (Phase 18)
+
+```go
+wizard := component.NewWizard([]*component.WizardStep{
+    component.NewWizardStep("welcome", "Welcome").
+        SetDescription("Let's get started!"),
+    component.NewWizardStep("config", "Configuration").
+        SetDescription("Set up your preferences."),
+    component.NewWizardStep("done", "Complete").
+        SetDescription("All done!"),
+})
+wizard.SetOnFinish(func(w *component.Wizard) { fmt.Println("Finished!") })
+```
+
+Multi-step wizard with step navigation (Next/Back), skip support, lifecycle hooks (`OnEnter`/`OnLeave`), progress tracking, and dynamic button rendering. Keyboard: Tab/Left/Right=navigate buttons, Enter=activate, Esc=cancel, Ctrl+N=next, Ctrl+B=back.
+
+## Checkbox (Phase 19)
+
+```go
+cb := component.NewCheckbox([]component.CheckboxItem{
+    {Label: "Enable notifications", Checked: true},
+    {Label: "Dark mode", Checked: false},
+    {Label: "Auto-save", Checked: true},
+})
+cb.OnChange = func(items []component.CheckboxItem) { fmt.Println("Changed!") }
+// HandleKey: Space/Enter=toggle, j/Down=next, k/Up=prev
+// Ctrl+A=check all, Ctrl+D=uncheck all
+```
+
+Multi-select checkbox list with toggle (Space/Enter), bulk operations (Ctrl+A check all, Ctrl+D uncheck all), vim-style j/k navigation, disabled item skipping, and wrap-around cursor.
+
+## RadioGroup (Phase 19)
+
+```go
+rg := component.NewRadioGroup([]component.RadioItem{
+    {Label: "Light"},
+    {Label: "Dark"},
+    {Label: "Auto"},
+})
+rg.OnChange = func(item component.RadioItem) { fmt.Println("Selected:", item.Label) }
+// HandleKey: Space/Enter=select, j/Down=next, k/Up=prev
+```
+
+Mutually exclusive radio button group. One selection at a time — selecting an item clears the previous. Supports j/k navigation, disabled item skipping, wrap-around cursor, and `OnChange` callback.
+
+## Slider (Phase 19)
+
+```go
+slider := component.NewSlider()
+slider.SetRange(0, 100)
+slider.SetValue(50)
+slider.SetStep(5)
+slider.OnChange = func(val int) { fmt.Println("Value:", val) }
+// HandleKey: Left/Right or h/l=step, Up/Down=fine step
+// Home=min, End=max
+```
+
+Horizontal/vertical slider with configurable range, step size, and orientation. Keyboard: arrow keys for stepping, h/j/k/l vim keys, Home/End for min/max, ratio-based positioning via `SetFromRatio(float64)`.
+
+## CommandPalette (Phase 19)
+
+```go
+palette := component.NewCommandPalette()
+palette.SetCommands([]component.Command{
+    {ID: "save", Label: "Save File", Category: "File"},
+    {ID: "open", Label: "Open File", Category: "File"},
+    {ID: "theme", Label: "Switch Theme", Category: "Settings"},
+})
+palette.OnExecute = func(cmd component.Command) { fmt.Println("Exec:", cmd.ID) }
+palette.Show()
+// HandleKey: Up/Down=navigate, Tab=next, Enter=execute, Esc=dismiss
+```
+
+Fuzzy-search command palette (VS Code style). Type to filter commands, navigate results with Up/Down/Tab, execute with Enter, dismiss with Esc. Features highlighted match segments, scroll management with configurable `MaxVisible`, multi-category commands, and `OnExecute`/`OnDismiss` callbacks.
+
+## Spinner (Phase 19)
+
+```go
+spinner := component.NewSpinner()
+spinner.SetLabel("Loading...")
+spinner.SetFrameStyle(component.SpinnerFramesDots) // dots, arc, line, etc.
+spinner.Start()
+// Animation frames auto-advance via Update(dt)
+spinner.Stop()
+```
+
+Animated spinner component integrating `animation.Spinner` with configurable frame styles (dots, arc, line, bounce, bars). Supports label and prefix rendering, start/stop control, manual frame index setting with wrap-around, and `Update(dt)` for efficient redraws.
 
 ## Composing Components
 

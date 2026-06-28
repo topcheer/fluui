@@ -85,6 +85,30 @@ High-level AI chat interface.
 | `InputLine() *InputLine` | Get attached input line |
 | `OnSubmit(fn func(string))` | Set Enter handler (auto-creates InputLine) |
 
+**Input Line Undo/Redo (Phase 19):**
+
+| Method | Description |
+|---|---|
+| `Undo() bool` | Undo last edit (Ctrl+Z) |
+| `Redo() bool` | Redo last undo (Ctrl+Shift+Z, Ctrl+Y) |
+| `CanUndo() bool` | Check if undo is available |
+| `CanRedo() bool` | Check if redo is available |
+| `UndoCount() int` | Number of undo states |
+| `RedoCount() int` | Number of redo states |
+| `ClearUndoHistory()` | Clear all undo/redo state |
+
+**InputLine Undo/Redo:**
+
+| Method | Description |
+|---|---|
+| `Undo() bool` | Undo last edit (Ctrl+Z) |
+| `Redo() bool` | Redo last undo (Ctrl+Shift+Z or Ctrl+Y) |
+| `CanUndo() bool` | Check if undo is available |
+| `CanRedo() bool` | Check if redo is available |
+| `UndoCount() int` | Number of undo states |
+| `RedoCount() int` | Number of redo states |
+| `ClearUndoHistory()` | Clear all undo/redo history |
+
 **Scrolling:**
 
 | Method | Description |
@@ -120,10 +144,16 @@ High-level AI chat interface.
 | Method | Description |
 |---|---|
 | `SetTheme(t *theme.Theme)` | Set active theme |
-| `CycleTheme() *theme.Theme` | Next built-in theme |
-| `CycleThemeBack() *theme.Theme` | Previous theme |
+| `CycleTheme() *theme.Theme` | Next built-in theme (Ctrl+T, Ctrl+]) |
+| `CycleThemeBack() *theme.Theme` | Previous theme (Ctrl+Shift+T, Ctrl+\) |
 | `Theme() *theme.Theme` | Current theme |
 | `ThemeToast() (string, bool)` | Theme switch notification text |
+| `ThemeCount() int` | Number of builtin themes |
+| `ThemeList() []string` | All builtin theme names |
+| `ThemeIndex() int` | Current theme index |
+| `ThemeName() string` | Current theme name |
+| `SetThemeByIndex(idx int)` | Switch to theme at index |
+| `SetThemeByName(name string) bool` | Switch by name (returns success) |
 
 **Overlay:**
 
@@ -648,3 +678,96 @@ The ChatApp integrates P15 StatusBar, TabBar, and SelectionManager components wi
 | `SetOnFinish(func(*Wizard)) / SetOnCancel(func(*Wizard))` | Completion callbacks |
 | `SetOnStepChange(func(*Wizard, int))` | Step change callback |
 | `HandleKey(*term.KeyEvent) bool` | Tab/Left/Right/Enter/Esc/Ctrl+N/Ctrl+B |
+
+### Checkbox
+
+| Method | Description |
+|---|---|
+| `NewCheckbox()` | Create checkbox list |
+| `AddItem(label string)` | Add a checkbox item |
+| `SetItems([]CheckboxItem)` | Set all items |
+| `Items() []CheckboxItem` | Get all items (defensive copy) |
+| `ItemCount() int` | Number of items |
+| `CheckedItems() []CheckboxItem` | Get checked items only |
+| `CheckedLabels() []string` | Get checked item labels |
+| `Toggle()` | Toggle current cursor item |
+| `SetChecked(idx int, checked bool)` | Set specific item |
+| `IsChecked(idx int) bool` | Check if item is checked |
+| `CheckAll() / UncheckAll()` | Bulk operations |
+| `Cursor() / SetCursor(int)` | Cursor position |
+| `MoveUp() / MoveDown()` | Navigate (wrap-around, skip disabled) |
+| `SetStyle(CheckboxStyle) / Style()` | Style configuration |
+| `OnChange` | Callback: `func(idx int, checked bool)` |
+| `HandleKey(*term.KeyEvent) bool` | Space/Enter=toggle, j/k=nav, Ctrl+A/D |
+
+### RadioGroup
+
+| Method | Description |
+|---|---|
+| `NewRadioGroup()` | Create radio group |
+| `AddItem(label, value string)` | Add option |
+| `Labels() []string` | All labels |
+| `SelectedIndex() int` | Currently selected (-1 if none) |
+| `SelectedLabel() / SelectedValue()` | Selected item info |
+| `SetSelected(idx int)` | Select an item |
+| `Select()` | Select current cursor item |
+| `IsDisabled(idx int) / SetDisabled(idx int, bool)` | Disable management |
+| `Cursor() / SetCursor(int)` | Cursor position |
+| `MoveUp() / MoveDown()` | Navigate (wrap-around, skip disabled) |
+| `SetStyle(RadioGroupStyle) / Style()` | Style configuration |
+| `OnChange` | Callback: `func(value string)` |
+| `HandleKey(*term.KeyEvent) bool` | Up/Down/j/k=nav, Enter/Space=select |
+
+### Slider
+
+| Method | Description |
+|---|---|
+| `NewSlider()` | Create slider (default: min=0, max=100, step=1) |
+| `Value() / SetValue(float64)` | Current value |
+| `Min() / Max() / SetRange(min, max float64)` | Range |
+| `Step() / SetStep(float64)` | Step size |
+| `Orientation() / SetOrientation(SliderOrientation)` | Horizontal/Vertical |
+| `Ratio() float64` | Current ratio (0.0-1.0) |
+| `SetFromRatio(ratio float64)` | Set by percentage |
+| `Increment() / Decrement()` | Step by one |
+| `IncrementBy(n int)` | Step by n |
+| `SetLabel(string) / Label()` | Display label |
+| `SetShowValue(bool) / ShowValue()` | Show/hide value display |
+| `SetStyle(SliderStyle) / Style()` | Style configuration |
+| `SetOnChange(func(float64))` | Value change callback |
+| `HandleKey(*term.KeyEvent) bool` | Arrows/h/l=step, Home/End=min/max |
+
+### CommandPalette
+
+| Method | Description |
+|---|---|
+| `NewCommandPalette()` | Create palette |
+| `AddCommand(Command) / SetCommands([]Command)` | Add/set commands |
+| `Commands() []Command` | All commands (defensive copy) |
+| `CommandCount() int` | Total commands |
+| `SetQuery(string) / Query()` | Search text |
+| `FilteredCount() / HasResults() / FilteredCommands()` | Filtered results |
+| `Cursor() / SetCursor(int)` | Selection cursor (wraps) |
+| `MoveUp() / MoveDown()` | Navigate filtered results |
+| `CurrentCommand() *Command` | Command at cursor |
+| `ScrollY() int` | Current scroll offset |
+| `SetMaxVisible(int) / MaxVisible() int` | Scroll window size |
+| `Show(x, y int) / Hide() / Visible()` | Visibility control |
+| `Reset()` | Clear query, reset cursor |
+| `SetStyle(CommandPaletteStyle)` | Normal/Matched/Selected/Prompt styles |
+| `OnExecute / OnDismiss` | Callbacks |
+| `HandleKey(*term.KeyEvent) bool` | Print/BS=filter, Up/Down/Tab=nav, Enter/Esc |
+
+### Spinner
+
+| Method | Description |
+|---|---|
+| `NewSpinner()` | Create spinner |
+| `SetLabel(string) / Label()` | Display label |
+| `SetPrefix(string) / Prefix()` | Text before frame |
+| `SetStyle(SpinnerStyle) / Style()` | Frame/Label/Prefix style |
+| `SetFrameStyle(string) / FrameStyle()` | Animation style (dots/arc/line/bounce/bars) |
+| `Start() / Stop() / Running()` | Animation control |
+| `Update(delta time.Duration) bool` | Advance frame, returns if changed |
+| `CurrentFrame() string` | Current frame string |
+| `SetFrameIndex(int) / FrameIndex()` | Direct frame control (wraps) |
