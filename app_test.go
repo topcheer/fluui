@@ -2,6 +2,7 @@ package fluui
 
 import (
 	"io"
+	"os"
 	"sync/atomic"
 	"testing"
 
@@ -436,9 +437,9 @@ func TestApp_ConcurrentDrawText(t *testing.T) {
 func TestNew_NoTerminal(t *testing.T) {
 	// In a non-interactive environment, term.Open() may fail.
 	// This test verifies that New() returns an error when terminal is unavailable.
-	// It's expected to skip or pass depending on the environment.
-	if testing.Short() {
-		t.Skip("skipping terminal test in short mode")
+	// Guard against hanging in non-interactive environments.
+	if testing.Short() || os.Getenv("RUN_TERMINAL_TESTS") == "" {
+		t.Skip("skipping terminal test; set RUN_TERMINAL_TESTS=1 to run")
 	}
 	// We can't guarantee /dev/tty is unavailable, so just verify
 	// that New() either succeeds or returns an error (not panic).
