@@ -63,6 +63,15 @@ func (b *ThinkingBlock) Content() string {
 	return b.content.String()
 }
 
+// SetContent replaces the thinking text and marks the block dirty.
+func (b *ThinkingBlock) SetContent(s string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.content.Reset()
+	b.content.WriteString(s)
+	b.markDirtyLocked()
+}
+
 // Measure returns the desired size.
 // Collapsed: 1 row. Expanded: 1 header + content lines.
 func (b *ThinkingBlock) Measure(cs component.Constraints) component.Size {
