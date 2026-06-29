@@ -779,6 +779,412 @@ The ChatApp integrates P15 StatusBar, TabBar, and SelectionManager components wi
 | `CurrentFrame() string` | Current frame string |
 | `SetFrameIndex(int) / FrameIndex()` | Direct frame control (wraps) |
 
+---
+
+## Phase 12-25 Component API Reference
+
+### Table (Phase 12)
+
+| Method | Description |
+|---|---|
+| `NewTable(headers []string, rows ...[]string)` | Create table with headers and data |
+| `SetRows([][]string) / Rows() [][]string` | Set/get table data |
+| `SetHeaders([]string) / Headers() []string` | Set/get column headers |
+| `SortBy(col int, ascending bool)` | Sort by column |
+| `SetAlignment(col int, align Alignment)` | Set column alignment (AlignLeft/Center/Right) |
+| `SetZebraStriping(bool)` | Enable/disable alternating row colors |
+| `MoveUp() / MoveDown() / SetCursor(int) / Cursor() int` | Row navigation |
+| `CurrentRow() []string` | Get selected row data |
+| `OnSelect(func([]string))` | Selection callback |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: j/k, Up/Down, Ctrl+1-9 sort |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### Tree (Phase 12)
+
+| Method | Description |
+|---|---|
+| `NewTreeNode(id, label string)` | Create tree node |
+| `node.AddChild(child) / Children() []*TreeNode` | Child management |
+| `node.SetExpanded(bool) / IsExpanded() bool` | Expand/collapse |
+| `node.SetIcon(string) / Icon() string` | Custom icon |
+| `SetRoot(node *TreeNode)` | Set root node |
+| `ExpandAll() / CollapseAll()` | Bulk expand/collapse |
+| `MoveUp() / MoveDown() / SetCursor(int)` | Node navigation |
+| `CurrentNode() *TreeNode` | Get selected node |
+| `OnSelect(func(*TreeNode))` | Selection callback |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: j/k, Enter toggle, arrows |
+
+### Form (Phase 12)
+
+| Method | Description |
+|---|---|
+| `NewForm() *Form` | Create empty form |
+| `AddField(field FormField)` | Add form field |
+| `Fields() []FormField` | Get all fields |
+| `Validate() error` | Validate all fields |
+| `Submit() bool` | Submit form (returns true if valid) |
+| `OnSubmit(func()) / OnCancel(func())` | Callbacks |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: Tab next, Shift+Tab prev, Enter submit, Esc cancel |
+| **TextField**: `NewTextField(id, label string)` | Text input field |
+| **CheckboxField**: `NewCheckboxField(id, label string)` | Checkbox field |
+| **SelectField**: `NewSelectField(id, label string, options []string)` | Dropdown field |
+
+### ProgressBar (Phase 12)
+
+| Method | Description |
+|---|---|
+| `NewProgressBar()` | Create progress bar |
+| `SetProgress(float64) / Progress() float64` | Set/get progress (0-100) |
+| `SetIndeterminate(bool)` | Toggle indeterminate animation |
+| `SetLabel(string) / Label() string` | Display label |
+| `SetWidth(int)` | Bar width in characters |
+
+### StatusIndicator (Phase 12)
+
+| Method | Description |
+|---|---|
+| `NewStatusIndicator()` | Create status indicator |
+| `SetStatus(status string)` | Set status text |
+| `SetSpinnerStyle(style int)` | Spinner style: 0=Dots, 1=Arc, 2=Line, 3=Bounce, 4=Bars |
+
+### Gauge (Phase 13)
+
+| Method | Description |
+|---|---|
+| `NewGauge() *Gauge` | Create gauge |
+| `SetValue(float64) / Value() float64` | Set/get value (0-1 or custom range) |
+| `SetRange(min, max float64)` | Set value range |
+| `SetOrientation(GaugeOrientation)` | Horizontal, Vertical, Radial |
+| `SetThresholds([]GaugeThreshold)` | Color threshold bands |
+| `SetShowValue(bool)` | Display numeric value |
+
+### Sparkline (Phase 13)
+
+| Method | Description |
+|---|---|
+| `NewSparkline() *Sparkline` | Create sparkline |
+| `Push(value float64)` | Add data point |
+| `SetData([]float64) / Data() []float64` | Set/get data series |
+| `SetColorMode(SparkColorMode)` | Solid, Gradient, Value-based |
+| `SetMaxPoints(int)` | Maximum visible points |
+
+### Badge (Phase 13)
+
+| Method | Description |
+|---|---|
+| `NewBadge(text string) *Badge` | Create badge |
+| `SetText(string) / Text() string` | Set/get text |
+| `SetVariant(BadgeVariant)` | Primary, Success, Warning, Danger, Info, Neutral |
+| `SetSize(BadgeSize)` | Small, Medium, Large |
+| `NewBadgeGroup() *BadgeGroup` | Horizontal badge container |
+| `group.Add(badge) / Remove(id string)` | BadgeGroup management |
+
+### Notification (Phase 13)
+
+| Method | Description |
+|---|---|
+| `NewToastManager() *ToastManager` | Create toast notification manager |
+| `Push(level NotificationLevel, title, msg string)` | Show notification |
+| `Dismiss(id string) / Clear()` | Remove notifications |
+| `Tick()` | Update auto-expiry timers |
+| `Notifications() []Notification` | Get active notifications |
+| **Levels**: `NotifyInfo, NotifySuccess, NotifyWarning, NotifyError` | Notification severity |
+
+### ContextMenu (Phase 14)
+
+| Method | Description |
+|---|---|
+| `NewContextMenu() *ContextMenu` | Create context menu |
+| `AddItem(item *MenuItem) / AddLabel(id, label string) / AddSeparator()` | Add items |
+| `Remove(id string) / Clear() / Items() []*MenuItem` | Item management |
+| `Show(x, y int) / Hide() / Visible() bool` | Visibility control |
+| `MoveUp() / MoveDown() / SetCursor(int) / Cursor() int` | Navigation |
+| `Activate()` | Fire current item's action / open submenu |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: Up/Down/Enter/Esc/Right(submenu)/Left(close) |
+| `HitTest(mx, my int) bool / ClickAt(mx, my int)` | Mouse interaction |
+| **MenuItem**: `NewMenuItem(id, label string)` | Menu item builder |
+| `item.SetShortcut(s) / SetIcon(s) / SetEnabled(bool) / SetSubmenu(cm) / SetAction(fn)` | Item config |
+
+### Tooltip (Phase 14)
+
+| Method | Description |
+|---|---|
+| `NewTooltip() *Tooltip` | Create tooltip |
+| `SetText(string) / Text() string` | Set/get tooltip text |
+| `Show(x, y int) / Hide() / Visible() bool` | Visibility |
+| `SetDelay(duration)` | Hover delay before showing |
+| `SetMaxWidth(int)` | Wrap width |
+
+### SplitPane (Phase 14)
+
+| Method | Description |
+|---|---|
+| `NewSplitPane(left, right Component) *SplitPane` | Create split pane |
+| `SetOrientation(SplitOrientation)` | Horizontal, Vertical |
+| `SetRatio(float64) / Ratio() float64` | Split position (0-1) |
+| `SetResizable(bool)` | Enable drag-to-resize |
+| `SetMinSize(int)` | Minimum pane size |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard resize (Ctrl+arrow) |
+| `HandleMouse(*term.MouseEvent) bool` | Mouse drag resize |
+
+### HelpOverlay (Phase 14)
+
+| Method | Description |
+|---|---|
+| `NewHelpOverlay(groups []HelpGroup) *HelpOverlay` | Create help overlay |
+| `SetGroups([]HelpGroup) / Groups() []HelpGroup` | Set/get help groups |
+| `SetQuery(string) / Query() string` | Search filter |
+| `AppendQuery(rune) / BackspaceQuery() / ClearQuery()` | Search input |
+| `FilteredGroups() []HelpGroup / TotalRows() int` | Filtered results |
+| `SelectNext() / SelectPrev() / SetSelected(int)` | Selection nav |
+| `ScrollUp() / ScrollDown() / ScrollY() int` | Scroll control |
+| `Show() / Hide() / Visible() bool` | Visibility |
+
+### HotkeyManager (Phase 14)
+
+| Method | Description |
+|---|---|
+| `NewManager() *Manager` | Create hotkey manager |
+| `Register(action, sequence string, opts ...Option) error` | Register binding |
+| `Unregister(action string)` | Remove binding |
+| `Enable(action) / Disable(action)` | Toggle bindings |
+| `Match(*term.KeyEvent) (action string, result MatchResult)` | Match key event |
+| `HasPending() bool / ResetPending()` | Multi-key sequence state |
+| `SetSequenceTimeout(duration)` | Partial match timeout |
+| `Groups() / BindingsByGroup(name) / BindingsByScope(s)` | Query bindings |
+| `ExportConfig() / ImportConfig(data)` | Serialize/restore |
+| `HasConflict(seq KeySequence) bool` | Conflict detection |
+| `ParseCombo("Ctrl+F") / ParseSequence("g g")` | Parse key strings |
+
+### FilePicker (Phase 15)
+
+| Method | Description |
+|---|---|
+| `NewFilePicker(dir string) *FilePicker` | Create file browser |
+| `SetDirReader(fn DirReader)` | Custom directory reader (for testing) |
+| `EnterDir() / GoUp() / Cwd() string` | Directory navigation |
+| `SetFilter(string) / Filter() string` | Name filter |
+| `MoveDown() / MoveUp() / Cursor() int` | File navigation |
+| `ToggleSelect() / IsSelected(path) bool / SelectedFiles() []string` | Multi-select |
+| `ClearSelection()` | Clear all selections |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: j/k/h/l/g/G, arrows, Enter/Space/Esc |
+
+### TabBar (Phase 15)
+
+| Method | Description |
+|---|---|
+| `NewTabBar() *TabBar` | Create tab bar |
+| `AddTab(title string) int / RemoveTab(idx)` | Tab management |
+| `SetTabs([]TabInfo)` | Bulk set tabs |
+| `NextTab() / PrevTab() / SwitchTab(idx)` | Navigation |
+| `ActiveIndex() int / SetActiveIndex(idx)` | Get/set active tab |
+| `SetClosable(bool) / Closable() bool` | Close button toggle |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: Left/Right, Ctrl+W close |
+
+### StatusBar (Phase 15)
+
+| Method | Description |
+|---|---|
+| `NewStatusBar() *StatusBar` | Create status bar |
+| `AddLeft(id, text string) / AddCenter(id, text string) / AddRight(id, text string)` | Add items |
+| `RemoveItem(id string) / Clear()` | Remove items |
+| `SetItemText(id, text string) / SetItemStyle(id, style)` | Update items |
+| `SetSeparator(string)` | Item separator (default " │ ") |
+| `SetModel(string) / SetTokenRate(int) / SetContextWindow(used, total int)` | AI agent convenience |
+| `SetHeight(int)` | Status bar height (min 1) |
+
+### DiffPreview (Phase 15)
+
+| Method | Description |
+|---|---|
+| `NewDiffPreview() *DiffPreview` | Create diff viewer |
+| `SetDiff(text string) / Lines() []DiffLine` | Set/get diff |
+| `Stats() DiffStats` | Get {Additions, Deletions, Files, Hunks, TotalLines} |
+| `ParseDiff(text string) []DiffLine` | Parse diff text |
+| `ScrollDown(n) / ScrollUp(n) / ScrollTo(row) / ScrollY() int` | Scrolling |
+| `ScrollPageDown(vh) / ScrollPageUp(vh)` | Page scroll |
+| `VisibleRange(viewportH) (start, end int)` | Visible line range |
+
+### Link (Phase 15)
+
+| Method | Description |
+|---|---|
+| `DetectLinks(text string, row int) []LinkRange` | Find URLs in text |
+| `NewLinkManager() *LinkManager` | Create link manager |
+| `mgr.AddLink(link) / Links() []LinkRange` | Link management |
+| `mgr.LinkAt(x, y int) (LinkRange, bool)` | Hit test for click |
+| `mgr.ClickLink(link)` | Open URL |
+| `mgr.AnnotateBuffer(buf, style)` | Apply OSC8 annotations to buffer |
+| `mgr.ScanText(text, row)` | Scan and detect all links |
+
+### Dialog (Phase 18)
+
+| Method | Description |
+|---|---|
+| `NewDialog(dt DialogType, title, msg string) *Dialog` | Create dialog |
+| `NewConfirmDialog(title, msg) / NewInfoDialog(title, msg)` | Convenience constructors |
+| `NewPromptDialog(title, msg, default string)` | Prompt dialog |
+| `SetTitle(string) / SetMessage(string)` | Update content |
+| `AddButton(DialogButton) / SetButtons([]DialogButton)` | Custom buttons |
+| `MoveLeft() / MoveRight() / Cursor() int` | Button navigation |
+| `InputValue() / SetInputValue(string) / InputCursor() int` | Prompt input |
+| `InsertRune(r) / Backspace() / Delete()` | Input editing |
+| `Confirm() bool / Cancel() / PressButton()` | Dialog actions |
+| `OnConfirm func(string) bool` | Validation callback (false = keep open) |
+| `OnCancel func() / OnClose func(DialogResult, string)` | Dismiss callbacks |
+| `Show() / Hide() / Visible() bool / Result() DialogResult` | Visibility |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: Esc/Enter/Tab/Left/Right + printable for prompt |
+
+### AutoComplete (Phase 18)
+
+| Method | Description |
+|---|---|
+| `NewAutoComplete() *AutoComplete` | Create autocomplete |
+| `SetItems([]CompletionItem) / AddItem(item)` | Set candidates |
+| `Items() / ItemCount() / Clear()` | Query/manage items |
+| `SetQuery(string) / Query() string` | Filter text |
+| `FilteredCount() int / HasResults() bool / FilteredItems() []CompletionItem` | Filter results |
+| `MoveUp() / MoveDown() / Cursor() int / SetCursor(int)` | Navigation (wrap) |
+| `CurrentItem() CompletionItem` | Selected item |
+| `Show(x, y int) / Hide() / Visible() bool / Position() (int, int)` | Popup control |
+| `Select() / SetOnSelect(fn) / SetOnDismiss(fn)` | Selection callbacks |
+| `SetMaxVisible(int) / SetCaseSensitive(bool)` | Configuration |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: Up/Down/Tab/Enter/Esc |
+
+### Wizard (Phase 18)
+
+| Method | Description |
+|---|---|
+| `NewWizard(steps []*WizardStep) *Wizard` | Create wizard |
+| `NewWizardStep(id, title string) *WizardStep` | Create step |
+| `step.SetDescription(s) / SetContent(c) / SetSkippable(bool)` | Step config |
+| `step.SetOnEnter(fn) / SetOnLeave(fn)` | Lifecycle hooks (OnLeave can block) |
+| `Next() / Back() / SetCurrentStep(idx) / Reset()` | Navigation |
+| `Finish() / Cancel()` | End wizard |
+| `CurrentStepIndex() / StepCount() / CurrentStep()` | State queries |
+| `IsFirstStep() / IsLastStep() / IsCompleted() / IsCancelled()` | State checks |
+| `SelectedButton() / SetSelectedButton(btn)` | Button focus |
+| `SetOnFinish(fn) / SetOnCancel(fn) / SetOnStepChange(fn)` | Callbacks |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: Tab/Left/Right cycle, Enter, Esc, Ctrl+N/B |
+
+### Checkbox (Phase 19)
+
+| Method | Description |
+|---|---|
+| `NewCheckbox(items []CheckboxItem) *Checkbox` | Create checkbox list |
+| `SetItems([]CheckboxItem) / Items() []CheckboxItem` | Set/get items |
+| `MoveDown() / MoveUp() / Cursor() int / SetCursor(int)` | Navigation |
+| `Toggle()` | Toggle current item |
+| `CheckAll() / UncheckAll()` | Bulk operations |
+| `OnChange func([]CheckboxItem)` | Change callback |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: Space/Enter toggle, j/k, Ctrl+A/D |
+
+### RadioGroup (Phase 19)
+
+| Method | Description |
+|---|---|
+| `NewRadioGroup(items []RadioItem) *RadioGroup` | Create radio group |
+| `SetItems([]RadioItem) / Items() []RadioItem` | Set/get items |
+| `MoveDown() / MoveUp() / Cursor() int / SetCursor(int)` | Navigation |
+| `Select()` | Select current item (clears previous) |
+| `Selected() RadioItem` | Get selected item |
+| `OnChange func(RadioItem)` | Change callback |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: Space/Enter select, j/k nav |
+
+### Slider (Phase 19)
+
+| Method | Description |
+|---|---|
+| `NewSlider() *Slider` | Create slider |
+| `SetRange(min, max int) / SetValue(int) / Value() int` | Range/value |
+| `SetStep(int) / SetOrientation(SliderOrientation)` | Config |
+| `SetFromRatio(float64) / AsRatio() float64` | Ratio-based positioning |
+| `OnChange func(int)` | Change callback |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: arrows/h/l, Home/End |
+
+### CommandPalette (Phase 19)
+
+| Method | Description |
+|---|---|
+| `NewCommandPalette() *CommandPalette` | Create palette |
+| `SetCommands([]Command) / Commands() []Command` | Set/get commands |
+| `SetQuery(string) / Query() string` | Search filter |
+| `FilteredCommands() []Command` | Filtered results |
+| `MoveUp() / MoveDown() / Cursor() int` | Navigation |
+| `CurrentCommand() Command` | Selected command |
+| `Show() / Hide() / Visible() bool` | Visibility |
+| `SetMaxVisible(int)` | Max visible results |
+| `OnExecute func(Command) / OnDismiss func()` | Callbacks |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: Up/Down/Tab, Enter, Esc |
+
+### Spinner (Phase 19)
+
+| Method | Description |
+|---|---|
+| `NewSpinner() *Spinner` | Create spinner |
+| `SetLabel(string) / Label() string` | Display label |
+| `SetPrefix(string) / Prefix() string` | Text before spinner |
+| `SetFrameStyle(string)` | dots, arc, line, bounce, bars |
+| `Start() / Stop() / Running() bool` | Animation control |
+| `Update(delta time.Duration) bool` | Advance frame (returns if changed) |
+| `CurrentFrame() string` | Current frame string |
+| `SetFrameIndex(int) / FrameIndex() int` | Direct frame control (wraps) |
+
+### SelectionManager (Phase 15/16)
+
+| Method | Description |
+|---|---|
+| `NewSelectionManager() *SelectionManager` | Create selection manager |
+| `StartSelection(row, col int)` | Begin text selection |
+| `UpdateSelection(row, col int)` | Extend selection |
+| `ClearSelection() / HasSelection() bool` | Selection state |
+| `SelectedText(buf *buffer.Buffer) string` | Extract selected text |
+| `HandleMouse(*term.MouseEvent) bool` | Mouse: drag to select |
+| `CopyToClipboard() string` | OSC52 clipboard copy |
+
+### ChatApp P16 Integration (Phase 16)
+
+| Method | Description |
+|---|---|
+| `app.SetStatusBar(sb) / app.StatusBar()` | Attach status bar |
+| `app.SetModel(string) / app.SetTokenRate(int)` | Status bar convenience |
+| `app.SetContextWindow(used, total int) / app.UpdateClock()` | Status bar updates |
+| `app.SetTabBar(tb) / app.TabBar()` | Attach tab bar |
+| `app.AddSession(name string) int` | Add tab/session |
+| `app.SwitchSession(idx) / NextSession() / PrevSession()` | Tab navigation |
+| `app.CloseSession() / SessionCount() / ActiveSession()` | Tab management |
+| `app.SetSelectionManager(sm) / app.SelectionManager()` | Attach selection |
+| `app.HasSelection() / ClearSelection() / SelectedText(buf)` | Selection access |
+| `app.HandleMouseP16(mouse)` | Enhanced mouse routing |
+| `app.handleP16Keys(key)` | Alt+[/] tabs, Alt+W close, Alt+1-9 switch |
+
+### Undo/Redo (Phase 20)
+
+| Method | Description |
+|---|---|
+| `inputLine.SetUndoEnabled(true)` | Enable undo system |
+| `inputLine.Undo() / Redo()` | Undo/redo last edit |
+| `inputLine.CanUndo() / CanRedo() bool` | History state |
+| `inputLine.ClearHistory()` | Reset undo stack |
+
+### Theme Cycling (Phase 21)
+
+| Method | Description |
+|---|---|
+| `app.CycleTheme() / SetTheme(name string)` | Switch themes at runtime |
+| `theme.Get() / SetActive(name) / ListThemes() []string` | Theme management |
+| 5 built-in: Dark, Light, Solarized, Dracula, Gruvbox | Pre-defined themes |
+
+### Performance (Phase 24)
+
+| Optimization | Impact |
+|---|---|
+| PaintVisible (binary search) | O(log n) — 31.5x faster for 1000 blocks |
+| LinkManager scanner (no regex) | 13.2x faster URL detection |
+| Zero-alloc Paint paths | StatusBar/TabBar/DiffPreview: 0 allocs |
+| Buffer row-skip diff | Only dirty rows re-rendered |
+| VirtualScroller | Only visible components painted |
+
 ## Phase 12: Data Widgets
 
 ### Table
