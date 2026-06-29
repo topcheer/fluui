@@ -3,7 +3,7 @@
 > **流畅 (fluent) + UI** — An AI-native TUI library for Go, built from scratch.
 
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev)
-[![Tests](https://img.shields.io/badge/tests-2509-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-2972-brightgreen)](#testing)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#license)
 
 Fluui is a terminal UI framework designed specifically for AI chat interfaces. Every layer — from the input parser to the render engine — is optimized for streaming content, semantic content blocks, and zero-flicker updates.
@@ -37,8 +37,8 @@ Fluui is a terminal UI framework designed specifically for AI chat interfaces. E
 | Undo/Redo (Ctrl+Z/Y) | Yes | No | No |
 | Theme cycling (Ctrl+]/\) | Yes | No | No |
 | Checkbox/RadioGroup/Slider | Yes | No | No |
-| Command palette (Ctrl+P fuzzy search) | Yes | No | No |
 | Dialog/AutoComplete/Wizard | Yes | No | No |
+| Fuzz tested (Go native fuzzing) | Yes | No | No |
 | No TUI framework dependency | Yes (100% from scratch) | N/A | N/A |
 
 ## Quick Start
@@ -159,25 +159,24 @@ func main() {
 
 | Package | Description | Tests |
 |---|---|---|
-| `internal/term/` | Terminal abstraction (raw mode, alt screen, mouse, paste) | 35 |
-| `internal/buffer/` | Cell, Color, Style, Buffer, Diff, wcwidth (CJK support) | 55 |
-| `render/` | Double-buffer diff renderer | 8 |
-| `event/` | Channel-driven event loop + dispatcher | 5 |
-| `component/` | Component interface, 30+ widgets (Table, Tree, Form, FilePicker, TabBar, StatusBar, DiffPreview, Dialog, AutoComplete, Wizard, Checkbox, RadioGroup, Slider, CommandPalette, Spinner, Gauge, Sparkline, Badge, ProgressBar, ContextMenu, Tooltip, SplitPane, HelpOverlay, Notification, TextArea, Selection) | 1266 |
-| `component/layout/` | Flex layout (Row/Column/Stack/Center/Padding) | 9 |
-| `markdown/` | goldmark AST renderer, chroma highlighter, CJK wrap, OSC8 links, table alignment | 73 |
-| `block/` | AI content blocks + container + stream dispatcher + serializer | 189 |
-| `overlay/` | Overlay manager, Modal dialog, Popup viewer | 29 |
+| `internal/term/` | Terminal abstraction (raw mode, alt screen, mouse, paste) | 131 |
+| `internal/buffer/` | Cell, Color, Style, Buffer, Diff, wcwidth (CJK support) | 151 |
+| `render/` | Double-buffer diff renderer | 19 |
+| `event/` | Channel-driven event loop + dispatcher | 97 |
+| `component/` | Component interface, 30+ widgets (Table, Tree, Form, FilePicker, TabBar, StatusBar, DiffPreview, Dialog, AutoComplete, Wizard, Checkbox, RadioGroup, Slider, CommandPalette, Spinner, Gauge, Sparkline, Badge, ProgressBar, ContextMenu, Tooltip, SplitPane, HelpOverlay, Notification, TextArea, Selection) | 1364 |
+| `component/layout/` | Flex layout (Row/Column/Stack/Center/Padding) | 63 |
+| `markdown/` | goldmark AST renderer, chroma highlighter, CJK wrap, OSC8 links, table alignment | 125 |
+| `block/` | AI content blocks + container + stream dispatcher + serializer | 244 |
+| `overlay/` | Overlay manager, Modal dialog, Popup viewer | 42 |
 | `focus/` | Focus manager (Tab traversal, focus ring) | 9 |
 | `hit/` | Hit testing (Region, RegionTree) | 12 |
 | `animation/` | Spinner, FadeIn, Manager | 16 |
-| `app/` | ChatApp API, InputLine (Undo/Redo), MouseHandler, AIBridge, Clipboard, Search, Selection, Theme Management | 320 |
-| `ai/` | OpenAI-compatible streaming client, config loader | 12 |
+| `app/` | ChatApp API, InputLine (Undo/Redo), MouseHandler, AIBridge, Clipboard, Search, Selection, Theme Management | 380 |
+| `ai/` | OpenAI-compatible streaming client, config loader | 38 |
 | `internal/hotkey/` | Configurable hotkey manager with key sequences | 54 |
 | `internal/fuzzy/` | Fuzzy subsequence matcher with scoring | 44 |
-| `theme/` | 5 built-in themes, theme cycling, hot-swap, search colors | 18 |
-| `internal/termcompat/` | Terminal capability detection (OSC52, true color, tmux) | 25 |
-| `internal/term/` | Terminal abstraction + ANSI writer | 78 |
+| `theme/` | 5 built-in themes, theme cycling, hot-swap, search colors | 21 |
+| `internal/termcompat/` | Terminal capability detection (OSC52, true color, tmux) | 77 |
 
 ## Configuration
 
@@ -234,6 +233,12 @@ go run ./cmd/demo11/
 
 # Phase 18: Full production demo
 go run ./cmd/demo12/
+
+# Phase 20-23: Undo/Redo, Themes, Checkbox/Slider, Integration
+# (see demos above for specific features)
+
+# Phase 25: Full chat showcase with all P20-P25 features
+go run ./cmd/demo14/
 ```
 
 ## Examples
@@ -273,7 +278,18 @@ go test ./internal/term/ -v -race
 go test ./... -bench=. -benchmem
 ```
 
-**2509 tests** across 40 packages, all passing with `-race`. Plus 54 benchmarks across render, buffer, block, and term packages.
+**2972 tests** across 44 packages, all passing with `-race`. Plus 54 benchmarks and 6 fuzz tests.
+
+### Fuzz Testing
+
+```bash
+# Run fuzz tests (Go native fuzzing)
+go test ./internal/term/ -fuzz=FuzzParserFeed -fuzztime=10s
+go test ./internal/buffer/ -fuzz=FuzzBufferSetCell -fuzztime=10s
+go test ./markdown/ -fuzz=FuzzRendererRender -fuzztime=10s
+```
+
+6 fuzz targets across 3 packages (term parser, buffer operations, markdown renderer) — millions of executions, zero panics.
 
 ## Design Decisions
 
@@ -286,14 +302,15 @@ go test ./... -bench=. -benchmem
 
 ## Stats
 
-- 273 Go source files
-- ~82,449 lines of code
-- 2509 tests (race-clean)
+- 302 Go source files
+- ~91,485 lines of code
+- 2972 tests (race-clean)
 - 54 benchmarks
-- 40 packages
-- 12 interactive demos + 7 examples
+- 6 fuzz tests (term parser, buffer, markdown)
+- 44 packages
+- 14 interactive demos + 9 examples
 - 10 documentation files
-- 19 development phases
+- 25 development phases
 - CI/CD: GitHub Actions + golangci-lint
 
 ## License
