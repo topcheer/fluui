@@ -199,9 +199,84 @@ result.AppendDelta("package main\n\nfunc main() { ... }\n")
 result.Complete()
 ```
 
+## Step 8: Add P19-P26 Features
+
+### Theme Cycling (P19)
+
+```go
+// Ctrl+T or Ctrl+] = cycle forward
+// Ctrl+Shift+T or Ctrl+\ = cycle backward
+// Programmatic:
+chat.CycleTheme()
+chat.SetThemeByName("Dracula")
+```
+
+### Undo/Redo (P19-P20)
+
+```go
+// InputLine supports undo/redo automatically
+// Ctrl+Z = undo, Ctrl+Y / Ctrl+Shift+Z = redo
+// Max 100 undo states, redo cleared on new edit
+```
+
+### Command Palette (P20)
+
+```go
+// Ctrl+P opens the command palette
+chat.AddCommand(component.Command{
+    ID:       "file.open",
+    Label:    "Open File",
+    Category: "File",
+    Action:   func() { /* ... */ },
+})
+```
+
+### Spinner (P20)
+
+```go
+chat.StartSpinner("Thinking...")
+// ... async work ...
+chat.StopSpinner()
+```
+
+### Dialog (P18)
+
+```go
+dialog := component.NewConfirmDialog(
+    "Delete File",
+    "Are you sure you want to delete main.go?",
+)
+dialog.OnConfirm = func(text string) bool {
+    os.Remove("main.go")
+    return true // close dialog
+}
+overlay.Show(dialog)
+```
+
+### Wizard (P18)
+
+```go
+wizard := component.NewWizard([]*component.WizardStep{
+    {
+        ID:    "welcome",
+        Title: "Welcome",
+        Description: "Let's set up your project",
+    },
+    {
+        ID:    "config",
+        Title: "Configuration",
+        OnLeave: func(w *component.Wizard) error {
+            return validateConfig() // block navigation if invalid
+        },
+    },
+})
+wizard.SetOnFinish(func() { /* done */ })
+```
+
 ## Complete Example
 
 See [`examples/chat/main.go`](../examples/chat/main.go) for the full working example.
+Also see [`examples/ai-agent/`](../examples/ai-agent/) for a production AI agent demo.
 
 ## Key Takeaways
 
@@ -211,3 +286,7 @@ See [`examples/chat/main.go`](../examples/chat/main.go) for the full working exa
 4. `chat.Render()` paints to buffer
 5. `chat.SetAIClient()` enables streaming AI responses
 6. `block.SaveContainer()` / `LoadContainer()` persist conversations
+7. **Ctrl+P** opens the command palette for discoverability
+8. **Ctrl+T** cycles themes; all components auto-adapt
+9. Use **Dialog/Wizard** for modal interactions
+10. Test with `-race` flag for concurrent safety

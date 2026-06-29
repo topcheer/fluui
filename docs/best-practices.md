@@ -97,6 +97,53 @@ func (c *MyComp) Layout() {
 }
 ```
 
+### Zero-Allocation Paint (P24)
+
+The `Paint()` method is called every frame. Avoid heap allocations inside it:
+
+```go
+// Bad: allocates on every frame
+func (w *Widget) Paint(buf *buffer.Buffer) {
+    parts := strings.Split(w.text, " ") // allocates []string
+    for i, p := range parts {
+        buf.SetText(w.x, w.y+i, p)
+    }
+}
+
+// Good: pre-compute, zero allocs in Paint
+func (w *Widget) SetText(s string) {
+    w.mu.Lock()
+    w.parts = strings.Split(s, " ") // compute once on change
+    w.mu.Unlock()
+    w.MarkDirty()
+}
+func (w *Widget) Paint(buf *buffer.Buffer) {
+    w.mu.RLock()
+    defer w.mu.RUnlock()
+    for i, p := range w.parts {
+        buf.SetText(w.x, w.y+i, p) // zero allocation
+    }
+}
+```
+
+Most P15+ components achieve zero allocs in Paint. Verify with benchmarks:
+```bash
+go test -bench=BenchmarkPaint -benchmem ./component/
+```
+
+### Prefer Scanners over Regex (P17)
+
+For hot paths like text scanning, a hand-rolled byte scanner is dramatically faster than `regexp`:
+
+```go
+// P17 optimization: LinkManager DetectLinks
+// regex: 158μs for 100 URLs
+// scanner:  12μs for 100 URLs (13x faster)
+func isURLStopChar(b byte) bool {
+    return b == ' ' || b == '\t' || b == '\n' || b == ')' || b == '>'
+}
+```
+
 ## Layout
 
 ### Use ChatApp Defaults
@@ -450,4 +497,316 @@ il.HandleKey(keyEvent) // undo state saved internally
 
 // Don't: manually clear undo history unless user requests it
 // il.ClearUndoHistory()  // only on explicit user action
+```
+
+## Fuzz Testing
+
+### Writing Fuzz Tests
+
+Fuzz tests explore edge cases that hand-written tests miss. Add fuzz targets for parsers, serializers, and any function that processes untrusted input:
+
+```go
+func FuzzParseDiff(f *testing.F) {
+    // Seed with known-good inputs
+    f.Add("+ added line\n- removed line")
+    f.Add("")
+    f.Add("\x00\x01\x02") // binary garbage
+    
+    f.Fuzz(func(t *testing.T, input string) {
+        // Must not panic
+        lines := ParseDiff(input)
+        _ = lines // just verify no panic
+    })
+}
+```
+
+### Fuzz Target Guidelines
+
+- **Never assert on output** — the goal is finding panics, not correctness
+- **Seed with diverse inputs** — valid, empty, binary, very long, CJK, emoji
+- **Run with `-go test -fuzz`**: `go test -fuzz=FuzzParseDiff -fuzztime=30s ./markdown/`
+- **6 fuzz targets currently**: ParserFeed, ParserFeedChunked, BufferSetCell, BufferDrawText, BufferBlit, RendererRender
+
+### Corpus Management
+
+Fuzz failures are saved to `testdata/fuzz/` and replayed automatically in future runs:
+
+```bash
+# Run a specific fuzz target
+go test -run=FuzzParseDiff ./markdown/
+
+# Continuous fuzzing (CI: 5 min, local: 30s)
+go test -fuzz=FuzzParseDiff -fuzztime=5m ./markdown/
+```
+
+## Stress Testing & Leak Detection
+
+### Memory Leak Detection
+
+Verify that goroutines and memory are properly released:
+
+```go
+func TestNoMemoryLeak(t *testing.T) {
+    var before, after runtime.MemStats
+    runtime.GC()
+    runtime.ReadMemStats(&before)
+    
+    // Exercise the code
+    for i := 0; i < 1000; i++ {
+        chat := app.NewChatApp(80, 24)
+        chat.AddAssistantText().AppendDelta("test")
+        chat.Render(buf)
+    }
+    
+    runtime.GC()
+    runtime.ReadMemStats(&after)
+    
+    // Allow some overhead, but detect significant leaks
+    if after.HeapInuse > before.HeapInuse+10*1024*1024 {
+        t.Errorf("potential memory leak: %d -> %d bytes", before.HeapInuse, after.HeapInuse)
+    }
+}
+```
+
+### Goroutine Leak Detection
+
+```go
+func TestNoGoroutineLeak(t *testing.T) {
+    before := runtime.NumGoroutine()
+    
+    // Start and stop something that spawns goroutines
+    for i := 0; i < 100; i++ {
+        chat := app.NewChatApp(80, 24)
+        chat.StopStreaming()
+    }
+    
+    time.Sleep(100 * time.Millisecond) // let goroutines exit
+    after := runtime.NumGoroutine()
+    
+    if after > before+5 { // allow small variance
+        t.Errorf("goroutine leak: %d -> %d", before, after)
+    }
+}
+```
+
+### Stress Benchmarks
+
+Use `-count` and `-benchtime` to stress-test under load:
+
+```bash
+# Run benchmarks 10 times for variance analysis
+go test -bench=BenchmarkPaint1000Blocks -count=10 ./block/
+
+# Long-running stress test
+go test -bench=BenchmarkStreaming -benchtime=30s ./block/
+```
+
+## Go Build Cache Management
+
+**Never run `go clean -cache`** — it can corrupt the build cache and cause mysterious build failures. If the cache is corrupted:
+
+```bash
+# Option 1: Use a fresh cache directory
+export GOCACHE=/tmp/fresh-cache
+
+# Option 2: Force complete rebuild
+ go build -a ./...
+```
+
+## Integration Testing
+
+### Cross-Package Integration
+
+Test component → block → render chains together to catch integration bugs that unit tests miss:
+
+```go
+func TestComponentToBlockRender(t *testing.T) {
+    // 1. Create component
+    table := component.NewTable([]string{"Name", "Value"}, []string{"a", "1"})
+    table.Measure(component.Unbounded())
+    table.SetBounds(component.Rect{X: 0, Y: 0, W: 80, H: 5})
+    
+    // 2. Render to buffer
+    buf := buffer.NewBuffer(80, 5)
+    table.Paint(buf)
+    
+    // 3. Verify the full chain works
+    cell := buf.GetCell(0, 0)
+    if cell.Rune != 'N' {
+        t.Errorf("expected 'N', got %q", cell.Rune)
+    }
+}
+```
+
+### Event Chain Testing
+
+```go
+func TestEventDispatchChain(t *testing.T) {
+    // Verify events flow: term → event loop → ChatApp → component
+    chat := app.NewChatApp(80, 24)
+    
+    // Simulate a key event
+    keyEvent := &term.KeyEvent{Key: term.KeyEnter}
+    handled := chat.HandleKey(keyEvent)
+    
+    if !handled {
+        t.Error("Enter should be handled by ChatApp")
+    }
+}
+```
+
+## Concurrency Patterns
+
+### Lock-Then-Callback
+
+When firing callbacks from within a locked method, extract the callback under lock, release the lock, then fire:
+
+```go
+func (c *Widget) Activate() {
+    c.mu.Lock()
+    item := c.items[c.cursor]
+    cb := c.OnSelect
+    c.mu.Unlock()
+    if cb != nil {
+        cb(item) // fire after unlock to prevent deadlock
+    }
+}
+```
+
+This pattern is critical — calling a callback while holding a lock can deadlock if the callback calls back into the component.
+
+### Eager Computation for Race Safety
+
+Never write to fields under RLock. Compute derived state eagerly in write methods:
+
+```go
+// BAD: data race
+func (w *Widget) FilteredItems() []Item {
+    w.mu.RLock()
+    defer w.mu.RUnlock()
+    w.recompute() // WRITES under RLock — RACE!
+    return w.filtered
+}
+
+// GOOD: compute eagerly in write methods
+func (w *Widget) SetQuery(q string) {
+    w.mu.Lock()
+    defer w.mu.Unlock()
+    w.query = q
+    w.filtered = w.computeFiltered() // write under Lock
+}
+func (w *Widget) FilteredItems() []Item {
+    w.mu.RLock()
+    defer w.mu.RUnlock()
+    return w.filtered // pure read
+}
+```
+
+### Deep Copy vs Shallow Copy
+
+- **Value types** (no pointers/slices inside): shallow `copy()` is sufficient
+- **Struct slices with sub-pointers**: deep copy required
+
+```go
+// Shallow copy — safe for value-only structs
+items := make([]Item, len(c.items))
+copy(items, c.items)
+
+// Deep copy — needed when items contain slices/pointers
+result := make([]Notification, len(c.notifications))
+for i, n := range c.notifications {
+    result[i] = n
+    result[i].Actions = append([]Action(nil), n.Actions...)
+}
+```
+
+## Testing at Scale
+
+### Fuzz Testing (P25)
+
+Fuzz tests catch panics on adversarial input. Always add fuzz targets for parsers and input-processing code:
+
+```go
+func FuzzParserFeed(f *testing.F) {
+    f.Add([]byte("hello world"))
+    f.Add([]byte("\x1b[31mred\x1b[0m"))
+    f.Fuzz(func(t *testing.T, data []byte) {
+        p := NewParser()
+        p.Feed(data) // must not panic
+    })
+}
+```
+
+Fluui has 6 fuzz targets covering: Parser, Buffer.SetCell, Buffer.DrawText, Buffer.Blit, Renderer.Render.
+
+Run with:
+```bash
+go test -fuzz=FuzzParser -fuzztime=30s ./internal/term/
+```
+
+### Stress Benchmarks (P26)
+
+Stress tests verify performance under extreme load:
+
+```go
+func BenchmarkStress1000Blocks(b *testing.B) {
+    container := block.NewBlockContainer()
+    for i := 0; i < 1000; i++ {
+        container.AddBlock(block.NewAssistantTextBlock())
+    }
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        container.PaintVisible(buf, 0, 24)
+    }
+}
+```
+
+### Leak Detection (P26)
+
+Verify no goroutine or memory leaks:
+
+```go
+func TestNoGoroutineLeak(t *testing.T) {
+    before := runtime.NumGoroutine()
+    chat := app.NewChatApp(80, 24)
+    chat.StopStreaming()
+    chat.Close()
+    runtime.GC()
+    time.Sleep(100 * time.Millisecond)
+    after := runtime.NumGoroutine()
+    if after > before {
+        t.Errorf("goroutine leak: %d → %d", before, after)
+    }
+}
+```
+
+### Integration Tests (P26)
+
+Test component composition and event chains across packages:
+
+```go
+func TestLayoutEventChain(t *testing.T) {
+    flex := layout.NewFlex()
+    flex.Direction = layout.FlexColumn
+    flex.AddChild(component.NewText("Header"))
+    flex.AddChild(component.NewText("Body"))
+    
+    size := flex.Measure(component.Unbounded())
+    flex.SetBounds(component.Rect{X: 0, Y: 0, W: size.W, H: size.H})
+    
+    buf := buffer.NewBuffer(size.W, size.H)
+    flex.Paint(buf) // must not panic
+}
+```
+
+## Go Build Cache
+
+**NEVER run `go clean -cache`** — it can corrupt the Go build cache. If you encounter cache corruption:
+
+```bash
+# Option 1: use a fresh cache directory
+export GOCACHE=/tmp/fresh-cache
+
+# Option 2: force complete rebuild without clearing cache
+go build -a ./...
 ```
