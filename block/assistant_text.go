@@ -60,15 +60,16 @@ func (b *AssistantTextBlock) AppendDelta(delta string) {
 // re-parsing when neither the text nor the width has changed. This dramatically
 // reduces allocations in Container.Paint (100+ blocks) where Paint/Measure are
 // called repeatedly without content changes.
+//
+// Callers must hold at least RLock. The cache write is safe because
+// AppendDelta (the only content mutation) takes a full Lock and clears
+// cachedText, so under RLock the cache fields are stable.
 func (b *AssistantTextBlock) getCachedBlocks(text string, width int) []*markdown.Block {
-	if len(b.cachedBlocks) > 0 && b.cachedText == text && b.cachedW == width {
+	if b.cachedText == text && b.cachedW == width && b.cachedBlocks != nil {
 		return b.cachedBlocks
 	}
 	blocks, err := b.renderer.Render(text)
 	if err != nil || len(blocks) == 0 {
-		b.cachedBlocks = nil
-		b.cachedText = ""
-		b.cachedW = 0
 		return nil
 	}
 	b.cachedBlocks = blocks
