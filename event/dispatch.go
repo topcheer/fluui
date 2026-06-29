@@ -83,18 +83,22 @@ func Ctrl(key term.KeyCode) KeyShortcut {
 	return KeyShortcut{Key: key, Modifiers: term.ModCtrl}
 }
 
+// CtrlRune creates a KeyShortcut for Ctrl+<rune>.
 func CtrlRune(r rune) KeyShortcut {
 	return KeyShortcut{Rune: r, Modifiers: term.ModCtrl}
 }
 
+// Alt creates a KeyShortcut for Alt+<key>.
 func Alt(key term.KeyCode) KeyShortcut {
 	return KeyShortcut{Key: key, Modifiers: term.ModAlt}
 }
 
+// Plain creates a KeyShortcut for a plain key (no modifiers).
 func Plain(key term.KeyCode) KeyShortcut {
 	return KeyShortcut{Key: key}
 }
 
+// PlainRune creates a KeyShortcut for a plain rune (no modifiers).
 func PlainRune(r rune) KeyShortcut {
 	return KeyShortcut{Rune: r}
 }
