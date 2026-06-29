@@ -85,6 +85,17 @@ func (b *AssistantTextBlock) Content() string {
 	return b.content.String()
 }
 
+// SetContent replaces the full text and marks the block dirty.
+// This invalidates the render cache.
+func (b *AssistantTextBlock) SetContent(s string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.content.Reset()
+	b.content.WriteString(s)
+	b.cachedText = "" // invalidate render cache
+	b.markDirtyLocked()
+}
+
 // Measure returns the size based on rendered markdown lines.
 func (b *AssistantTextBlock) Measure(cs component.Constraints) component.Size {
 	b.mu.RLock()

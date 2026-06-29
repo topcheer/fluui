@@ -31,6 +31,14 @@ func (b *UserMessageBlock) Content() string {
 	return b.content
 }
 
+// SetContent replaces the message text and marks the block dirty.
+func (b *UserMessageBlock) SetContent(s string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.content = s
+	b.markDirtyLocked()
+}
+
 // Measure returns the size based on wrapped content.
 func (b *UserMessageBlock) Measure(cs component.Constraints) component.Size {
 	maxW := cs.MaxWidth
