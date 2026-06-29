@@ -1,8 +1,10 @@
 package app
 
 import (
+	"io"
 	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/topcheer/fluui/internal/term"
@@ -319,6 +321,30 @@ func (sm *SelectionManager) HandleKey(key *term.KeyEvent, cursorX, cursorY, bufW
 			sm.ExtendKeyboardSelection(-1, 0, bufWidth, bufHeight)
 		case term.KeyRight:
 			sm.ExtendKeyboardSelection(1, 0, bufWidth, bufHeight)
+		case term.KeyHome:
+			// Extend selection to start of current line.
+			sm.ExtendKeyboardSelection(-sm.cursor.X, 0, bufWidth, bufHeight)
+		case term.KeyEnd:
+			// Extend selection to end of current line.
+			dx := bufWidth - 1 - sm.cursor.X
+			if dx < 0 {
+				dx = 0
+			}
+			sm.ExtendKeyboardSelection(dx, 0, bufWidth, bufHeight)
+		case term.KeyPageUp:
+			// Extend selection up by half the buffer height.
+			half := bufHeight / 2
+			if half < 1 {
+				half = 1
+			}
+			sm.ExtendKeyboardSelection(0, -half, bufWidth, bufHeight)
+		case term.KeyPageDown:
+			// Extend selection down by half the buffer height.
+			half := bufHeight / 2
+			if half < 1 {
+				half = 1
+			}
+			sm.ExtendKeyboardSelection(0, half, bufWidth, bufHeight)
 		default:
 			consumed = false
 		}
@@ -326,6 +352,119 @@ func (sm *SelectionManager) HandleKey(key *term.KeyEvent, cursorX, cursorY, bufW
 	}
 
 	return false
+}
+
+// --- Word and line selection ---
+
+// SelectWord expands the selection to encompass the word at (x, y).
+// A word is defined as a maximal run of alphanumeric (Unicode) or underscore
+// characters. If the cell at (x, y) is whitespace, the selection covers only
+// that cell.
+func (sm *SelectionManager) SelectWord(x, y int, buf *buffer.Buffer) {
+	if buf == nil {
+		return
+	}
+	// If the cell at (x,y) is whitespace, there is no word to select.
+	cell := buf.GetCell(x, y)
+	if cell.Rune == ' ' || cell.Rune == 0 {
+		return
+	}
+	startX, endX := findWordBoundary(buf, x, y)
+	if startX < 0 || endX < 0 {
+		return
+	}
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	sm.active = true
+	sm.selecting = false
+	sm.anchor = SelectionPoint{X: startX, Y: y}
+	sm.cursor = SelectionPoint{X: endX, Y: y}
+	sm.selection.Start = SelectionPoint{X: startX, Y: y}
+	sm.selection.End = SelectionPoint{X: endX, Y: y}
+}
+
+// SelectLine selects the entire line at row y (trailing spaces trimmed).
+func (sm *SelectionManager) SelectLine(y int, buf *buffer.Buffer) {
+	if buf == nil || y < 0 || y >= buf.Height {
+		return
+	}
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	sm.active = true
+	sm.selecting = false
+	sm.anchor = SelectionPoint{X: 0, Y: y}
+	sm.cursor = SelectionPoint{X: buf.Width - 1, Y: y}
+	sm.selection.Start = SelectionPoint{X: 0, Y: y}
+	sm.selection.End = SelectionPoint{X: buf.Width - 1, Y: y}
+}
+
+// SelectAll selects the entire buffer region.
+func (sm *SelectionManager) SelectAll(bufWidth, bufHeight int) {
+	if bufWidth <= 0 || bufHeight <= 0 {
+		return
+	}
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	sm.active = true
+	sm.selecting = false
+	sm.anchor = SelectionPoint{X: 0, Y: 0}
+	sm.cursor = SelectionPoint{X: bufWidth - 1, Y: bufHeight - 1}
+	sm.selection.Start = SelectionPoint{X: 0, Y: 0}
+	sm.selection.End = SelectionPoint{X: bufWidth - 1, Y: bufHeight - 1}
+}
+
+// --- Multi-click mouse handling ---
+
+// HandleMouseClick handles multi-click mouse events for word and line selection.
+// clickCount is the number of rapid clicks (1=single, 2=double, 3=triple).
+// It should be called instead of StartSelection for multi-click events.
+func (sm *SelectionManager) HandleMouseClick(clickCount, x, y int, buf *buffer.Buffer) {
+	switch {
+	case clickCount >= 3:
+		sm.SelectLine(y, buf)
+	case clickCount == 2:
+		sm.SelectWord(x, y, buf)
+	default:
+		sm.StartSelection(x, y)
+	}
+}
+
+// findWordBoundary returns the [start, end] X coordinates of the word
+// containing position (x, y). Whitespace and out-of-bounds positions return (-1, -1).
+func findWordBoundary(buf *buffer.Buffer, x, y int) (int, int) {
+	if buf == nil || y < 0 || y >= buf.Height {
+		return -1, -1
+	}
+	cell := buf.GetCell(x, y)
+	if cell.Rune == ' ' || cell.Rune == 0 {
+		return -1, -1
+	}
+
+	isWord := func(r rune) bool {
+		return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_'
+	}
+
+	cat := isWord(cell.Rune)
+
+	startX := x
+	for startX > 0 {
+		c := buf.GetCell(startX-1, y)
+		if c.Rune == 0 || c.Rune == ' ' || isWord(c.Rune) != cat {
+			break
+		}
+		startX--
+	}
+
+	endX := x
+	for endX < buf.Width-1 {
+		c := buf.GetCell(endX+1, y)
+		if c.Rune == 0 || c.Rune == ' ' || isWord(c.Rune) != cat {
+			break
+		}
+		endX++
+	}
+
+	return startX, endX
 }
 
 // --- Rendering ---
@@ -458,4 +597,70 @@ func (sm *SelectionManager) Selection() Selection {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 	return sm.selection
+}
+
+// --- P28-A: Extended selection features ---
+
+// ExtendKeyboardSelectionTo moves the selection cursor to an absolute position.
+// The anchor remains fixed; only the cursor (selection endpoint) moves.
+// bufWidth and bufHeight are used to clamp the target position.
+func (sm *SelectionManager) ExtendKeyboardSelectionTo(x, y, bufWidth, bufHeight int) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	if !sm.active {
+		return
+	}
+
+	// Clamp to buffer bounds.
+	if x < 0 {
+		x = 0
+	}
+	if bufWidth > 0 && x >= bufWidth {
+		x = bufWidth - 1
+	}
+	if y < 0 {
+		y = 0
+	}
+	if bufHeight > 0 && y >= bufHeight {
+		y = bufHeight - 1
+	}
+
+	sm.cursor = SelectionPoint{X: x, Y: y}
+	sm.selection.Start = sm.anchor
+	sm.selection.End = sm.cursor
+}
+
+// CopySelectionToWriter copies the current selection to the system clipboard
+// via OSC52 escape sequences, writing them to w.
+// Returns the number of bytes written, or 0 if no selection is active.
+func (sm *SelectionManager) CopySelectionToWriter(buf *buffer.Buffer, w io.Writer) int {
+	if w == nil || buf == nil {
+		return 0
+	}
+
+	sm.mu.RLock()
+	active := sm.active
+	sm.mu.RUnlock()
+
+	if !active {
+		return 0
+	}
+
+	seq := sm.CopySelection(buf)
+	if seq == "" {
+		return 0
+	}
+
+	n, err := io.WriteString(w, seq)
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+// IsWhitespace returns true for space, tab, and other whitespace runes.
+// Exported for testing and external use.
+func IsWhitespace(r rune) bool {
+	return r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == 0
 }
