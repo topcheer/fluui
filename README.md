@@ -177,6 +177,9 @@ func main() {
 | `internal/fuzzy/` | Fuzzy subsequence matcher with scoring | 44 |
 | `theme/` | 5 built-in themes, theme cycling, hot-swap, search colors | 21 |
 | `internal/termcompat/` | Terminal capability detection (OSC52, true color, tmux) | 77 |
+| `internal/integration/` | End-to-end integration tests | 7 |
+| `internal/mock/` | OpenAI SSE mock server | 8 |
+| `root` | App entry point, event wiring | 70 |
 
 ## Configuration
 
@@ -204,7 +207,7 @@ go run ./cmd/demo2/
 # Phase 3: AI chat simulation (streaming blocks)
 go run ./cmd/demo3/
 
-# Phase 10: TextArea + Command Palette + Tab Completion
+# Phase 9: TextArea + Command Palette + Tab Completion
 go run ./cmd/demo7/
 
 # Phase 12: Table/Tree/Form/ProgressBar widgets
@@ -225,30 +228,31 @@ go run ./cmd/demo5/
 # Phase 8: Full interactive showcase (all features)
 go run ./cmd/demo6/
 
-# Phase 10: Production AI Agent demo
- go run ./cmd/demo7/
-
 # Phase 17-18: Dialog/AutoComplete/Wizard widgets
 go run ./cmd/demo11/
 
 # Phase 18: Full production demo
 go run ./cmd/demo12/
 
-# Phase 20-23: Undo/Redo, Themes, Checkbox/Slider, Integration
-# (see demos above for specific features)
+# Phase 23: Integration test showcase
+go run ./cmd/demo13/
 
-# Phase 25: Full chat showcase with all P20-P25 features
+# Phase 25: Full chat showcase (all widgets + streaming AI)
 go run ./cmd/demo14/
 ```
 
 ## Examples
 
 ```bash
-go run ./examples/minimal/    # Hello World
-go run ./examples/chat/       # Basic AI chat
-go run ./examples/markdown/   # Markdown rendering
-go run ./examples/search/     # Search feature
-go run ./examples/custom-block/ # Custom block type
+go run ./examples/minimal/       # Hello World
+go run ./examples/chat/          # Basic AI chat
+go run ./examples/markdown/      # Markdown rendering
+go run ./examples/search/        # Search feature
+go run ./examples/custom-block/  # Custom block type
+go run ./examples/ai-agent/      # Production AI agent
+go run ./examples/dashboard/     # Dashboard layout
+go run ./examples/file-manager/  # File manager
+go run ./examples/plugin/        # Plugin system
 ```
 
 ## Documentation
@@ -264,6 +268,7 @@ Full documentation is available in [`docs/`](docs/):
 - [Blocks](docs/blocks.md) — Content block types and lifecycle
 - [Themes](docs/themes.md) — Theme system and customization
 - [Best Practices](docs/best-practices.md) — Concurrency, performance, tips
+- [Performance](docs/performance.md) — Benchmark baselines, profiling guide, optimization results
 
 ## Testing
 
@@ -278,7 +283,7 @@ go test ./internal/term/ -v -race
 go test ./... -bench=. -benchmem
 ```
 
-**2972 tests** across 44 packages, all passing with `-race`. Plus 54 benchmarks and 6 fuzz tests.
+**2972 tests** across 21 test packages, all passing with `-race`. Plus 54 benchmarks and 6 fuzz tests (term parser, buffer operations, markdown renderer).
 
 ### Fuzz Testing
 
