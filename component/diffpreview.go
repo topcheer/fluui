@@ -11,7 +11,6 @@ import (
 
 // --- Diff types ---
 
-// DiffType classifies the type of a diff line (context, addition, deletion, etc.).
 // DiffType classifies a line within a unified diff.
 // One of DiffContext, DiffAdd, DiffDel, DiffHunk, DiffFile, or DiffMeta.
 type DiffType uint8
@@ -25,14 +24,12 @@ const (
 	DiffMeta
 )
 
-// DiffLine represents a single line in a unified diff.
 // DiffLine is a single classified line from a unified diff.
 type DiffLine struct {
 	Type    DiffType
 	Content string
 }
 
-// ParseDiff parses unified diff text into classified DiffLines.
 // ParseDiff parses unified diff text into classified DiffLines.
 func ParseDiff(text string) []DiffLine {
 	rawLines := strings.Split(text, "\n")
@@ -77,7 +74,6 @@ func classifyDiffType(line string) DiffType {
 
 // --- DiffStats ---
 
-// DiffStats holds summary statistics for a parsed diff.
 // DiffStats summarises the additions, deletions, files, and hunks in a diff.
 type DiffStats struct {
 	Additions  int
@@ -94,7 +90,6 @@ func (s DiffStats) String() string {
 
 // --- DiffPreviewStyle ---
 
-// DiffPreviewStyle holds style configuration for rendering diff output.
 // DiffPreviewStyle holds the styles for each part of a DiffPreview component.
 type DiffPreviewStyle struct {
 	Border      buffer.Style
@@ -108,7 +103,6 @@ type DiffPreviewStyle struct {
 	StatsLine   buffer.Style
 }
 
-// DefaultDiffPreviewStyle returns a DiffPreviewStyle initialized from the current theme.
 // DefaultDiffPreviewStyle returns a DiffPreviewStyle using the current theme.
 func DefaultDiffPreviewStyle() DiffPreviewStyle {
 	t := theme.Get()
@@ -127,7 +121,6 @@ func DefaultDiffPreviewStyle() DiffPreviewStyle {
 
 // --- DiffPreview Component ---
 
-// DiffPreview is a component that renders unified diffs with syntax highlighting.
 // DiffPreview is a scrollable component that renders unified diff output
 // with syntax highlighting for additions, deletions, hunks, and file headers.
 type DiffPreview struct {
@@ -141,7 +134,6 @@ type DiffPreview struct {
 	title     string
 }
 
-// NewDiffPreview creates a new DiffPreview component with default styling.
 // NewDiffPreview creates a new DiffPreview component with default styling.
 func NewDiffPreview() *DiffPreview {
 	dp := &DiffPreview{
@@ -281,10 +273,13 @@ func (dp *DiffPreview) VisibleRange() (int, int) {
 	return dp.scrollY, end
 }
 
+// SetShowLineNumbers toggles line number display. Currently always shows line numbers.
 func (dp *DiffPreview) SetShowLineNumbers(show bool) {}
 
+// ShowLineNumbers returns whether line numbers are displayed.
 func (dp *DiffPreview) ShowLineNumbers() bool { return true }
 
+// SetShowStats toggles statistics display. Currently not implemented.
 func (dp *DiffPreview) SetShowStats(show bool) {}
 
 func (dp *DiffPreview) SetLines(lines []DiffLine) {
