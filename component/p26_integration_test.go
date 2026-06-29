@@ -470,6 +470,7 @@ func TestP26B_CommandPaletteSearchRender(t *testing.T) {
 			Category: "test",
 		})
 	}
+	cp.Show(0, 0) // must show before SetQuery (Show resets query)
 	cp.SetQuery("command 4")
 	cp.SetBounds(component.Rect{X: 0, Y: 0, W: 80, H: 24})
 	cp.Measure(component.Constraints{})
