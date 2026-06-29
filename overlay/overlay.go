@@ -51,10 +51,19 @@ func NewBaseOverlay(id string, z int, modal bool) BaseOverlay {
 	}
 }
 
+// ID returns the overlay's unique identifier.
 func (o *BaseOverlay) ID() string         { return o.id }
+
+// Z returns the overlay's z-index for stacking order.
 func (o *BaseOverlay) Z() int              { return o.z }
+
+// Visible returns whether the overlay is currently visible.
 func (o *BaseOverlay) Visible() bool       { return o.visible }
+
+// SetVisible sets the overlay's visibility.
 func (o *BaseOverlay) SetVisible(v bool)   { o.visible = v }
+
+// Modal returns whether the overlay blocks input to underlying layers.
 func (o *BaseOverlay) Modal() bool         { return o.modal }
 
 // Default handlers do nothing (not consumed).
