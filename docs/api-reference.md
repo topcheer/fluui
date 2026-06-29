@@ -778,3 +778,782 @@ The ChatApp integrates P15 StatusBar, TabBar, and SelectionManager components wi
 | `Update(delta time.Duration) bool` | Advance frame, returns if changed |
 | `CurrentFrame() string` | Current frame string |
 | `SetFrameIndex(int) / FrameIndex()` | Direct frame control (wraps) |
+
+## Phase 12: Data Widgets
+
+### Table
+
+Data table with auto column width, alignment, zebra striping, and sorting.
+
+| Method | Description |
+|---|---|
+| `NewTable(headers []string, rows ...[]string)` | Create table with headers and optional rows |
+| `SetRows([][]string) / AddRow([]string) / Rows()` | Row management |
+| `SetHeaders([]string) / Headers()` | Header management |
+| `SortBy(col int, asc bool)` | Sort rows by column |
+| `SetCursor(int) / Cursor() / MoveDown() / MoveUp()` | Row cursor navigation |
+| `SetSelectedStyle(Style) / SetZebraStyle(Style)` | Visual styling |
+| `SetOnSelect(func(row int))` | Selection callback |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### Tree
+
+Hierarchical tree widget with expand/collapse, DFS flatten, and keyboard navigation.
+
+| Method | Description |
+|---|---|
+| `NewTreeNode(id, label string)` | Create tree node |
+| `SetRoot(node *TreeNode)` | Set root node |
+| `AddChild(child *TreeNode) / Children()` | Node hierarchy |
+| `SetExpanded(bool) / IsExpanded()` | Expand/collapse state |
+| `ExpandAll() / CollapseAll()` | Bulk expand/collapse |
+| `SetCursor(int) / Cursor() / MoveDown() / MoveUp()` | Cursor navigation |
+| `Flatten() []FlatNode` | DFS flatten visible nodes |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### Form
+
+Interactive form with fields (TextField, CheckboxField, SelectField), Tab navigation, and validation.
+
+| Method | Description |
+|---|---|
+| `NewForm()` | Create empty form |
+| `AddField(field FormField) / Fields()` | Add/retrieve fields |
+| `SetValues() / Values()` | Get/set all field values |
+| `Validate() error` | Run all field validators |
+| `SetOnSubmit(func()) / SetOnCancel(func())` | Form callbacks |
+| `Next() / Prev() / SetCursor(int) / Cursor()` | Field navigation (Tab/Shift+Tab) |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard handler |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### ProgressBar
+
+Determinate/indeterminate progress bar with color thresholds.
+
+| Method | Description |
+|---|---|
+| `NewProgressBar()` | Create progress bar |
+| `SetProgress(float64) / Progress()` | Set/get progress (0-100) |
+| `SetWidth(int) / SetHeight(int)` | Size control |
+| `SetStyle(ProgressBarStyle)` | Visual styling |
+| `SetIndeterminate(bool)` | Indeterminate animation mode |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### StatusIndicator
+
+Animated status indicator with 5 spinner styles (dots, arc, line, bounce, bars).
+
+| Method | Description |
+|---|---|
+| `NewStatusIndicator()` | Create indicator |
+| `SetStatus(string) / Status()` | Status text |
+| `SetStyle(StatusStyle) / Style()` | Visual styling |
+| `SetSpinnerStyle(string)` | Spinner animation style |
+| `Start() / Stop() / Running()` | Animation control |
+| `Update(dt time.Duration) bool` | Advance frame |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+## Phase 13: Status & Notification Widgets
+
+### Gauge
+
+Linear, vertical, and radial gauges with color thresholds and gradient support.
+
+| Method | Description |
+|---|---|
+| `NewGauge()` | Create gauge |
+| `SetValue(float64) / Value()` | Set/get value (0.0-1.0) |
+| `SetMax(float64) / Max()` | Maximum value |
+| `SetType(GaugeType)` | GaugeLinear / GaugeVertical / GaugeRadial |
+| `SetThresholds([]Threshold)` | Color thresholds (green/yellow/red) |
+| `SetGradient(bool)` | Enable smooth color gradient |
+| `SetLabel(string) / Label()` | Display label |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### Sparkline
+
+Unicode bar chart sparkline with autoscale and streaming push.
+
+| Method | Description |
+|---|---|
+| `NewSparkline() *Sparkline` | Create sparkline |
+| `Push(value float64)` | Add data point (streaming) |
+| `SetData([]float64) / Data()` | Set/get all data |
+| `SetMaxPoints(int)` | Max visible points |
+| `SetColorMode(SparkColorMode)` | Single / Gradient / Value-based |
+| `SetAutoscale(bool)` | Auto-adjust y-axis |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### Badge
+
+Status badge with 6 variants (info/success/warning/error/primary/secondary) and 3 sizes.
+
+| Method | Description |
+|---|---|
+| `NewBadge(text string)` | Create badge |
+| `SetText(string) / Text()` | Badge text |
+| `SetVariant(BadgeVariant)` | Info / Success / Warning / Error / Primary / Secondary |
+| `SetSize(BadgeSize)` | Small / Medium / Large |
+| `SetStyle(BadgeStyle)` | Visual styling |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+**BadgeGroup:**
+
+| Method | Description |
+|---|---|
+| `NewBadgeGroup()` | Create group |
+| `Add(badge *Badge)` | Add badge |
+| `SetSpacing(int)` | Gap between badges |
+
+### Notification/Toast
+
+Toast notification system with 4 levels (info/success/warning/error) and auto-expiry.
+
+| Method | Description |
+|---|---|
+| `NewToastManager()` | Create manager (implements Component) |
+| `Push(n Notification)` | Show notification |
+| `Dismiss(id string)` | Dismiss specific notification |
+| `Clear()` | Dismiss all |
+| `Notifications() []Notification` | Get active notifications (deep copy) |
+| `Tick(dt time.Duration)` | Advance auto-expiry timers |
+| `SetPosition(NotificationPosition)` | TopLeft / TopRight / BottomLeft / BottomRight |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+## Phase 14: Overlay & Interaction Widgets
+
+### ContextMenu
+
+Nested context menu with submenus, separators, disabled items, shortcuts, and icons.
+
+| Method | Description |
+|---|---|
+| `NewContextMenu()` | Create menu |
+| `AddItem(item *MenuItem) / AddLabel(id, label string) / AddSeparator()` | Add items |
+| `Remove(id string) / Clear() / Items()` | Item management |
+| `Show(x, y int) / Hide() / Visible() / Position()` | Visibility control |
+| `MoveUp() / MoveDown() / SetCursor(int) / Cursor()` | Navigation (skips separators + disabled) |
+| `Activate()` | Open submenu or fire Action callback |
+| `HitTest(mx, my int) bool / ClickAt(mx, my int)` | Mouse interaction |
+| `HandleKey(*term.KeyEvent) bool` | Keyboard: Up/Down/Enter/Esc/Right(submenu)/Left(close) |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+**MenuItem:**
+
+| Method | Description |
+|---|---|
+| `NewMenuItem(id, label string)` | Create item |
+| `SetShortcut(string) / SetIcon(string) / SetEnabled(bool)` | Item config |
+| `SetSubmenu(*ContextMenu) / HasSubmenu()` | Submenu support |
+| `SetAction(func())` | Click action |
+
+### Tooltip
+
+Hover tooltip with smart positioning and configurable display delay.
+
+| Method | Description |
+|---|---|
+| `NewTooltip()` | Create tooltip |
+| `SetText(string) / Text()` | Tooltip text |
+| `Show(x, y int) / Hide() / Visible()` | Visibility |
+| `SetDelay(time.Duration) / Delay()` | Display delay |
+| `SetStyle(TooltipStyle)` | Visual styling |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### SplitPane
+
+Draggable split pane with horizontal/vertical orientation and keyboard resize.
+
+| Method | Description |
+|---|---|
+| `NewSplitPane(orientation SplitOrientation)` | Create pane (SplitHorizontal / SplitVertical) |
+| `SetLeft(child Component) / SetRight(child Component)` | Set panes |
+| `SetSplit(float64) / Split()` | Split ratio (0.0-1.0) |
+| `SetMinSize(int)` | Minimum pane size |
+| `SetDraggable(bool)` | Enable/disable mouse drag |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### HelpOverlay
+
+Keyboard shortcut cheatsheet with search filter and scroll.
+
+| Method | Description |
+|---|---|
+| `NewHelpOverlay(groups []HelpGroup)` | Create overlay |
+| `SetGroups([]HelpGroup) / Groups()` | Set/get shortcut groups |
+| `SetQuery(string) / Query() / AppendQuery(rune) / BackspaceQuery() / ClearQuery()` | Search filter (case-insensitive) |
+| `FilteredGroups() / HasResults() / TotalRows()` | Filtered results |
+| `SelectNext() / SelectPrev() / SetSelected(int) / SelectedIndex()` | Selection |
+| `ScrollUp() / ScrollDown() / ScrollY()` | Scroll control |
+| `SetTitle(string) / Title() / SetMaxWidth(int) / SetMaxHeight(int)` | Config |
+| `SetStyle(HelpStyle)` | Visual styling |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+## `internal/hotkey` (package: `github.com/topcheer/fluui/internal/hotkey`)
+
+### HotkeyManager
+
+Configurable hotkey manager with key sequences, conflict detection, and scope support.
+
+| Method | Description |
+|---|---|
+| `NewManager() / SetDefaultGroup(string)` | Create manager |
+| `Register(action string, seq KeySequence, opts ...RegisterOpt) error` | Register binding |
+| `Unregister(action string)` | Remove binding |
+| `Enable(action string) / Disable(action string)` | Toggle bindings |
+| `Match(*term.KeyEvent) (action string, result MatchResult)` | Match key event |
+| `ResetPending() / HasPending() / PendingKeys()` | Multi-key sequence state |
+| `SetSequenceTimeout(time.Duration)` | Pending key timeout (default 1s) |
+| `SetAllowOverride(bool)` | Allow conflicting key reassignment |
+| `Groups() / BindingsByGroup(string) / BindingsByScope(Scope)` | Query bindings |
+| `HasConflict(seq KeySequence) bool` | Conflict detection |
+| `ExportConfig() / ImportConfig()` | Serialization |
+
+**Key Parsing:**
+
+| Function | Description |
+|---|---|
+| `ParseCombo(s string) (KeyCombo, error)` | Parse "Ctrl+F", "Alt+X", "Shift+G" |
+| `ParseSequence(s string) (KeySequence, error)` | Parse "g g", "Ctrl+K Ctrl+D" |
+| `MustParseSequence(s string) KeySequence` | Panics on error |
+
+## `internal/fuzzy` (package: `github.com/topcheer/fluui/internal/fuzzy`)
+
+### Fuzzy Matcher
+
+Subsequence fuzzy matcher with scoring and highlight positions.
+
+| Function | Description |
+|---|---|
+| `Rank(query string, candidates []string) []Result` | Rank candidates by fuzzy match |
+| `Filter(query string, candidates []string) []string` | Return only matching candidates |
+
+**Result struct:**
+
+| Field | Description |
+|---|---|
+| `OriginalIndex int` | Index in original candidates |
+| `Score int` | Match score (higher = better) |
+| `Highlight() []int` | Positions of matched characters |
+
+## Performance (Phase 24)
+
+### Render Pipeline Optimizations
+
+| Optimization | Impact |
+|---|---|
+| LinkManager regex to scanner | 158us to 12us (13x faster for 100 URLs) |
+| Markdown cache invalidation | 40% faster re-render of unchanged content |
+| Row-skip diff renderer | O(changed rows) not O(all cells) |
+| PaintVisible (virtual scroll) | Paints only ~8 visible blocks of 1000 |
+| Binary search PaintVisible | 18ns vs 580ns linear (31.5x faster) |
+| Zero-alloc Paint paths | StatusBar/TabBar/DiffPreview: 0 allocations |
+
+### Benchmark Baselines (M2 Ultra)
+
+| Component | Operation | Time |
+|---|---|---|
+| Table | Paint (80x24) | 10.3us |
+| FilePicker | Paint | 4.7us |
+| StatusBar | Paint | 783ns |
+| TabBar | Paint | 1.2us |
+| DiffPreview | Paint | 4.4us |
+| LinkManager | DetectLinks (100 URLs) | 12us |
+| PaintVisible | 1000 blocks | 664ns |
+| Fuzzy Rank | 100 candidates | ~50us |
+
+---
+
+## Phase 12-13 Components
+
+### Table (Phase 12)
+
+| Method | Description |
+|---|---|
+| `NewTable(headers []string, rows ...[]string)` | Create table with headers and data |
+| `SetHeaders([]string) / Headers()` | Column headers |
+| `SetRows(...[]string) / Rows() / RowCount()` | Row data |
+| `AddRow([]string) / RemoveRow(int)` | Modify rows |
+| `SetCursor(int) / Cursor() / MoveDown() / MoveUp()` | Row navigation (wrap-around) |
+| `Sort(col int) / SortAsc(int) / SortDesc(int)` | Column sorting (Ctrl+1-9) |
+| `SetSelected(*int) / Selected()` | Selection tracking |
+| `OnSelect(func(int))` | Row selection callback |
+| `SetStyle(TableStyle) / Style()` | Styling (zebra, header, selected, border) |
+| `SetAlignment([]Alignment)` | Per-column alignment (AlignLeft/Center/Right) |
+| `SetZebraStripes(bool)` | Alternating row colors |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### Tree (Phase 12)
+
+| Method | Description |
+|---|---|
+| `NewTreeNode(id, label string)` | Create tree node |
+| `SetRoot(*TreeNode)` | Set root node |
+| `Root()` | Get root node |
+| `ExpandAll() / CollapseAll()` | Expand/collapse entire tree |
+| `Expand(string) / Collapse(string) / Toggle(string)` | Per-node expand/collapse |
+| `IsExpanded(string)` | Check node expansion |
+| `SetCursor(string) / Cursor()` | Current node ID |
+| `MoveDown() / MoveUp()` | DFS-order navigation |
+| `OnSelect(func(string))` | Node selection callback |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### Form (Phase 12)
+
+| Method | Description |
+|---|---|
+| `NewForm()` | Create empty form |
+| `AddField(FormField)` | Add field (TextField/CheckboxField/SelectField) |
+| `RemoveField(string)` | Remove field by ID |
+| `Fields() / FieldCount()` | Query fields |
+| `FieldValue(string) (string, error)` | Get field value |
+| `SetFieldValue(string, string) error` | Set field value |
+| `Validate() error` | Run all validators |
+| `OnSubmit(func()) / OnCancel(func())` | Submit/cancel callbacks |
+| `Next() / Prev() / SetCursor(int) / Cursor()` | Tab navigation |
+| `SetStyle(FormStyle) / Style()` | Styling |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+**FormField interface:** `ID() / Label() / Value() / SetValue(string) / Validate() error`
+
+### ProgressBar (Phase 12)
+
+| Method | Description |
+|---|---|
+| `NewProgressBar()` | Create progress bar (0-100) |
+| `SetProgress(float64) / Progress()` | Set/get progress (0-100) |
+| `SetWidth(int)` | Bar width in cells |
+| `SetStyle(ProgressBarStyle) / Style()` | Styling (fill/empty/border) |
+| `SetIndeterminate(bool)` | Indeterminate animation mode |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### StatusIndicator (Phase 12)
+
+| Method | Description |
+|---|---|
+| `NewStatusIndicator()` | Create status indicator |
+| `SetStatus(string) / Status()` | Status text |
+| `SetState(StatusState)` | State: StatusInfo/Success/Warning/Error/Loading |
+| `Start() / Stop() / Running()` | Spinner animation control |
+| `SetStyle(StatusStyle)` | Per-state styling |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### Gauge (Phase 13)
+
+| Method | Description |
+|---|---|
+| `NewGauge()` | Create gauge (0.0-1.0) |
+| `SetValue(float64) / Value()` | Set/get value (0-1) |
+| `SetOrientation(Orientation)` | GaugeHorizontal / GaugeVertical / GaugeRadial |
+| `SetThresholds([]Threshold)` | Color thresholds (green/yellow/red) |
+| `SetGradient(bool)` | Enable gradient fill (green→red) |
+| `SetWidth / SetHeight` | Dimensions |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### Sparkline (Phase 13)
+
+| Method | Description |
+|---|---|
+| `NewSparkline()` | Create sparkline |
+| `Push(float64)` | Add data point (scrolls window) |
+| `SetData([]float64) / Data()` | Set/get data series |
+| `SetWidth(int)` | Number of bars to display |
+| `SetColorMode(SparkColorMode)` | Solid / Gradient / Threshold |
+| `SetStyle(SparklineStyle)` | Styling |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### Badge (Phase 13)
+
+| Method | Description |
+|---|---|
+| `NewBadge(text string)` | Create badge |
+| `SetText(string) / Text()` | Badge text |
+| `SetVariant(BadgeVariant)` | Info/Success/Warning/Error/Primary/Secondary |
+| `SetSize(BadgeSize)` | Small/Medium/Large |
+| `SetStyle(BadgeStyle)` | Custom styling |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+| `BadgeGroup: NewBadgeGroup()` | Horizontal layout container with spacing |
+
+### Notification/Toast (Phase 13)
+
+| Method | Description |
+|---|---|
+| `NewToastManager()` | Create toast manager (implements Component) |
+| `Push(Notification)` | Add notification (auto-expires) |
+| `Dismiss(string)` | Dismiss by ID |
+| `Clear()` | Dismiss all |
+| `Notifications()` | Get all notifications (deep copy) |
+| `Tick(delta time.Duration)` | Advance expiry timers |
+| `SetPosition(ToastPosition)` | TopLeft/TopRight/BottomLeft/BottomRight |
+| `SetMaxVisible(int)` | Stack limit |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+**Notification struct:** `ID, Level (Info/Success/Warning/Error), Title, Message string, Duration time.Duration`
+
+---
+
+## Phase 14 Components
+
+### ContextMenu (Phase 14)
+
+| Method | Description |
+|---|---|
+| `NewContextMenu()` | Create context menu |
+| `AddItem(*MenuItem) / AddLabel(id, label) / AddSeparator()` | Add items |
+| `Remove(id) / Clear()` | Remove items |
+| `Items() / ItemCount() / ItemAt(int) / Find(id)` | Query items |
+| `Show(x, y int) / Hide() / Visible() / Position()` | Visibility control |
+| `MoveUp() / MoveDown() / SetCursor(int) / Cursor()` | Navigation (skips separators/disabled) |
+| `Activate()` | Open submenu or fire Action + OnSelect |
+| `HandleKey(*term.KeyEvent)` | Up/Down/Enter/Esc/Right(left)/Left(close) |
+| `HitTest(mx, my) / ClickAt(mx, my)` | Mouse support |
+| `SetStyle(ContextMenuStyle) / Style()` | Styling |
+| `Measure / SetBounds / Paint / Children / String` | Component interface |
+
+**MenuItem:** `ID, Label, Shortcut, Icon string; Enabled, Separator bool; Submenu *ContextMenu; Action func()`
+
+### Tooltip (Phase 14)
+
+| Method | Description |
+|---|---|
+| `NewTooltip(text string)` | Create tooltip |
+| `SetText(string) / Text()` | Tooltip text |
+| `Show(x, y int) / Hide() / Visible() / Position()` | Visibility |
+| `SetDelay(time.Duration)` | Hover delay before showing |
+| `SetStyle(TooltipStyle)` | Styling |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### SplitPane (Phase 14)
+
+| Method | Description |
+|---|---|
+| `NewSplitPane(top, bottom Component)` | Vertical split (top/bottom) |
+| `NewHorizontalSplitPane(left, right Component)` | Horizontal split (left/right) |
+| `SetSplit(float64) / Split()` | Split ratio (0.0-1.0) |
+| `SetMinSize(int)` | Minimum pane size |
+| `SetDraggable(bool) / Draggable()` | Drag handle to resize |
+| `SetKeyboardResize(bool)` | Enable keyboard resize (Ctrl+arrows) |
+| `Top() / Bottom()` | Access child panes |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+### HelpOverlay (Phase 14)
+
+| Method | Description |
+|---|---|
+| `NewHelpOverlay(groups []HelpGroup)` | Create help overlay |
+| `SetGroups([]HelpGroup) / Groups()` | Set/get help groups |
+| `SetQuery(string) / Query() / AppendQuery(rune) / BackspaceQuery() / ClearQuery()` | Search filter (case-insensitive) |
+| `FilteredGroups() / HasResults() / TotalRows()` | Filtered results |
+| `SelectNext() / SelectPrev() / SetSelected(int) / SelectedIndex()` | Row selection |
+| `ScrollUp() / ScrollDown() / ScrollY()` | Scrolling |
+| `SetTitle(string) / Title()` | Overlay title |
+| `SetMaxWidth(int) / SetMaxHeight(int)` | Size limits |
+| `SetStyle(HelpStyle) / Style() / DefaultHelpStyle()` | Styling |
+| `Measure / SetBounds / Paint / Children` | Component interface |
+
+**HelpGroup:** `Name string; Entries []HelpEntry` where `HelpEntry: Keys, Description string`
+
+### HotkeyManager (Phase 14, `internal/hotkey`)
+
+| Method | Description |
+|---|---|
+| `NewManager()` | Create hotkey manager |
+| `Register(Binding) error` | Register key binding |
+| `Unregister(string) / Get(string) / Bindings() / Count()` | Query/cleanup |
+| `Match(*term.KeyEvent) (action string, result MatchResult)` | Match key event → action |
+| `ResetPending() / HasPending() / PendingKeys()` | Multi-key sequence state |
+| `Enable(string) / Disable(string) / SetDefaultGroup(string)` | Enable/disable by action name |
+| `Groups() / BindingsByGroup(string) / BindingsByScope(Scope)` | Grouping |
+| `HasConflict(Binding) bool` | Prefix conflict detection |
+| `SetAllowOverride(bool) / SetSequenceTimeout(time.Duration)` | Configuration |
+| `ExportConfig() / ImportConfig([]Binding)` | Serialization |
+
+**ParseCombo("Ctrl+F") → KeyCombo, ParseSequence("g g") → KeySequence, MustParseSequence(...)**
+
+---
+
+## Phase 24: Performance Optimizations
+
+### Render Pipeline Optimization
+- LinkManager: regex-based URL detection replaced with O(n) scanner (158μs → 12μs, 13x faster)
+- PaintVisible: binary search O(log n) for visible block range (31x faster than linear)
+- Render diff: row-skip optimization reduces redundant paint calls
+
+### Benchmark Results (Apple M2 Ultra)
+| Component | Paint | Measure | Navigation |
+|---|---|---|---|
+| FilePicker | 4.7μs | 83ns | 24ns |
+| Table | 10.3μs | — | — |
+| StatusBar | 783ns | 101ns | — |
+| TabBar | 1.2μs | 179ns | 24ns |
+| DiffPreview | 4.4μs | — | 24ns |
+| LinkManager (100 URLs) | 12μs | — | — |
+
+---
+
+## Phase 12: Data + Status Widgets
+
+### Table
+
+Sortable data grid with auto-sized columns and alignment.
+
+| Method | Description |
+|---|---|
+| `NewTable(headers []string, rows ...[]string) *Table` | Create with headers and initial rows |
+| `AddRow([]string)` | Append a row |
+| `SetRows([][]string)` | Replace all rows |
+| `Rows() [][]string` | Get all rows |
+| `Columns() []Column` | Get column definitions |
+| `RowCount() int` | Number of rows |
+| `Cursor() / SetCursor(int)` | Cursor position |
+| `MoveUp() / MoveDown()` | Navigate (wrap-around) |
+| `ScrollUp(n) / ScrollDown(n)` | Scroll viewport |
+| `SortBy(col int)` | Sort by column (toggles asc/desc) |
+| `SortColumn() int` | Current sort column (-1 if none) |
+| `SortAscending() bool` | Sort direction |
+| `ZebraStriping(bool)` | Alternating row colors |
+| `OnSelect func(int)` | Row selection callback |
+| `SetStyle(TableStyle) / Style()` | Styling |
+| `HandleKey(*term.KeyEvent) bool` | j/k/Ctrl+1-9/arrows |
+
+### Tree
+
+Expandable tree view with DFS flatten.
+
+| Method | Description |
+|---|---|
+| `NewTree() *Tree` | Create empty tree |
+| `NewTreeNode(id, label string) *TreeNode` | Create a node |
+| `SetRoot(*TreeNode)` | Set root node |
+| `Root() *TreeNode` | Get root |
+| `ExpandAll() / CollapseAll()` | Bulk expand/collapse |
+| `Cursor() / SetCursor(int)` | Cursor position |
+| `MoveUp() / MoveDown()` | Navigate visible nodes |
+| `ToggleExpand()` | Expand/collapse current |
+| `ExpandNode() / CollapseNode()` | Expand/collapse explicitly |
+| `SelectedNode() *TreeNode` | Node at cursor |
+| `OnSelect func(*TreeNode)` | Selection callback |
+| `SetStyle(TreeStyle) / Style()` | Styling |
+| `HandleKey(*term.KeyEvent) bool` | j/k/Enter/Space/arrows |
+
+### Form
+
+Form fields with validation and Tab navigation.
+
+| Method | Description |
+|---|---|
+| `NewForm() *Form` | Create empty form |
+| `AddField(FormField)` | Add a field |
+| `Fields() []FormField` | Get all fields |
+| `NewTextField(label, key, defValue string) *TextField` | Text input field |
+| `NewCheckboxField(label, key string, checked bool) *CheckboxField` | Checkbox field |
+| `NewSelectField(label, key string, options []string) *SelectField` | Dropdown field |
+| `Values() map[string]string` | Get all field values |
+| `Validate() error` | Run field validations |
+| `OnSubmit func(map[string]string)` | Submit callback |
+| `OnCancel func()` | Cancel callback |
+| `Cursor() / SetCursor(int)` | Field focus |
+| `NextField() / PrevField()` | Tab / Shift+Tab |
+| `HandleKey(*term.KeyEvent) bool` | Tab/Enter/Esc/arrows |
+
+### ProgressBar
+
+Determinate or indeterminate progress display.
+
+| Method | Description |
+|---|---|
+| `NewProgressBar() *ProgressBar` | Create progress bar |
+| `SetProgress(float64)` | Set progress (0.0-1.0) |
+| `Progress() float64` | Current progress |
+| `SetIndeterminate(bool)` | Spinner mode |
+| `IsIndeterminate() bool` | Check mode |
+| `SetLabel(string) / Label()` | Display label |
+| `SetStyle(ProgressBarStyle)` | Styling |
+
+### StatusIndicator
+
+Animated spinner with status states.
+
+| Method | Description |
+|---|---|
+| `NewStatusIndicator() *StatusIndicator` | Create indicator |
+| `SetStatus(StatusState)` | Idle/Running/Success/Error/Warning |
+| `Status() StatusState` | Current status |
+| `SetSpinnerStyle(SpinnerStyle)` | dots/line/bounce/arc/bars |
+| `Update(time.Duration) bool` | Advance frame |
+
+---
+
+## Phase 13: Gauge + Sparkline + Badge + Notification
+
+### Gauge
+
+Linear, vertical, or radial gauge with color thresholds.
+
+| Method | Description |
+|---|---|
+| `NewGauge() *Gauge` | Create gauge |
+| `SetValue(float64)` | Set value (0.0-1.0) |
+| `Value() float64` | Current value |
+| `SetType(GaugeType)` | GaugeLinear/GaugeVertical/GaugeRadial |
+| `SetColorThresholds([]Threshold)` | Green/yellow/red bands |
+| `DefaultThresholds() []Threshold` | Built-in 3-band thresholds |
+| `SetGradient(bool)` | Enable gradient coloring |
+| `SetLabel(string) / Label()` | Display label |
+
+### Sparkline
+
+Unicode bar chart with autoscale and streaming.
+
+| Method | Description |
+|---|---|
+| `NewSparkline() *Sparkline` | Create sparkline |
+| `Push(value float64)` | Append data point |
+| `Values() []float64` | All data points |
+| `SetMaxPoints(int)` | Maximum visible points |
+| `SetColorMode(SparkColorMode)` | SparkSolid/SparkGradient/SparkThreshold |
+| `Autoscale()` | Recalculate scale |
+
+### Badge
+
+Status badges with 6 variants and 3 sizes.
+
+| Method | Description |
+|---|---|
+| `NewBadge(text string, variant BadgeVariant) *Badge` | Create badge |
+| `NewBadgeWithSize(text, variant, size)` | Create with explicit size |
+| `NewBadgeGroup() *BadgeGroup` | Create horizontal badge container |
+| `SetText(string) / Text()` | Badge text |
+| `SetVariant(BadgeVariant)` | Default/Success/Warning/Error/Info/Critical |
+| `SetSize(BadgeSize)` | Small/Medium/Large |
+| `Convenience: NewInfoBadge / NewSuccessBadge / NewWarningBadge / NewErrorBadge / NewCriticalBadge / NewNeutralBadge` |
+
+### Notification (ToastManager)
+
+Toast notifications with auto-expiry and stacking.
+
+| Method | Description |
+|---|---|
+| `NewToastManager(maxVisible int) *ToastManager` | Create manager |
+| `Push(message string, level NotificationLevel) string` | Show notification (returns ID) |
+| `Dismiss(id string)` | Dismiss by ID |
+| `Clear()` | Dismiss all |
+| `Notifications() []Notification` | Get all active (deep copy) |
+| `Tick(time.Duration)` | Advance expiry timers |
+| `Levels: NotifyInfo / NotifySuccess / NotifyWarning / NotifyError` |
+
+---
+
+## Phase 14: Overlay + Interaction Widgets
+
+### ContextMenu
+
+Nested submenu context menu with keyboard/mouse navigation.
+
+| Method | Description |
+|---|---|
+| `NewContextMenu() *ContextMenu` | Create menu |
+| `NewMenuItem(id, label string) *MenuItem` | Create item |
+| `NewSeparator() *MenuItem` | Create separator |
+| `AddItem(*MenuItem) / AddLabel(id, label) / AddSeparator()` | Add items |
+| `Remove(id string) / Clear()` | Remove items |
+| `Items() []*MenuItem / ItemCount() / ItemAt(int)` | Query items |
+| `Show(x, y int) / Hide()` | Visibility |
+| `MoveUp() / MoveDown()` | Navigate (skips separators/disabled) |
+| `SetCursor(int) / Cursor() / CurrentItem()` | Cursor state |
+| `Activate()` | Open submenu or fire Action |
+| `HandleKey(*term.KeyEvent) bool` | Up/Down/Enter/Esc/Right/Left |
+| `HitTest(mx, my int) (int, bool)` | Mouse hit test |
+| `ClickAt(mx, my int) bool` | Mouse click |
+| `SetStyle(ContextMenuStyle) / Style()` | Styling |
+
+**MenuItem chainable:** `.SetShortcut(s) / .SetIcon(s) / .SetEnabled(bool) / .SetSubmenu(*ContextMenu) / .SetAction(func())`
+
+### Tooltip
+
+Hover tooltip with smart positioning and configurable delay.
+
+| Method | Description |
+|---|---|
+| `NewTooltip(text string) *Tooltip` | Create tooltip |
+| `SetText(string) / Text()` | Tooltip content |
+| `SetDelay(time.Duration) / Delay()` | Display delay |
+| `Show(x, y int) / Hide()` | Visibility |
+| `SetStyle(TooltipStyle)` | Styling |
+
+### SplitPane
+
+Draggable split pane with keyboard resize.
+
+| Method | Description |
+|---|---|
+| `NewSplitPane(first, second Component) *SplitPane` | Create split |
+| `SetDirection(SplitDirection)` | SplitHorizontal / SplitVertical |
+| `SetRatio(float64)` | Split position (0.0-1.0) |
+| `Ratio() float64` | Current ratio |
+| `SetResizable(bool)` | Enable drag resize |
+| `SetMinRatio(float64) / SetMaxRatio(float64)` | Resize bounds |
+| `HandleKey(*term.KeyEvent) bool` | Ctrl+arrows to resize |
+
+### HelpOverlay
+
+Searchable keyboard shortcut cheatsheet.
+
+| Method | Description |
+|---|---|
+| `NewHelpOverlay(groups []HelpGroup) *HelpOverlay` | Create overlay |
+| `SetGroups([]HelpGroup) / Groups()` | Help groups |
+| `SetQuery(string) / Query()` | Search text |
+| `AppendQuery(rune) / BackspaceQuery() / ClearQuery()` | Edit search |
+| `FilteredGroups() []HelpGroup` | Filtered results |
+| `TotalRows() int / HasResults() bool` | Result queries |
+| `SelectNext() / SelectPrev()` | Navigate results |
+| `ScrollUp() / ScrollDown()` | Scroll results |
+| `SetTitle(string) / SetMaxWidth(int) / SetMaxHeight(int)` | Configuration |
+| `SetStyle(HelpStyle) / DefaultHelpStyle()` | Styling |
+
+---
+
+## Phase 24: Performance Optimization
+
+### Render Pipeline Optimization
+
+The render pipeline was optimized in Phase 24 for 44-48% faster rendering with 50% fewer allocations:
+
+- **Row-skip diff**: Unchanged rows are skipped entirely (O(1) per row check)
+- **Cell-level diff**: Only changed cells generate ANSI output
+- **Batch ANSI sequences**: Consecutive cells with same style share one SGR escape
+
+### Link Detection Optimization
+
+`LinkManager.AnnotateBuffer` was rewritten from regex to hand-rolled scanner:
+
+| Operation | Before (regex) | After (scanner) | Speedup |
+|---|---|---|---|
+| DetectLinks 100 URLs | 158 us | 12 us | 13.2x |
+| ScanText 100 lines | 182 us | 21 us | 8.5x |
+
+### Markdown Render Caching
+
+`AssistantTextBlock` caches rendered markdown cells:
+
+- First paint: full goldmark + chroma rendering
+- Subsequent paints: cached cell copy (99.85% fewer allocations)
+- Cache invalidated on content change
+
+---
+
+## Phase 25: Fuzz Testing
+
+Fluui includes 6 native Go fuzz tests across 3 packages:
+
+| Fuzz Target | Package | Description |
+|---|---|---|
+| `FuzzParserFeed` | `internal/term/` | Random bytes through terminal input parser |
+| `FuzzParserFeedChunked` | `internal/term/` | Chunk-invariant parsing verification |
+| `FuzzBufferSetCell` | `internal/buffer/` | Random coords on SetCell/GetCell/Fill |
+| `FuzzBufferDrawText` | `internal/buffer/` | Random text + positions on DrawText |
+| `FuzzBufferBlit` | `internal/buffer/` | Random source/dest coords on Blit |
+| `FuzzRendererRender` | `markdown/` | Malformed/extreme markdown through goldmark |
+
+Millions of executions, zero panics, zero deadlocks.
