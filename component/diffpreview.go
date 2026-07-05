@@ -28,6 +28,8 @@ const (
 type DiffLine struct {
 	Type    DiffType
 	Content string
+	OldNo   int // old file line number (0 if not applicable)
+	NewNo   int // new file line number (0 if not applicable)
 }
 
 // ParseDiff parses unified diff text into classified DiffLines.
