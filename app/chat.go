@@ -54,6 +54,7 @@ type ChatApp struct {
 	onMouse       func(*term.MouseEvent)
 	onClipboard   func(text string)
 	onQuit        func()
+	onFocus       func(focused bool)
 
 	// Input line (nil if not configured)
 	inputLine *InputLine
@@ -356,6 +357,14 @@ func (a *ChatApp) OnMouse(fn func(*term.MouseEvent)) {
 func (a *ChatApp) OnQuit(fn func()) {
 	a.mu.Lock()
 	a.onQuit = fn
+	a.mu.Unlock()
+}
+
+// OnFocus sets a handler for terminal focus events.
+// focused is true when the terminal gains focus, false when it loses focus.
+func (a *ChatApp) OnFocus(fn func(focused bool)) {
+	a.mu.Lock()
+	a.onFocus = fn
 	a.mu.Unlock()
 }
 

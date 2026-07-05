@@ -41,6 +41,9 @@ type App struct {
 	// If not set, the app quits immediately (default).
 	onInterrupt func() bool
 
+	// onFocus is called when the terminal gains or loses focus.
+	onFocus func(focused bool)
+
 	// onQuit is called after the event loop exits, before terminal cleanup.
 	// Use this to stop streaming, flush state, etc.
 	onQuit func()
@@ -129,6 +132,14 @@ func (a *App) OnQuit(fn func()) {
 // If not set, Ctrl+C quits immediately (default).
 func (a *App) OnInterrupt(fn func() bool) {
 	a.onInterrupt = fn
+}
+
+// OnFocus sets a handler for terminal focus events.
+// focused is true when the terminal window gains focus, false when it loses focus.
+// This requires focus tracking support (enabled automatically by term.Open
+// on terminals that support CSI ?1004).
+func (a *App) OnFocus(fn func(focused bool)) {
+	a.onFocus = fn
 }
 
 // OnPaint sets the render callback. The provided function will draw
@@ -242,6 +253,14 @@ func (a *App) setupHandlers() {
 			a.onResize(e.Width, e.Height)
 		}
 		a.loop.MarkDirty()
+		return true
+	})
+
+	// Focus handler
+	a.dispatcher.OnFocus(func(e event.Event) bool {
+		if a.onFocus != nil {
+			a.onFocus(e.Focused)
+		}
 		return true
 	})
 }

@@ -76,6 +76,7 @@ func Open() (*Terminal, error) {
 			"\x1b[?2004h" + // bracketed paste
 			"\x1b[?1006h" + // SGR mouse mode
 			"\x1b[?1002h" + // cell motion mouse tracking
+			"\x1b[?1004h" + // focus tracking
 			"\x1b[2J" + // clear screen
 			"\x1b[H", // cursor home
 	)
@@ -99,7 +100,8 @@ func (t *Terminal) Close() error {
 
 	// Write cleanup sequences DIRECTLY to the underlying writer.
 	_, _ = t.w.Write([]byte(
-		"\x1b[?1002l" + // disable mouse tracking
+		"\x1b[?1004l" + // disable focus tracking
+			"\x1b[?1002l" + // disable mouse tracking
 			"\x1b[?1006l" + // disable SGR mouse
 			"\x1b[?2004l" + // disable bracketed paste
 			"\x1b[?25h" + // show cursor

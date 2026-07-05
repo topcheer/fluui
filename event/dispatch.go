@@ -19,6 +19,7 @@ type Dispatcher struct {
 	mouseHandler Handler
 	resizeHandler Handler
 	pasteHandler  Handler
+	focusHandler  Handler
 	defaultKey  Handler
 }
 
@@ -43,6 +44,11 @@ func (d *Dispatcher) OnPaste(h Handler) { d.pasteHandler = h }
 
 // OnKey sets a default key handler (for unbound keys).
 func (d *Dispatcher) OnKey(h Handler) { d.defaultKey = h }
+
+// OnFocus sets the focus event handler.
+// The handler is called when the terminal gains or loses focus
+// (requires focus tracking support, enabled automatically by term.Open).
+func (d *Dispatcher) OnFocus(h Handler) { d.focusHandler = h }
 
 // Dispatch routes an event to the appropriate handler.
 func (d *Dispatcher) Dispatch(e Event) bool {
@@ -73,6 +79,11 @@ func (d *Dispatcher) Dispatch(e Event) bool {
 	case TypePaste:
 		if d.pasteHandler != nil {
 			return d.pasteHandler(e)
+		}
+
+	case TypeFocus:
+		if d.focusHandler != nil {
+			return d.focusHandler(e)
 		}
 	}
 	return false

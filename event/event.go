@@ -14,6 +14,7 @@ const (
 	TypePaste
 	TypeResize
 	TypeQuit
+	TypeFocus
 )
 
 // Event wraps a terminal event for the internal event system.
@@ -24,6 +25,7 @@ type Event struct {
 	Paste   string
 	Width   int
 	Height  int
+	Focused bool // for TypeFocus: true=gained, false=lost
 }
 
 // Handler processes an event and returns whether it was consumed.
@@ -40,6 +42,8 @@ func FromTermEvent(te term.Event) Event {
 		return Event{Type: TypePaste, Paste: te.Paste}
 	case term.EventResize:
 		return Event{Type: TypeResize, Width: te.Width, Height: te.Height}
+	case term.EventFocus:
+		return Event{Type: TypeFocus, Focused: te.Focused}
 	}
 	return Event{}
 }

@@ -17,6 +17,7 @@ const (
 	EventPaste
 	EventResize
 	EventClipboard // OSC52 clipboard response
+	EventFocus    // Focus tracking (CSI ?1004)
 )
 
 // Event is a parsed terminal input event.
@@ -28,6 +29,7 @@ type Event struct {
 	Clipboard string // for EventClipboard (OSC52 response)
 	Width     int    // for EventResize
 	Height    int    // for EventResize
+	Focused   bool   // for EventFocus: true=gained, false=lost
 }
 
 // KeyEvent represents a keyboard input.
@@ -524,6 +526,10 @@ func (p *Parser) parseCSI(buf []byte) *Event {
 	}
 
 	switch final {
+	case 'I': // FocusIn (CSI ?1004)
+		return &Event{Type: EventFocus, Focused: true}
+	case 'O': // FocusOut (CSI ?1004)
+		return &Event{Type: EventFocus, Focused: false}
 	case 'A': // Up
 		return keyEventCSI(nums, KeyUp, false)
 	case 'B': // Down
