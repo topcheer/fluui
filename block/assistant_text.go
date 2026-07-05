@@ -25,6 +25,10 @@ type AssistantTextBlock struct {
 	cachedBlocks []*markdown.Block
 	cachedText   string
 	cachedW      int
+
+	// P52 content string cache: avoid repeated String() allocations.
+	cachedContentStr string
+	contentDirty     bool
 }
 
 // NewAssistantTextBlock creates an assistant text block in streaming state.
@@ -85,6 +89,17 @@ func (b *AssistantTextBlock) Content() string {
 	return b.content.String()
 }
 
+// contentString returns the cached content string, avoiding repeated
+// strings.Builder.String() allocations when content hasn't changed.
+// Caller must hold at least RLock.
+func (b *AssistantTextBlock) contentString() string {
+	if b.contentDirty || b.cachedContentStr == "" {
+		b.cachedContentStr = b.content.String()
+		b.contentDirty = false
+	}
+	return b.cachedContentStr
+}
+
 // SetContent replaces the full text and marks the block dirty.
 // This invalidates the render cache.
 func (b *AssistantTextBlock) SetContent(s string) {
@@ -92,7 +107,8 @@ func (b *AssistantTextBlock) SetContent(s string) {
 	defer b.mu.Unlock()
 	b.content.Reset()
 	b.content.WriteString(s)
-	b.cachedText = "" // invalidate render cache
+	b.cachedText = ""   // invalidate render cache
+	b.contentDirty = true // invalidate string cache
 	b.markDirtyLocked()
 }
 
@@ -154,6 +170,8 @@ func (b *AssistantTextBlock) DeserializeState(data json.RawMessage) error {
 	defer b.mu.Unlock()
 	b.content.Reset()
 	b.content.WriteString(s.Content)
+	b.cachedText = ""     // invalidate render cache
+	b.contentDirty = true // invalidate string cache
 	b.markDirtyLocked()
 	return nil
 }

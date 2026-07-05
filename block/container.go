@@ -130,8 +130,12 @@ func (c *BlockContainer) SetBounds(r component.Rect) {
 	defer c.mu.Unlock()
 	c.BaseComponent.SetBounds(r)
 
-	// Reallocate positions cache
-	c.positions = make([]BlockPosition, len(c.blocks))
+	// Reuse positions slice capacity to avoid reallocation
+	if cap(c.positions) >= len(c.blocks) {
+		c.positions = c.positions[:len(c.blocks)]
+	} else {
+		c.positions = make([]BlockPosition, len(c.blocks))
+	}
 
 	// Give each block the full width and stack them vertically.
 	y := r.Y
