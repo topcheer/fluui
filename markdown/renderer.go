@@ -138,7 +138,13 @@ func (r *MarkdownRenderer) renderInline(n ast.Node, source []byte) []buffer.Cell
 func (r *MarkdownRenderer) renderInlineNode(n ast.Node, source []byte) []buffer.Cell {
 	switch v := n.(type) {
 	case *ast.Text:
-		return r.textToCells(string(v.Value(source)), r.theme.Body, 0)
+		text := string(v.Value(source))
+		// Inline math: $...$ or \(...\)
+		if HasInlineMath(text) {
+			converted := RenderInlineMath(text)
+			return r.textToCells(converted, r.theme.CodeFg, buffer.Italic)
+		}
+		return r.textToCells(text, r.theme.Body, 0)
 	case *ast.String:
 		return r.textToCells(string(v.Value), r.theme.Body, 0)
 	case *ast.CodeSpan:
@@ -415,6 +421,12 @@ func (r *MarkdownRenderer) renderFencedCode(n *ast.FencedCodeBlock, source []byt
 			return &Block{Type: BlockCodeBlock, Cells: mermaidCells}
 		}
 		// Fall through to plain rendering if Mermaid parsing fails
+	}
+
+	// LaTeX math block rendering
+	if lang == "math" || lang == "latex" {
+		mathCells := RenderMathToCells(strings.TrimSpace(code), r.theme.CodeFg)
+		return &Block{Type: BlockCodeBlock, Cells: [][]buffer.Cell{mathCells}}
 	}
 
 	var cells [][]buffer.Cell
