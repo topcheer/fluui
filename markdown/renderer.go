@@ -403,9 +403,19 @@ func (r *MarkdownRenderer) makeTableBorder(left, mid, right rune, colWidths []in
 }
 
 // renderFencedCode renders a fenced code block, optionally highlighting.
+// Mermaid code blocks (```mermaid) are rendered as ASCII art diagrams.
 func (r *MarkdownRenderer) renderFencedCode(n *ast.FencedCodeBlock, source []byte) *Block {
 	code := extractCodeBlockText(n, source)
 	lang := string(n.Language(source))
+
+	// Mermaid diagram rendering
+	if lang == "mermaid" {
+		mermaidCells := RenderMermaidText(code, r.theme)
+		if mermaidCells != nil {
+			return &Block{Type: BlockCodeBlock, Cells: mermaidCells}
+		}
+		// Fall through to plain rendering if Mermaid parsing fails
+	}
 
 	var cells [][]buffer.Cell
 	if r.highlighter != nil && lang != "" {
