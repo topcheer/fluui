@@ -516,6 +516,13 @@ func (p *Parser) parseCSI(buf []byte) *Event {
 	// Parse parameters
 	nums := parseCSIParams(params)
 
+	// Kitty Keyboard Protocol: CSI <codepoint> ; <modifiers> u
+	// The codepoint is a Unicode codepoint; modifiers use Kitty's own bitmask:
+	// 1=Shift, 2=Alt, 4=Ctrl, 8=Super, 16=Hyper, 32=Meta, 64=CapsLock
+	if final == 'u' {
+		return parseKittyCSIU(nums)
+	}
+
 	switch final {
 	case 'A': // Up
 		return keyEventCSI(nums, KeyUp, false)
@@ -568,6 +575,127 @@ func (p *Parser) parseCSI(buf []byte) *Event {
 	}
 
 	return nil
+}
+
+// parseKittyCSIU parses a Kitty Keyboard Protocol CSI u sequence.
+// Format: CSI <codepoint> [; <modifiers> [; <event-type>]] u
+//
+// The codepoint is a Unicode codepoint. For special keys (arrows, function keys,
+// etc.), Kitty uses the C0/C1 control code or a well-known pseudo-codepoint.
+// See https://sw.kovidgoyal.net/kitty/keyboard-protocol/
+//
+// Modifier bitmask (Kitty's own encoding):
+//   1 = Shift, 2 = Alt, 4 = Ctrl, 8 = Super/Meta
+//
+// This is different from the xterm modifier encoding used by traditional CSI.
+func parseKittyCSIU(nums []int) *Event {
+	if len(nums) == 0 {
+		return nil
+	}
+
+	codepoint := nums[0]
+	var mods ModMask
+	if len(nums) >= 2 {
+		mods = decodeKittyModifier(nums[1])
+	}
+
+	// Map known special codepoints to KeyCode.
+	// Kitty uses these codepoints for non-printable keys:
+	//   1-26 are Ctrl+letter (handled as regular runes with Ctrl mod)
+	//   57399-57410 are F13-F24
+	//   See https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions
+	switch codepoint {
+	case 0x1b: // ESC
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyEscape, Modifiers: mods}}
+	case 0x08: // Backspace (^H)
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyBackspace, Modifiers: mods}}
+	case 0x09: // Tab
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyTab, Modifiers: mods}}
+	case 0x0d, 0x0a: // Enter
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyEnter, Modifiers: mods}}
+	case 0x7f: // DEL
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyDelete, Modifiers: mods}}
+	case 0x20: // Space
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeySpace, Modifiers: mods}}
+	// Kitty extended codepoints for arrow keys
+	case 57352:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyInsert, Modifiers: mods}}
+	case 57353:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyDelete, Modifiers: mods}}
+	case 57354:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyPageUp, Modifiers: mods}}
+	case 57355:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyPageDown, Modifiers: mods}}
+	case 57356:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyHome, Modifiers: mods}}
+	case 57357:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyEnd, Modifiers: mods}}
+	case 57358:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyLeft, Modifiers: mods}}
+	case 57359:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyRight, Modifiers: mods}}
+	case 57360:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyUp, Modifiers: mods}}
+	case 57361:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyDown, Modifiers: mods}}
+	case 57362:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyF1, Modifiers: mods}}
+	case 57363:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyF2, Modifiers: mods}}
+	case 57364:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyF3, Modifiers: mods}}
+	case 57365:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyF4, Modifiers: mods}}
+	case 57366:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyF5, Modifiers: mods}}
+	case 57367:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyF6, Modifiers: mods}}
+	case 57368:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyF7, Modifiers: mods}}
+	case 57369:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyF8, Modifiers: mods}}
+	case 57370:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyF9, Modifiers: mods}}
+	case 57371:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyF10, Modifiers: mods}}
+	case 57372:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyF11, Modifiers: mods}}
+	case 57373:
+		return &Event{Type: EventKey, Key: &KeyEvent{Key: KeyF12, Modifiers: mods}}
+	}
+
+	// Printable character (or Ctrl+letter for codepoints 1-26)
+	r := rune(codepoint)
+	if r >= 0x20 && r != 0x7f {
+		// Printable Unicode character — return as rune with modifiers.
+		return &Event{Type: EventKey, Key: &KeyEvent{Rune: r, Modifiers: mods}}
+	}
+
+	// Control characters (1-26) — convert to Ctrl+letter
+	if codepoint >= 1 && codepoint <= 26 {
+		// Codepoint 1 = Ctrl+A, 2 = Ctrl+B, etc.
+		letter := rune('a' + codepoint - 1)
+		return &Event{Type: EventKey, Key: &KeyEvent{Rune: letter, Modifiers: mods | ModCtrl}}
+	}
+
+	return nil
+}
+
+// decodeKittyModifier converts a Kitty keyboard protocol modifier code to ModMask.
+// Kitty uses a direct bitmask: 1=Shift, 2=Alt, 4=Ctrl, 8=Super.
+// This is different from xterm's offset-by-one encoding.
+func decodeKittyModifier(code int) ModMask {
+	var mods ModMask
+	if code&1 != 0 {
+		mods |= ModShift
+	}
+	if code&2 != 0 {
+		mods |= ModAlt
+	}
+	if code&4 != 0 {
+		mods |= ModCtrl
+	}
+	return mods
 }
 
 // appendPasteCSI appends a raw CSI sequence to the paste buffer (BUG 3 fix).
