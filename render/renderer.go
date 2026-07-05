@@ -19,12 +19,13 @@ func init() {
 
 // Renderer implements double-buffer diff rendering.
 type Renderer struct {
-	tw      *term.Writer
-	front   *buffer.Buffer
-	back    *buffer.Buffer
-	width   int
-	height  int
-	runeBuf [4]byte // reusable buffer for rune-to-utf8 encoding
+	tw          *term.Writer
+	front       *buffer.Buffer
+	back        *buffer.Buffer
+	width       int
+	height      int
+	runeBuf     [4]byte // reusable buffer for rune-to-utf8 encoding
+	syncOutput  bool    // if true, wrap frame output in DCS sync sequences
 }
 
 // New creates a new Renderer.
@@ -106,8 +107,22 @@ func (r *Renderer) EndFrame() error {
 
 	r.tw.ResetStyle()
 
+	// Wrap output in DCS sync sequences if enabled.
+	// BSU (Begin Synchronized Update): ESC P = 1 s ESC \
+	// ESU (End Synchronized Update):   ESC P = 2 s ESC \
+	if r.syncOutput {
+		r.tw.WriteRaw([]byte{0x1b, 'P', '=', '1', 's', 0x1b, '\\'})
+	}
+
 	if err := r.tw.Flush(); err != nil {
 		return err
+	}
+
+	if r.syncOutput {
+		r.tw.WriteRaw([]byte{0x1b, 'P', '=', '2', 's', 0x1b, '\\'})
+		if err := r.tw.Flush(); err != nil {
+			return err
+		}
 	}
 
 	// Sync front buffer with back.
@@ -124,3 +139,16 @@ func (r *Renderer) Width() int { return r.width }
 
 // Height returns the current render height.
 func (r *Renderer) Height() int { return r.height }
+
+// SetSyncOutput enables or disables synchronized output (DCS sync).
+// When enabled, each EndFrame wraps its output in BSU/ESU sequences
+// to eliminate visual flicker on terminals that support it (Kitty,
+// WezTerm, Alacritty, foot, ghostty).
+func (r *Renderer) SetSyncOutput(enabled bool) {
+	r.syncOutput = enabled
+}
+
+// SyncOutput returns whether synchronized output is enabled.
+func (r *Renderer) SyncOutput() bool {
+	return r.syncOutput
+}

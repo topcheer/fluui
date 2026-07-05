@@ -47,6 +47,9 @@ type App struct {
 	// onQuit is called after the event loop exits, before terminal cleanup.
 	// Use this to stop streaming, flush state, etc.
 	onQuit func()
+
+	// title is the terminal window title (OSC 2).
+	title string
 }
 
 // New creates a new App and initializes the terminal.
@@ -142,6 +145,26 @@ func (a *App) OnFocus(fn func(focused bool)) {
 	a.onFocus = fn
 }
 
+// SetTitle sets the terminal window title (OSC 2).
+// The title is applied when Run() starts and restored on exit.
+// On terminals that don't support OSC 2, this is a no-op.
+func (a *App) SetTitle(title string) {
+	a.title = title
+}
+
+// Title returns the configured window title.
+func (a *App) Title() string {
+	return a.title
+}
+
+// SetSyncOutput enables or disables synchronized output in the renderer.
+// When enabled, frame updates are wrapped in DCS sync sequences to
+// eliminate visual flicker on supporting terminals (Kitty, WezTerm,
+// Alacritty, foot, ghostty).
+func (a *App) SetSyncOutput(enabled bool) {
+	a.renderer.SetSyncOutput(enabled)
+}
+
 // OnPaint sets the render callback. The provided function will draw
 // into the back buffer each frame.
 func (a *App) OnPaint(fn func(buf *buffer.Buffer)) {
@@ -158,6 +181,11 @@ func (a *App) MarkDirty() {
 // After the loop exits (via Quit, Ctrl+C, or signal), it calls onQuit
 // cleanup and restores the terminal.
 func (a *App) Run() error {
+	// Set window title if configured
+	if a.title != "" {
+		a.terminal.WriteRaw(term.SetWindowTitle(a.title))
+	}
+
 	// Set up render callback
 	a.loop.OnRender(func() bool {
 		a.renderer.BeginFrame()
@@ -187,6 +215,11 @@ func (a *App) Run() error {
 	// Cleanup: call onQuit callback (stop streaming, etc.)
 	if a.onQuit != nil {
 		a.onQuit()
+	}
+
+	// Restore window title
+	if a.title != "" {
+		a.terminal.WriteRaw(term.SetWindowTitle(""))
 	}
 
 	// Cleanup: restore terminal
