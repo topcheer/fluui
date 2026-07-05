@@ -84,6 +84,17 @@ func (r *Renderer) EndFrame() error {
 		if cell.Width == 0 {
 			continue
 		}
+
+		// OSC8 hyperlink: wrap linked cells in escape sequences so they are
+		// clickable in terminals that support it (Kitty, iTerm2, WezTerm,
+		// GNOME Terminal, etc.).
+		if cell.Link != nil {
+			// OSC8 start: ESC ] 8 ; <params> ; <url> ST
+			r.tw.WriteRaw([]byte{0x1b, ']', '8', ';', ';'})
+			r.tw.WriteString(cell.Link.URL)
+			r.tw.WriteRaw([]byte{0x1b, '\\'})
+		}
+
 		r.tw.MoveTo(op.X, op.Y)
 		style := buffer.Style{
 			Fg:    cell.Fg,
@@ -102,6 +113,11 @@ func (r *Renderer) EndFrame() error {
 			}
 		} else {
 			r.tw.WriteString(" ")
+		}
+
+		if cell.Link != nil {
+			// OSC8 end: ESC ] 8 ; ; ST
+			r.tw.WriteRaw([]byte{0x1b, ']', '8', ';', ';', 0x1b, '\\'})
 		}
 	}
 

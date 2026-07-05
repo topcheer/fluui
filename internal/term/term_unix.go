@@ -76,9 +76,10 @@ func Open() (*Terminal, error) {
 			"\x1b[?2004h" + // bracketed paste
 			"\x1b[?1006h" + // SGR mouse mode
 			"\x1b[?1002h" + // cell motion mouse tracking
-			"\x1b[?1004h" + // focus tracking
-			"\x1b[2J" + // clear screen
-			"\x1b[H", // cursor home
+		"\x1b[?1004h" + // focus tracking
+		"\x1b[>1u" + // Kitty keyboard protocol (disambiguate escape)
+		"\x1b[2J" + // clear screen
+		"\x1b[H", // cursor home
 	)
 
 	// Start resize detection.
@@ -100,12 +101,13 @@ func (t *Terminal) Close() error {
 
 	// Write cleanup sequences DIRECTLY to the underlying writer.
 	_, _ = t.w.Write([]byte(
+		"\x1b[<u" + // disable Kitty keyboard protocol
 		"\x1b[?1004l" + // disable focus tracking
-			"\x1b[?1002l" + // disable mouse tracking
-			"\x1b[?1006l" + // disable SGR mouse
-			"\x1b[?2004l" + // disable bracketed paste
-			"\x1b[?25h" + // show cursor
-			"\x1b[?1049l", // leave alt screen
+		"\x1b[?1002l" + // disable mouse tracking
+		"\x1b[?1006l" + // disable SGR mouse
+		"\x1b[?2004l" + // disable bracketed paste
+		"\x1b[?25h" + // show cursor
+		"\x1b[?1049l", // leave alt screen
 	))
 
 	t.mu.Unlock()
