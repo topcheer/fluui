@@ -47,6 +47,10 @@ type CodeBlock struct {
 
 	// theme for title bar styling
 	currentTheme *theme.Theme
+
+	// streaming state
+	streaming      bool // true while AI is streaming code into this block
+	streamingDirty bool // source changed since last rehighlight (for debounced highlight)
 }
 
 // NewCodeBlock creates a CodeBlock with the given language and source.
@@ -70,6 +74,44 @@ func (cb *CodeBlock) SetSource(source string) {
 	cb.source = source
 	cb.rehighlightLocked()
 	cb.scrollOffset = 0
+	cb.streamingDirty = false
+	cb.mu.Unlock()
+}
+
+// AppendSource appends incremental text and re-highlights.
+// This is optimized for streaming AI responses where code arrives token by token.
+// During streaming mode, the view auto-scrolls to show the latest content.
+func (cb *CodeBlock) AppendSource(delta string) {
+	cb.mu.Lock()
+	cb.source += delta
+	cb.rehighlightLocked()
+	// Auto-scroll to show latest content during streaming
+	maxScroll := cb.maxScrollOffsetLocked()
+	cb.scrollOffset = maxScroll
+	cb.mu.Unlock()
+}
+
+// SetStreaming enables or disables streaming mode.
+// When enabled, a blinking cursor indicator appears at the end of the code
+// and the view auto-scrolls to show new content as it arrives.
+func (cb *CodeBlock) SetStreaming(streaming bool) {
+	cb.mu.Lock()
+	cb.streaming = streaming
+	cb.mu.Unlock()
+}
+
+// IsStreaming returns whether the block is currently in streaming mode.
+func (cb *CodeBlock) IsStreaming() bool {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
+	return cb.streaming
+}
+
+// FinishStreaming marks the block as done streaming and performs a final re-highlight.
+func (cb *CodeBlock) FinishStreaming() {
+	cb.mu.Lock()
+	cb.streaming = false
+	cb.rehighlightLocked()
 	cb.mu.Unlock()
 }
 
@@ -309,6 +351,11 @@ func (cb *CodeBlock) Paint(buf *buffer.Buffer) {
 			buf.SetCell(c, row, buffer.Cell{Rune: ' '})
 		}
 	}
+
+	// Draw streaming cursor indicator at the end of code
+	if cb.streaming {
+		cb.paintStreamingCursorLocked(buf, bounds)
+	}
 }
 
 // --- internal helpers ---
@@ -426,6 +473,64 @@ func cellWidth(line []buffer.Cell) int {
 		}
 	}
 	return w
+}
+
+// paintStreamingCursorLocked draws a block cursor at the end of the code
+// to indicate active streaming. It appears as a solid filled cell.
+func (cb *CodeBlock) paintStreamingCursorLocked(buf *buffer.Buffer, bounds Rect) {
+	if len(cb.lines) == 0 {
+		// Place cursor at top-left of code area
+		gutterW := cb.gutterWidthLocked()
+		x := bounds.X + gutterW
+		y := bounds.Y
+		if cb.showTitle {
+			y++
+		}
+		if x < bounds.X+bounds.W && y < bounds.Y+bounds.H {
+			buf.SetCell(x, y, buffer.Cell{
+				Rune: ' ',
+				Fg:   buffer.RGB(0x28, 0x2A, 0x36),
+				Bg:   buffer.RGB(0xFF, 0x79, 0xC6), // pink cursor
+			})
+		}
+		return
+	}
+
+	// Position cursor after the last visible line
+	lastIdx := cb.scrollOffset + (bounds.H - 1)
+	if cb.showTitle {
+		lastIdx--
+	}
+	if lastIdx >= len(cb.lines) {
+		lastIdx = len(cb.lines) - 1
+	}
+
+	gutterW := cb.gutterWidthLocked()
+	codeX := bounds.X + gutterW
+
+	// Calculate Y position of the last line
+	y := bounds.Y + lastIdx - cb.scrollOffset
+	if cb.showTitle {
+		y++
+	}
+
+	// Calculate X position after last cell of the line
+	lastLine := cb.lines[lastIdx]
+	x := codeX + cellWidth(lastLine)
+
+	// Clamp to bounds
+	if x >= bounds.X+bounds.W {
+		x = bounds.X + bounds.W - 1
+	}
+	if y < bounds.Y || y >= bounds.Y+bounds.H {
+		return
+	}
+
+	buf.SetCell(x, y, buffer.Cell{
+		Rune: ' ',
+		Fg:   buffer.RGB(0x28, 0x2A, 0x36),
+		Bg:   buffer.RGB(0xFF, 0x79, 0xC6), // pink cursor
+	})
 }
 
 
