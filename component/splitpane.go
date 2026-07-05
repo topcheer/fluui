@@ -229,7 +229,7 @@ func (sp *SplitPane) EndDrag() {
 // button=1 means left click (start drag), button=0 means move, button=-1 means release.
 func (sp *SplitPane) HandleMouse(x, y, button int) bool {
 	sp.mu.Lock()
-	divPos := sp.dividerPos
+	divPos := sp.computeDividerPosLocked()
 	vert := sp.direction == SplitVertical
 	sp.mu.Unlock()
 
