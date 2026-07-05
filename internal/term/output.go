@@ -2,8 +2,8 @@ package term
 
 import (
 	"bytes"
-	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/topcheer/fluui/internal/buffer"
 )
@@ -26,7 +26,17 @@ func NewWriter(w io.Writer, profile ColorProfile) *Writer {
 
 // MoveTo moves the cursor to (x, y), 1-based.
 func (w *Writer) MoveTo(x, y int) {
-	fmt.Fprintf(&w.buf, "\x1b[%d;%dH", y+1, x+1)
+	// Format: ESC [ <y+1> ; <x+1> H
+	// Use strconv to avoid fmt.Fprintf allocations.
+	var num [20]byte
+	w.buf.WriteByte(0x1b)
+	w.buf.WriteByte('[')
+	n := strconv.AppendInt(num[:0], int64(y+1), 10)
+	w.buf.Write(n)
+	w.buf.WriteByte(';')
+	n = strconv.AppendInt(num[:0], int64(x+1), 10)
+	w.buf.Write(n)
+	w.buf.WriteByte('H')
 }
 
 // HideCursor hides the terminal cursor.
@@ -46,7 +56,10 @@ func (w *Writer) SetStyle(s buffer.Style) {
 	}
 	w.curStyle = s
 	w.styleSet = true
-	fmt.Fprintf(&w.buf, "\x1b[%sm", s.SGRSequence())
+	sgr := s.SGRSequence()
+	w.buf.WriteString("\x1b[")
+	w.buf.WriteString(sgr)
+	w.buf.WriteByte('m')
 }
 
 // ResetStyle resets to terminal defaults.

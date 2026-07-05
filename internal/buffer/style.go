@@ -1,5 +1,7 @@
 package buffer
 
+import "strings"
+
 // StyleFlags is a bitmask of text attributes.
 type StyleFlags uint8
 
@@ -46,41 +48,50 @@ func (s Style) Equal(o Style) bool {
 // SGRSequence returns the SGR (Select Graphic Rendition) parameter string
 // for this style, e.g. "1;38;2;255;128;0".
 func (s Style) SGRSequence() string {
-	var parts []string
+	var sb strings.Builder
+	sb.Grow(64) // pre-allocate: worst case is 7 flags + fg + bg ≈ 50 chars
+
+	first := true
+	addPart := func(p string) {
+		if p == "" {
+			return
+		}
+		if !first {
+			sb.WriteByte(';')
+		}
+		sb.WriteString(p)
+		first = false
+	}
 
 	if s.Flags&Bold != 0 {
-		parts = append(parts, "1")
+		addPart("1")
 	}
 	if s.Flags&Dim != 0 {
-		parts = append(parts, "2")
+		addPart("2")
 	}
 	if s.Flags&Italic != 0 {
-		parts = append(parts, "3")
+		addPart("3")
 	}
 	if s.Flags&Underline != 0 {
-		parts = append(parts, "4")
+		addPart("4")
 	}
 	if s.Flags&Blink != 0 {
-		parts = append(parts, "5")
+		addPart("5")
 	}
 	if s.Flags&Reverse != 0 {
-		parts = append(parts, "7")
+		addPart("7")
 	}
 	if s.Flags&Strikethrough != 0 {
-		parts = append(parts, "9")
+		addPart("9")
 	}
 
-	parts = append(parts, s.Fg.FGSequence())
-	parts = append(parts, s.Bg.BGSequence())
+	addPart(s.Fg.FGSequence())
+	addPart(s.Bg.BGSequence())
 
-	result := ""
-	for i, p := range parts {
-		if i > 0 {
-			result += ";"
-		}
-		result += p
+	if first {
+		return "0" // no style attributes, emit reset
 	}
-	return result
+	return sb.String()
 }
 
 // ResetSGR returns the ANSI reset sequence.
