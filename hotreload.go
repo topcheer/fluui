@@ -38,6 +38,9 @@ func (a *App) OnHotReload(fn func(changed []string)) {
 
 // SetWatchInterval sets the file polling interval.
 // Default is 500ms. Lower values provide faster feedback but use more CPU.
+// SetWatchInterval sets the debounce for file change callbacks.
+// Lower values provide faster feedback but may fire more frequently.
+// Default debounce is 100ms.
 func (a *App) SetWatchInterval(d time.Duration) {
 	a.initWatcher()
 	a.watcher.SetDebounce(d)
