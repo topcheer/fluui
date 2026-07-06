@@ -3,6 +3,7 @@ package markdown
 import (
 	"fmt"
 	"strings"
+	"unsafe"
 
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/yuin/goldmark"
@@ -67,8 +68,11 @@ func (r *MarkdownRenderer) SetHighlighter(h *Highlighter) {
 
 // Render parses the markdown source and returns a slice of rendered Blocks.
 func (r *MarkdownRenderer) Render(source string) ([]*Block, error) {
-	// Convert source to []byte ONCE — avoid repeated string→bytes copy per block.
-	srcBytes := []byte(source)
+	// Use unsafe to get a read-only byte slice that shares the string's
+	// backing array, avoiding a full copy of the source (56KB+ for large docs).
+	// This is safe because goldmark's parser and all renderBlock methods only
+	// READ from source bytes — they never modify them.
+	srcBytes := unsafe.Slice(unsafe.StringData(source), len(source))
 	reader := text.NewReader(srcBytes)
 	doc := r.md.Parser().Parse(reader)
 
