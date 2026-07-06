@@ -113,7 +113,7 @@ func TestToolResultMeasureCollapsed(t *testing.T) {
 	}
 
 	size := b.Measure(component.Bounded(80, 100))
-	wantH := 5 + 2 // maxPreview + 2 (borders)
+	wantH := 5 + 2 + 1 // maxPreview + 2 borders + 1 hint line
 	if size.H != wantH {
 		t.Errorf("Measure (collapsed) H = %d, want %d", size.H, wantH)
 	}
