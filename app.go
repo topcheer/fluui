@@ -9,6 +9,7 @@ import (
 
 	"github.com/topcheer/fluui/event"
 	"github.com/topcheer/fluui/internal/buffer"
+	"github.com/topcheer/fluui/internal/hotreload"
 	"github.com/topcheer/fluui/internal/term"
 	"github.com/topcheer/fluui/render"
 )
@@ -50,6 +51,9 @@ type App struct {
 
 	// title is the terminal window title (OSC 2).
 	title string
+
+	// watcher is the hot reload file watcher (lazily initialized).
+	watcher *hotreload.Watcher
 }
 
 // New creates a new App and initializes the terminal.
@@ -81,8 +85,9 @@ func New() (*App, error) {
 	return app, nil
 }
 
-// Close restores the terminal.
+// Close restores the terminal and stops any running watchers.
 func (a *App) Close() error {
+	a.StopWatching()
 	return a.terminal.Close()
 }
 
