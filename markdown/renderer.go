@@ -421,7 +421,17 @@ func (r *MarkdownRenderer) renderTable(n *extast.Table, source []byte) *Block {
 
 // makeTableBorder generates a horizontal border line for a table.
 func (r *MarkdownRenderer) makeTableBorder(left, mid, right rune, colWidths []int, style buffer.Style) []buffer.Cell {
-	var cells []buffer.Cell
+	// Pre-compute exact capacity: left border + (colWidth+2 padding) per column
+	// + separator between columns + right border.
+	totalW := 2 // left + right
+	for _, w := range colWidths {
+		totalW += w + 2 // content + padding
+	}
+	totalW += len(colWidths) - 1 // separators
+	if totalW < 1 {
+		totalW = 1
+	}
+	cells := make([]buffer.Cell, 0, totalW)
 	cells = append(cells, buffer.Cell{Rune: left, Width: 1, Fg: style.Fg})
 	for i, w := range colWidths {
 		for j := 0; j < w+2; j++ {
@@ -524,8 +534,23 @@ func (r *MarkdownRenderer) renderThematicBreak() *Block {
 
 // textToCells converts a string to a slice of Cells with uniform style.
 func (r *MarkdownRenderer) textToCells(s string, fg buffer.Color, flags buffer.StyleFlags) []buffer.Cell {
-	// Count runes first to avoid over-allocation for multi-byte UTF-8.
-	// len(s) over-allocates for non-ASCII text (e.g., 4x for emoji).
+	// Fast path: pure ASCII text (the common case for AI output).
+	// For ASCII, len(s) == rune count and every rune has width 1,
+	// so we skip the counting loop and RuneWidth calls entirely.
+	if isAllASCII(s) {
+		cells := make([]buffer.Cell, len(s))
+		for i := 0; i < len(s); i++ {
+			cells[i] = buffer.Cell{
+				Rune:  rune(s[i]),
+				Width: 1,
+				Fg:    fg,
+				Flags: flags,
+			}
+		}
+		return cells
+	}
+
+	// Non-ASCII path: count runes for exact capacity, then fill.
 	runeCount := 0
 	for range s {
 		runeCount++
@@ -540,6 +565,17 @@ func (r *MarkdownRenderer) textToCells(s string, fg buffer.Color, flags buffer.S
 		})
 	}
 	return cells
+}
+
+// isAllASCII returns true if every byte in s is < 0x80.
+// This is inlined by the compiler and vectorized on most architectures.
+func isAllASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
+			return false
+		}
+	}
+	return true
 }
 
 // wrapCells wraps a flat cell slice into lines of at most width display columns.

@@ -8,6 +8,13 @@ package buffer
 // This is a simplified implementation based on Unicode ranges.
 // For production, consider embedding a full wcwidth table.
 func RuneWidth(r rune) int {
+	// Fast path: printable ASCII (0x20-0x7E) covers 95%+ of typical text.
+	// This single comparison eliminates 4 range checks + 2 function calls
+	// for the common case.
+	if r >= 0x20 && r < 0x7f {
+		return 1
+	}
+
 	switch {
 	case r == 0:
 		return 0
