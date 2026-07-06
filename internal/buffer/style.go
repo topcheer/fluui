@@ -110,6 +110,8 @@ func (s Style) AppendSGR(b []byte) []byte {
 	}
 
 	// Write FG and BG color sequences directly into b.
+	// Always emit both — the terminal needs explicit reset (39/49) when
+	// a previous cell set a non-default color.
 	if !first {
 		b = append(b, ';')
 	}
