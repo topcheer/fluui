@@ -56,6 +56,13 @@ func (w *Writer) SetStyle(s buffer.Style) {
 	}
 	w.curStyle = s
 	w.styleSet = true
+	// Fast path: fully default style (no flags, no colors) — emit reset.
+	// ESC[0m (4 bytes) is shorter than ESC[39;49m (8 bytes) and resets all
+	// attributes in one shot.
+	if s.Flags == 0 && s.Fg.Type == buffer.ColorNone && s.Bg.Type == buffer.ColorNone {
+		w.buf.WriteString(buffer.ResetSGR)
+		return
+	}
 	// Write SGR escape sequence directly into buf using byte-level AppendSGR
 	// to avoid the intermediate string allocation from SGRSequence().
 	w.buf.WriteByte(0x1b)
