@@ -11,6 +11,18 @@ import (
 // to avoid per-cell string(rune) allocation in the hot render path.
 var asciiChars [128]string
 
+// Pre-computed byte sequences for OSC8 hyperlinks and sync output.
+// These are used in EndFrame hot loop; pre-computing avoids repeated
+// []byte literal construction (even though escape analysis usually handles
+// them, this is guaranteed zero-allocation).
+var (
+	osc8StartPrefix = []byte{0x1b, ']', '8', ';', ';'}
+	osc8ST          = []byte{0x1b, '\\'}
+	osc8End         = []byte{0x1b, ']', '8', ';', ';', 0x1b, '\\'}
+	syncBegin       = []byte{0x1b, 'P', '=', '1', 's', 0x1b, '\\'}
+	syncEnd         = []byte{0x1b, 'P', '=', '2', 's', 0x1b, '\\'}
+)
+
 func init() {
 	for i := 0; i < 128; i++ {
 		asciiChars[i] = string(rune(i))
@@ -92,9 +104,9 @@ func (r *Renderer) EndFrame() error {
 		// GNOME Terminal, etc.).
 		if cell.Link != nil {
 			// OSC8 start: ESC ] 8 ; <params> ; <url> ST
-			r.tw.WriteRaw([]byte{0x1b, ']', '8', ';', ';'})
+			r.tw.WriteRaw(osc8StartPrefix)
 			r.tw.WriteString(cell.Link.URL)
-			r.tw.WriteRaw([]byte{0x1b, '\\'})
+			r.tw.WriteRaw(osc8ST)
 		}
 
 		r.tw.MoveTo(op.X, op.Y)
@@ -119,7 +131,7 @@ func (r *Renderer) EndFrame() error {
 
 		if cell.Link != nil {
 			// OSC8 end: ESC ] 8 ; ; ST
-			r.tw.WriteRaw([]byte{0x1b, ']', '8', ';', ';', 0x1b, '\\'})
+			r.tw.WriteRaw(osc8End)
 		}
 	}
 
@@ -129,7 +141,7 @@ func (r *Renderer) EndFrame() error {
 	// BSU (Begin Synchronized Update): ESC P = 1 s ESC \
 	// ESU (End Synchronized Update):   ESC P = 2 s ESC \
 	if r.syncOutput {
-		r.tw.WriteRaw([]byte{0x1b, 'P', '=', '1', 's', 0x1b, '\\'})
+			r.tw.WriteRaw(syncBegin)
 	}
 
 	if err := r.tw.Flush(); err != nil {
@@ -137,7 +149,7 @@ func (r *Renderer) EndFrame() error {
 	}
 
 	if r.syncOutput {
-		r.tw.WriteRaw([]byte{0x1b, 'P', '=', '2', 's', 0x1b, '\\'})
+		r.tw.WriteRaw(syncEnd)
 		if err := r.tw.Flush(); err != nil {
 			return err
 		}
