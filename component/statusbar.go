@@ -60,11 +60,14 @@ func DefaultStatusBarStyle() StatusBarStyle {
 // It implements the Component interface and is safe for concurrent use.
 type StatusBar struct {
 	BaseComponent
-	mu     sync.RWMutex
-	items  []StatusItem
-	style  StatusBarStyle
-	sep    string // separator between items within a segment
-	height int    // desired height (default 1)
+	mu          sync.RWMutex
+	items       []StatusItem
+	style       StatusBarStyle
+	sep         string // separator between items within a segment
+	height      int    // desired height (default 1)
+	cachedLeft  string // pre-computed left segment text (avoids allocs in Paint)
+	cachedCenter string
+	cachedRight string
 }
 
 // NewStatusBar creates a StatusBar with default styling.
@@ -86,6 +89,7 @@ func (sb *StatusBar) AddItem(item StatusItem) {
 	sb.mu.Lock()
 	defer sb.mu.Unlock()
 	sb.items = append(sb.items, item)
+	sb.recomputeTextsLocked()
 }
 
 // AddLeft is a convenience for adding a left-aligned item.
@@ -110,6 +114,7 @@ func (sb *StatusBar) RemoveItem(id string) bool {
 	for i, it := range sb.items {
 		if it.ID == id {
 			sb.items = append(sb.items[:i], sb.items[i+1:]...)
+			sb.recomputeTextsLocked()
 			return true
 		}
 	}
@@ -124,11 +129,13 @@ func (sb *StatusBar) SetItemText(id, text string) {
 	for i := range sb.items {
 		if sb.items[i].ID == id {
 			sb.items[i].Text = text
+			sb.recomputeTextsLocked()
 			return
 		}
 	}
 	// Not found — add as left-aligned.
 	sb.items = append(sb.items, StatusItem{ID: id, Text: text, Align: StatusAlignLeft})
+	sb.recomputeTextsLocked()
 }
 
 // SetItemStyle updates the style of the item with the given ID.
@@ -163,6 +170,7 @@ func (sb *StatusBar) Clear() {
 	sb.mu.Lock()
 	defer sb.mu.Unlock()
 	sb.items = sb.items[:0]
+	sb.recomputeTextsLocked()
 }
 
 // --- Configuration ---
@@ -186,6 +194,7 @@ func (sb *StatusBar) SetSeparator(sep string) {
 	sb.mu.Lock()
 	defer sb.mu.Unlock()
 	sb.sep = sep
+	sb.recomputeTextsLocked()
 }
 
 // Separator returns the current separator string.
@@ -207,35 +216,37 @@ func (sb *StatusBar) SetHeight(h int) {
 
 // --- Helpers (must hold lock) ---
 
-// leftTextLocked returns the concatenated text of left-aligned items.
+// recomputeTextsLocked rebuilds cached segment texts. Must hold Lock.
+func (sb *StatusBar) recomputeTextsLocked() {
+	sb.cachedLeft = sb.buildTextLocked(StatusAlignLeft)
+	sb.cachedCenter = sb.buildTextLocked(StatusAlignCenter)
+	sb.cachedRight = sb.buildTextLocked(StatusAlignRight)
+}
+
+// buildTextLocked joins texts for items matching the given alignment. Must hold Lock.
+func (sb *StatusBar) buildTextLocked(align StatusItemAlignment) string {
+	var parts []string
+	for _, it := range sb.items {
+		if it.Align == align {
+			parts = append(parts, it.Text)
+		}
+	}
+	return strings.Join(parts, sb.sep)
+}
+
+// leftTextLocked returns the cached left text. Must hold at least RLock.
 func (sb *StatusBar) leftTextLocked() string {
-	var parts []string
-	for _, it := range sb.items {
-		if it.Align == StatusAlignLeft {
-			parts = append(parts, it.Text)
-		}
-	}
-	return strings.Join(parts, sb.sep)
+	return sb.cachedLeft
 }
 
+// centerTextLocked returns the cached center text. Must hold at least RLock.
 func (sb *StatusBar) centerTextLocked() string {
-	var parts []string
-	for _, it := range sb.items {
-		if it.Align == StatusAlignCenter {
-			parts = append(parts, it.Text)
-		}
-	}
-	return strings.Join(parts, sb.sep)
+	return sb.cachedCenter
 }
 
+// rightTextLocked returns the cached right text. Must hold at least RLock.
 func (sb *StatusBar) rightTextLocked() string {
-	var parts []string
-	for _, it := range sb.items {
-		if it.Align == StatusAlignRight {
-			parts = append(parts, it.Text)
-		}
-	}
-	return strings.Join(parts, sb.sep)
+	return sb.cachedRight
 }
 
 // LeftItems returns the concatenated text of all left-aligned items.

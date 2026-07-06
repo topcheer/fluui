@@ -1,7 +1,7 @@
 package component
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -283,5 +283,15 @@ func (p *ProgressBar) paintIndeterminate(buf *buffer.Buffer, x, y, w int) {
 
 // formatPercent returns a right-justified percentage string like " 45%".
 func formatPercent(progress float64) string {
-	return fmt.Sprintf("%3.0f%%", progress)
+	pct := int(progress)
+	if pct < 0 {
+		pct = 0
+	}
+	if pct > 100 {
+		pct = 100
+	}
+	var buf [4]byte
+	n := strconv.AppendInt(buf[:0], int64(pct), 10)
+	n = append(n, '%')
+	return string(n)
 }
