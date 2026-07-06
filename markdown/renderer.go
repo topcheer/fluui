@@ -584,72 +584,61 @@ func isAllASCII(s string) bool {
 
 // wrapCells wraps a flat cell slice into lines of at most width display columns.
 //
-// Slab allocation strategy: instead of allocating a separate []Cell for every
-// wrapped line (~700 allocs for 56K chars at 80 cols), all wrapped cells are
-// collected into a single contiguous "slab" and line slices are created as
-// cap-limited sub-slices of that slab. This reduces total allocations from
-// ~N (one per line) to just 4 (allCells, lineLengths, lineBuf, lines).
+// Zero-copy strategy: instead of allocating a separate slab and copying cells,
+// we create cap-limited sub-slices directly into the input cells slice. This
+// eliminates the biggest single allocation in the render pipeline (~2.7MB for
+// 56K chars).
 //
-// Cap-limited slicing ([offset:end:end]) ensures that appending to any
-// returned line triggers a fresh backing array (Go copy-on-write), preserving
-// correctness even if callers mutate individual lines.
+// Cap-limited slicing ([start:end:end]) ensures that appending to any returned
+// line triggers a fresh backing array (Go copy-on-write), preserving correctness
+// even if callers mutate individual lines.
 func (r *MarkdownRenderer) wrapCells(cells []buffer.Cell, width int) [][]buffer.Cell {
 	if width <= 0 {
 		return [][]buffer.Cell{cells}
 	}
+	if len(cells) == 0 {
+		return [][]buffer.Cell{{}}
+	}
 
-	// Single slab for all wrapped cell data. Wrapping can only remove cells
-	// (spaces at break points), so len(cells) is an upper bound.
-	allCells := make([]buffer.Cell, 0, len(cells))
-	lineLengths := make([]int, 0, len(cells)/width+1)
+	// Estimate line count for pre-allocation (avoids grow-and-copy).
+	estLines := len(cells)/width + 1
+	lines := make([][]buffer.Cell, 0, estLines)
 
-	lineBuf := make([]buffer.Cell, 0, width)
-	curWidth := 0
+	lineStart := 0 // start index in cells[] for the current line
+	curWidth := 0   // display width of current line so far
 
-	for _, c := range cells {
+	for i := 0; i < len(cells); i++ {
+		c := &cells[i]
 		if c.Width == 0 {
-			lineBuf = append(lineBuf, c)
-			continue
+			continue // skip 0-width cells (combining marks, wide-char padding)
 		}
 
 		if curWidth+c.Width > width && curWidth > 0 {
-			if spaceIdx, afterSpaceW := lastSpaceCellAndWidth(lineBuf); spaceIdx >= 0 {
-					// Word-wrap: append content up to space into the slab.
-					allCells = append(allCells, lineBuf[:spaceIdx]...)
-					lineLengths = append(lineLengths, spaceIdx)
-					// Move remaining content to front of lineBuf (reuse buffer).
-					remaining := lineBuf[spaceIdx+1:]
-					copy(lineBuf, remaining)
-					lineBuf = lineBuf[:len(remaining)]
-					curWidth = afterSpaceW // width pre-computed by lastSpaceCellAndWidth
+			// Need to wrap before this cell.
+			if spaceIdx, afterSpaceW := lastSpaceCellAndWidth(cells[lineStart:i]); spaceIdx >= 0 {
+				// Word-wrap: line ends before the space.
+				end := lineStart + spaceIdx
+				lines = append(lines, cells[lineStart:end:end])
+				lineStart = end + 1 // skip the space cell
+				curWidth = afterSpaceW
 			} else {
 				// Hard break: no space found.
-				allCells = append(allCells, lineBuf...)
-				lineLengths = append(lineLengths, len(lineBuf))
-				lineBuf = lineBuf[:0]
+				lines = append(lines, cells[lineStart:i:i])
+				lineStart = i
 				curWidth = 0
 			}
 		}
-
-		lineBuf = append(lineBuf, c)
 		curWidth += c.Width
 	}
 
-	if len(lineBuf) > 0 {
-		allCells = append(allCells, lineBuf...)
-		lineLengths = append(lineLengths, len(lineBuf))
-	}
-	if len(lineLengths) == 0 {
-		return [][]buffer.Cell{allCells[:0]}
+	// Final line: remaining cells.
+	if lineStart < len(cells) {
+		end := len(cells)
+		lines = append(lines, cells[lineStart:end:end])
 	}
 
-	// Create cap-limited sub-slices into the single allCells allocation.
-	lines := make([][]buffer.Cell, len(lineLengths))
-	offset := 0
-	for i, l := range lineLengths {
-		end := offset + l
-		lines[i] = allCells[offset:end:end]
-		offset = end
+	if len(lines) == 0 {
+		return [][]buffer.Cell{cells}
 	}
 	return lines
 }
