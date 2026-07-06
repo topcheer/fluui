@@ -135,18 +135,13 @@ func (lm *LinkManager) Clear() {
 	lm.mu.Unlock()
 }
 
-// DetectLinks scans a line of text and returns all URL ranges found.
-// The lineIdx parameter tags each range with its source line index.
-// The yOffset parameter sets the Y coordinate for each range.
-//
-// This implementation uses a hand-rolled byte scanner instead of regexp,
-// delivering 3-5x better performance with identical results.
-func DetectLinks(text string, lineIdx, yOffset int) []LinkRange {
+// detectLinksInto scans a line of text for URLs and appends matches to dst.
+// It does not allocate a new slice — callers pass their own backing array.
+func detectLinksInto(text string, lineIdx, yOffset int, dst []LinkRange) []LinkRange {
 	n := len(text)
 	if n == 0 {
-		return nil
+		return dst
 	}
-	var ranges []LinkRange
 	i := 0
 
 	for i < n {
@@ -191,10 +186,7 @@ func DetectLinks(text string, lineIdx, yOffset int) []LinkRange {
 			// This is the only string allocation per www. link.
 			displayURL = "https://" + url
 		}
-		if ranges == nil {
-			ranges = make([]LinkRange, 0, 4)
-		}
-		ranges = append(ranges, LinkRange{
+		dst = append(dst, LinkRange{
 			URL:     displayURL,
 			Text:    url,
 			StartX:  i,
@@ -205,7 +197,21 @@ func DetectLinks(text string, lineIdx, yOffset int) []LinkRange {
 		i = end
 	}
 
-	return ranges
+	return dst
+}
+
+// DetectLinks scans a line of text and returns all URL ranges found.
+// The lineIdx parameter tags each range with its source line index.
+// The yOffset parameter sets the Y coordinate for each range.
+//
+// This implementation uses a hand-rolled byte scanner instead of regexp,
+// delivering 3-5x better performance with identical results.
+func DetectLinks(text string, lineIdx, yOffset int) []LinkRange {
+	result := detectLinksInto(text, lineIdx, yOffset, make([]LinkRange, 0, 4))
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
 
 // ScanText scans multiple lines of text for URLs and stores the results.
@@ -213,6 +219,8 @@ func DetectLinks(text string, lineIdx, yOffset int) []LinkRange {
 //
 // Optimization: reuses the existing links slice capacity when possible,
 // avoiding a fresh allocation when the slice already has enough room.
+// detectLinksInto appends directly into the shared slice, eliminating
+// per-line allocations (100 lines = 1 alloc instead of 100).
 func (lm *LinkManager) ScanText(lines []string) {
 	// Reuse existing slice capacity, falling back to a modest pre-allocation.
 	// This helps repeated calls (same LinkManager, growing/shrinking text)
@@ -222,10 +230,7 @@ func (lm *LinkManager) ScanText(lines []string) {
 		detected = make([]LinkRange, 0, 8)
 	}
 	for i, line := range lines {
-		found := DetectLinks(line, i, i)
-		if len(found) > 0 {
-			detected = append(detected, found...)
-		}
+		detected = detectLinksInto(line, i, i, detected)
 	}
 	lm.mu.Lock()
 	lm.links = detected

@@ -129,7 +129,15 @@ func (sb *StatusBar) SetItemText(id, text string) {
 	for i := range sb.items {
 		if sb.items[i].ID == id {
 			sb.items[i].Text = text
-			sb.recomputeTextsLocked()
+			// Only recompute the affected alignment instead of all three.
+			switch sb.items[i].Align {
+			case StatusAlignLeft:
+				sb.cachedLeft = sb.buildTextLocked(StatusAlignLeft)
+			case StatusAlignCenter:
+				sb.cachedCenter = sb.buildTextLocked(StatusAlignCenter)
+			case StatusAlignRight:
+				sb.cachedRight = sb.buildTextLocked(StatusAlignRight)
+			}
 			return
 		}
 	}
