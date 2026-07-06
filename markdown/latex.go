@@ -260,15 +260,21 @@ func subscriptRune(r rune) (rune, bool) {
 // RenderLatexMath converts a LaTeX math expression to Unicode text.
 // Returns the Unicode representation of the math expression.
 func RenderLatexMath(latex string) string {
-	p := &latexParser{input: latex}
 	var result strings.Builder
 	result.Grow(len(latex) * 2)
+	renderLatexToBuilder(latex, &result)
+	return result.String()
+}
+
+// renderLatexToBuilder parses a LaTeX math expression and writes the Unicode
+// result directly into the provided builder. This avoids the intermediate
+// string allocation when called from RenderInlineMath.
+func renderLatexToBuilder(latex string, result *strings.Builder) {
+	p := &latexParser{input: latex}
 
 	for !p.atEnd() {
-		p.consume(&result)
+		p.consume(result)
 	}
-
-	return result.String()
 }
 
 // latexParser is a simple state machine for parsing LaTeX math.
@@ -685,7 +691,7 @@ func RenderInlineMath(text string) string {
 			}
 			if end > 0 {
 				latex := text[i+1 : end]
-				result.WriteString(RenderLatexMath(latex))
+				renderLatexToBuilder(latex, &result)
 				i = end + 1
 				continue
 			}
@@ -696,7 +702,7 @@ func RenderInlineMath(text string) string {
 			end := strings.Index(text[i+2:], "\\)")
 			if end >= 0 {
 				latex := text[i+2 : i+2+end]
-				result.WriteString(RenderLatexMath(latex))
+				renderLatexToBuilder(latex, &result)
 				i = i + 2 + end + 2
 				continue
 			}
