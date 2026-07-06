@@ -579,15 +579,26 @@ func isAllASCII(s string) bool {
 }
 
 // wrapCells wraps a flat cell slice into lines of at most width display columns.
-// Uses a reusable line buffer to minimize allocations: each line produces exactly
-// one heap allocation (the copy into lines), instead of 4-8 from append growth.
+//
+// Slab allocation strategy: instead of allocating a separate []Cell for every
+// wrapped line (~700 allocs for 56K chars at 80 cols), all wrapped cells are
+// collected into a single contiguous "slab" and line slices are created as
+// cap-limited sub-slices of that slab. This reduces total allocations from
+// ~N (one per line) to just 4 (allCells, lineLengths, lineBuf, lines).
+//
+// Cap-limited slicing ([offset:end:end]) ensures that appending to any
+// returned line triggers a fresh backing array (Go copy-on-write), preserving
+// correctness even if callers mutate individual lines.
 func (r *MarkdownRenderer) wrapCells(cells []buffer.Cell, width int) [][]buffer.Cell {
 	if width <= 0 {
 		return [][]buffer.Cell{cells}
 	}
-	lines := make([][]buffer.Cell, 0, len(cells)/width+1)
-	// Pre-allocate line buffer with width capacity — lines never exceed width
-	// columns, so this buffer never needs to grow.
+
+	// Single slab for all wrapped cell data. Wrapping can only remove cells
+	// (spaces at break points), so len(cells) is an upper bound.
+	allCells := make([]buffer.Cell, 0, len(cells))
+	lineLengths := make([]int, 0, len(cells)/width+1)
+
 	lineBuf := make([]buffer.Cell, 0, width)
 	curWidth := 0
 
@@ -599,10 +610,9 @@ func (r *MarkdownRenderer) wrapCells(cells []buffer.Cell, width int) [][]buffer.
 
 		if curWidth+c.Width > width && curWidth > 0 {
 			if spaceIdx := lastSpaceCell(lineBuf); spaceIdx >= 0 {
-				// Word-wrap: copy content up to space into a fresh slice.
-				line := make([]buffer.Cell, spaceIdx)
-				copy(line, lineBuf[:spaceIdx])
-				lines = append(lines, line)
+				// Word-wrap: append content up to space into the slab.
+				allCells = append(allCells, lineBuf[:spaceIdx]...)
+				lineLengths = append(lineLengths, spaceIdx)
 				// Move remaining content to front of lineBuf (reuse buffer).
 				remaining := lineBuf[spaceIdx+1:]
 				copy(lineBuf, remaining)
@@ -610,9 +620,8 @@ func (r *MarkdownRenderer) wrapCells(cells []buffer.Cell, width int) [][]buffer.
 				curWidth = cellLineWidth(lineBuf)
 			} else {
 				// Hard break: no space found.
-				line := make([]buffer.Cell, len(lineBuf))
-				copy(line, lineBuf)
-				lines = append(lines, line)
+				allCells = append(allCells, lineBuf...)
+				lineLengths = append(lineLengths, len(lineBuf))
 				lineBuf = lineBuf[:0]
 				curWidth = 0
 			}
@@ -623,13 +632,20 @@ func (r *MarkdownRenderer) wrapCells(cells []buffer.Cell, width int) [][]buffer.
 	}
 
 	if len(lineBuf) > 0 {
-		// Copy final line into its own slice.
-		line := make([]buffer.Cell, len(lineBuf))
-		copy(line, lineBuf)
-		lines = append(lines, line)
+		allCells = append(allCells, lineBuf...)
+		lineLengths = append(lineLengths, len(lineBuf))
 	}
-	if len(lines) == 0 {
-		lines = append(lines, []buffer.Cell{})
+	if len(lineLengths) == 0 {
+		return [][]buffer.Cell{allCells[:0]}
+	}
+
+	// Create cap-limited sub-slices into the single allCells allocation.
+	lines := make([][]buffer.Cell, len(lineLengths))
+	offset := 0
+	for i, l := range lineLengths {
+		end := offset + l
+		lines[i] = allCells[offset:end:end]
+		offset = end
 	}
 	return lines
 }
