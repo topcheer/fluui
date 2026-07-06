@@ -69,6 +69,29 @@ func (b *Buffer) GetCell(x, y int) Cell {
 // DrawText writes a string starting at (x, y) with the given style.
 // Returns the x coordinate after the last character.
 func (b *Buffer) DrawText(x, y int, text string, style Style) int {
+	// ASCII fast path: for pure ASCII text, every byte is one cell of
+	// width 1. We skip RuneWidth calls, wide-char padding, and the per-cell
+	// SetCell bounds check by computing the slice range directly.
+	if y >= 0 && y < b.Height && x < b.Width && isAllASCIIBytes(text) {
+		rowBase := y * b.Width
+		maxX := b.Width
+		for i := 0; i < len(text); i++ {
+			if x >= maxX {
+				break
+			}
+			b.Cells[rowBase+x] = Cell{
+				Rune:  rune(text[i]),
+				Width: 1,
+				Fg:    style.Fg,
+				Bg:    style.Bg,
+				Flags: style.Flags,
+			}
+			x++
+		}
+		return x
+	}
+
+	// Non-ASCII or edge-case path: full rune-width logic.
 	for _, r := range text {
 		w := RuneWidth(r)
 		if x >= b.Width {
@@ -96,9 +119,8 @@ func (b *Buffer) DrawTextClamped(x, y int, text string, style Style) int {
 	if maxW <= 0 {
 		return x
 	}
-	cells := []rune(text)
 	curW := 0
-	for _, r := range cells {
+	for _, r := range text {
 		w := RuneWidth(r)
 		if curW+w > maxW {
 			break
@@ -239,4 +261,15 @@ func DiffInto(front, back *Buffer, base []DiffOp) []DiffOp {
 		}
 	}
 	return ops
+}
+
+// isAllASCIIBytes returns true if every byte in s is < 0x80.
+// This is inlined by the compiler and used for DrawText fast path.
+func isAllASCIIBytes(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
+			return false
+		}
+	}
+	return true
 }
