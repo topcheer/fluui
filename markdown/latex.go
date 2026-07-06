@@ -626,6 +626,13 @@ func HasInlineMath(text string) bool {
 
 // findInlineMath returns the index of the first $ that starts inline math, or -1.
 func findInlineMath(text string) int {
+	// Fast rejection: if text contains neither '$' nor '\(' (actually just '\'),
+	// there can't be any inline math. strings.IndexByte uses SIMD/optimized search.
+	dollarIdx := strings.IndexByte(text, '$')
+	backslashIdx := strings.IndexByte(text, '\\')
+	if dollarIdx < 0 && backslashIdx < 0 {
+		return -1
+	}
 	for i := 0; i < len(text); i++ {
 		if text[i] == '$' {
 			// Check it's not \$ (escaped)
