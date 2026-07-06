@@ -609,15 +609,15 @@ func (r *MarkdownRenderer) wrapCells(cells []buffer.Cell, width int) [][]buffer.
 		}
 
 		if curWidth+c.Width > width && curWidth > 0 {
-			if spaceIdx := lastSpaceCell(lineBuf); spaceIdx >= 0 {
-				// Word-wrap: append content up to space into the slab.
-				allCells = append(allCells, lineBuf[:spaceIdx]...)
-				lineLengths = append(lineLengths, spaceIdx)
-				// Move remaining content to front of lineBuf (reuse buffer).
-				remaining := lineBuf[spaceIdx+1:]
-				copy(lineBuf, remaining)
-				lineBuf = lineBuf[:len(remaining)]
-				curWidth = cellLineWidth(lineBuf)
+			if spaceIdx, afterSpaceW := lastSpaceCellAndWidth(lineBuf); spaceIdx >= 0 {
+					// Word-wrap: append content up to space into the slab.
+					allCells = append(allCells, lineBuf[:spaceIdx]...)
+					lineLengths = append(lineLengths, spaceIdx)
+					// Move remaining content to front of lineBuf (reuse buffer).
+					remaining := lineBuf[spaceIdx+1:]
+					copy(lineBuf, remaining)
+					lineBuf = lineBuf[:len(remaining)]
+					curWidth = afterSpaceW // width pre-computed by lastSpaceCellAndWidth
 			} else {
 				// Hard break: no space found.
 				allCells = append(allCells, lineBuf...)
@@ -650,13 +650,20 @@ func (r *MarkdownRenderer) wrapCells(cells []buffer.Cell, width int) [][]buffer.
 	return lines
 }
 
-func lastSpaceCell(cells []buffer.Cell) int {
+// lastSpaceCellAndWidth finds the last space cell and computes the total width
+// of all cells after it in a single backward pass, avoiding a separate
+// cellLineWidth call after word-wrap.
+func lastSpaceCellAndWidth(cells []buffer.Cell) (int, int) {
+	// Scan backward to find the last space while accumulating width of cells
+	// encountered so far (these are the cells after the space).
+	afterWidth := 0
 	for i := len(cells) - 1; i >= 0; i-- {
 		if cells[i].Rune == ' ' {
-			return i
+			return i, afterWidth
 		}
+		afterWidth += cells[i].Width
 	}
-	return -1
+	return -1, 0
 }
 
 func cellLineWidth(cells []buffer.Cell) int {

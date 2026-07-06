@@ -153,9 +153,9 @@ func TestP25_LastSpaceCellNotFound(t *testing.T) {
 		buffer.NewCell('A', buffer.Style{}),
 		buffer.NewCell('B', buffer.Style{}),
 	}
-	idx := lastSpaceCell(cells)
+	idx, _ := lastSpaceCellAndWidth(cells)
 	if idx != -1 {
-		t.Errorf("lastSpaceCell = %d, want -1 (no space)", idx)
+		t.Errorf("lastSpaceCellAndWidth = %d, want -1 (no space)", idx)
 	}
 }
 
@@ -165,9 +165,12 @@ func TestP25_LastSpaceCellFound(t *testing.T) {
 		buffer.NewCell(' ', buffer.Style{}),
 		buffer.NewCell('B', buffer.Style{}),
 	}
-	idx := lastSpaceCell(cells)
+	idx, afterW := lastSpaceCellAndWidth(cells)
 	if idx != 1 {
-		t.Errorf("lastSpaceCell = %d, want 1", idx)
+		t.Errorf("lastSpaceCellAndWidth idx = %d, want 1", idx)
+	}
+	if afterW != 1 { // 'B' has width 1
+		t.Errorf("lastSpaceCellAndWidth afterWidth = %d, want 1", afterW)
 	}
 }
 
