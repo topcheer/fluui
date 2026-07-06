@@ -56,7 +56,8 @@ func (b *AssistantTextBlock) AppendDelta(delta string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.content.WriteString(delta)
-	b.cachedText = "" // invalidate cache
+	b.cachedText = ""     // invalidate render cache
+	b.contentDirty = true // invalidate string cache
 	b.markDirtyLocked()
 }
 
@@ -121,7 +122,7 @@ func (b *AssistantTextBlock) Measure(cs component.Constraints) component.Size {
 	if maxW <= 0 {
 		maxW = 80
 	}
-	text := b.content.String()
+	text := b.contentString()
 	if text == "" {
 		return component.Size{W: maxW, H: 1}
 	}
@@ -154,7 +155,7 @@ func (b *AssistantTextBlock) SerializeState() (json.RawMessage, error) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return json.Marshal(map[string]any{
-		"content": b.content.String(),
+		"content": b.contentString(),
 	})
 }
 
@@ -185,7 +186,7 @@ func (b *AssistantTextBlock) Paint(buf *buffer.Buffer) {
 	if bounds.W <= 0 || bounds.H <= 0 {
 		return
 	}
-	text := b.content.String()
+	text := b.contentString()
 	if text == "" {
 		return
 	}
