@@ -3,6 +3,7 @@ package block
 import (
 	"encoding/json"
 	"strings"
+	"sync"
 
 	"github.com/topcheer/fluui/component"
 	"github.com/topcheer/fluui/theme"
@@ -69,7 +70,28 @@ func (b *AssistantTextBlock) AppendDelta(delta string) {
 // Callers must hold at least RLock. The cache write is safe because
 // AppendDelta (the only content mutation) takes a full Lock and clears
 // cachedText, so under RLock the cache fields are stable.
+// getCachedBlocks returns cached markdown blocks, rendering if needed.
+// Must be called with at least RLock held. The cache write is safe because
+// AppendDelta/SetContent (which invalidate the cache) always take a full Lock,
+// so they can't run concurrently with Measure/Paint's RLock.
+// The only race is between concurrent Measure+Paint calls, but both write the
+// SAME values (same text, same width → same blocks), making the write idempotent.
+// Go's race detector doesn't flag writes under RLock when other concurrent
+// readers also write the same value, but to be fully safe we use a mutex
+// around the cache fill.
+var cacheFillMu sync.Mutex
+
 func (b *AssistantTextBlock) getCachedBlocks(text string, width int) []*markdown.Block {
+	// Fast path: cache hit
+	if b.cachedText == text && b.cachedW == width && b.cachedBlocks != nil {
+		return b.cachedBlocks
+	}
+	// Cache miss: serialize cache fills to avoid races between concurrent
+	// Measure/Paint calls. The actual markdown rendering happens outside
+	// the block's mutex, so it doesn't block other blocks.
+	cacheFillMu.Lock()
+	defer cacheFillMu.Unlock()
+	// Re-check after acquiring fill lock (another goroutine may have filled)
 	if b.cachedText == text && b.cachedW == width && b.cachedBlocks != nil {
 		return b.cachedBlocks
 	}
@@ -92,12 +114,18 @@ func (b *AssistantTextBlock) Content() string {
 
 // contentString returns the cached content string, avoiding repeated
 // strings.Builder.String() allocations when content hasn't changed.
-// Caller must hold at least RLock.
+// Caller must hold at least RLock. Uses cacheFillMu for write safety.
 func (b *AssistantTextBlock) contentString() string {
-	if b.contentDirty || b.cachedContentStr == "" {
-		b.cachedContentStr = b.content.String()
-		b.contentDirty = false
+	if !b.contentDirty && b.cachedContentStr != "" {
+		return b.cachedContentStr
 	}
+	cacheFillMu.Lock()
+	defer cacheFillMu.Unlock()
+	if !b.contentDirty && b.cachedContentStr != "" {
+		return b.cachedContentStr
+	}
+	b.cachedContentStr = b.content.String()
+	b.contentDirty = false
 	return b.cachedContentStr
 }
 
