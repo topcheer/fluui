@@ -497,12 +497,17 @@ func (r *MarkdownRenderer) renderThematicBreak() *Block {
 
 // textToCells converts a string to a slice of Cells with uniform style.
 func (r *MarkdownRenderer) textToCells(s string, fg buffer.Color, flags buffer.StyleFlags) []buffer.Cell {
-	cells := make([]buffer.Cell, 0, len(s))
+	// Count runes first to avoid over-allocation for multi-byte UTF-8.
+	// len(s) over-allocates for non-ASCII text (e.g., 4x for emoji).
+	runeCount := 0
+	for range s {
+		runeCount++
+	}
+	cells := make([]buffer.Cell, 0, runeCount)
 	for _, ch := range s {
-		w := buffer.RuneWidth(ch)
 		cells = append(cells, buffer.Cell{
 			Rune:  ch,
-			Width: w,
+			Width: buffer.RuneWidth(ch),
 			Fg:    fg,
 			Flags: flags,
 		})
@@ -515,7 +520,8 @@ func (r *MarkdownRenderer) wrapCells(cells []buffer.Cell, width int) [][]buffer.
 	if width <= 0 {
 		return [][]buffer.Cell{cells}
 	}
-	var lines [][]buffer.Cell
+	// Pre-allocate with reasonable capacity for typical paragraph lengths.
+	lines := make([][]buffer.Cell, 0, len(cells)/width+1)
 	var current []buffer.Cell
 	curWidth := 0
 
@@ -527,8 +533,13 @@ func (r *MarkdownRenderer) wrapCells(cells []buffer.Cell, width int) [][]buffer.
 
 		if curWidth+c.Width > width && curWidth > 0 {
 			if spaceIdx := lastSpaceCell(current); spaceIdx >= 0 {
+				// Take content up to space as this line.
 				lines = append(lines, current[:spaceIdx])
-				current = append([]buffer.Cell{}, current[spaceIdx+1:]...)
+				// Reuse remaining capacity: copy tail into a fresh slice.
+				remaining := current[spaceIdx+1:]
+				newCurrent := make([]buffer.Cell, len(remaining), cap(remaining)+4)
+				copy(newCurrent, remaining)
+				current = newCurrent
 				curWidth = cellLineWidth(current)
 			} else {
 				lines = append(lines, current)
