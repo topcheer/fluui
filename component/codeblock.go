@@ -51,6 +51,17 @@ type CodeBlock struct {
 	// streaming state
 	streaming      bool // true while AI is streaming code into this block
 	streamingDirty bool // source changed since last rehighlight (for debounced highlight)
+
+	// Debounce: re-highlight at most every N appends during streaming.
+	// The chroma lexer is O(n) per call; without debouncing, streaming 1000
+	// tokens triggers 1000 full re-highlights of growing source.
+	streamAppendCount int // increments on each AppendSource
+	streamDebounceN   int // re-highlight every N appends (0 = always)
+
+	// plainLines caches plain text rendering for streaming fallback.
+	// Avoids chroma overhead during fast streaming.
+	plainLines [][]buffer.Cell
+	usePlainFallback bool // when true, Paint uses plainLines instead of lines
 }
 
 // NewCodeBlock creates a CodeBlock with the given language and source.
@@ -62,6 +73,7 @@ func NewCodeBlock(language, source string) *CodeBlock {
 		showLineNumbers:  false,
 		showTitle:        false,
 		highlighter:      markdown.NewHighlighter(),
+		streamDebounceN:  10, // re-highlight every 10 appends during streaming
 	}
 	cb.SetID(GenerateID("codeblock"))
 	cb.rehighlight()
@@ -81,10 +93,28 @@ func (cb *CodeBlock) SetSource(source string) {
 // AppendSource appends incremental text and re-highlights.
 // This is optimized for streaming AI responses where code arrives token by token.
 // During streaming mode, the view auto-scrolls to show the latest content.
+//
+// Performance: During streaming (SetStreaming(true)), re-highlighting is
+// debounced to every SetStreamDebounce() appends to avoid O(n^2) overhead.
+// Between debounced full highlights, a fast plain-text fallback is used.
 func (cb *CodeBlock) AppendSource(delta string) {
 	cb.mu.Lock()
 	cb.source += delta
-	cb.rehighlightLocked()
+	cb.streamingDirty = true
+	cb.streamAppendCount++
+
+	if cb.streaming && cb.streamDebounceN > 0 && cb.streamAppendCount%cb.streamDebounceN != 0 {
+		// Debounced: use fast plain-text fallback instead of full chroma re-highlight
+		cb.plainLines = cb.plainLinesLocked()
+		cb.usePlainFallback = true
+	} else {
+		// Full re-highlight (either not streaming, or debounce interval hit)
+		cb.rehighlightLocked()
+		cb.plainLines = nil
+		cb.usePlainFallback = false
+		cb.streamingDirty = false
+	}
+
 	// Auto-scroll to show latest content during streaming
 	maxScroll := cb.maxScrollOffsetLocked()
 	cb.scrollOffset = maxScroll
@@ -107,11 +137,40 @@ func (cb *CodeBlock) IsStreaming() bool {
 	return cb.streaming
 }
 
+// SetStreamDebounce sets how many AppendSource calls are batched before
+// a full chroma re-highlight during streaming. Set to 0 to re-highlight
+// on every append (default is 10).
+// Higher values reduce CPU usage during fast streaming but delay syntax
+// highlighting updates. The plain-text fallback is shown between highlights.
+func (cb *CodeBlock) SetStreamDebounce(n int) {
+	cb.mu.Lock()
+	cb.streamDebounceN = n
+	cb.mu.Unlock()
+}
+
+// StreamDebounce returns the current debounce interval.
+func (cb *CodeBlock) StreamDebounce() int {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
+	return cb.streamDebounceN
+}
+
+// StreamAppendCount returns the total number of AppendSource calls since
+// streaming began. Useful for testing debounce behavior.
+func (cb *CodeBlock) StreamAppendCount() int {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
+	return cb.streamAppendCount
+}
+
 // FinishStreaming marks the block as done streaming and performs a final re-highlight.
 func (cb *CodeBlock) FinishStreaming() {
 	cb.mu.Lock()
 	cb.streaming = false
+	cb.usePlainFallback = false
+	cb.plainLines = nil
 	cb.rehighlightLocked()
+	cb.streamingDirty = false
 	cb.mu.Unlock()
 }
 
@@ -296,8 +355,15 @@ func (cb *CodeBlock) Paint(buf *buffer.Buffer) {
 
 	visibleLines := maxRow - row
 	endIdx := cb.scrollOffset + visibleLines
-	if endIdx > len(cb.lines) {
-		endIdx = len(cb.lines)
+
+	// Use plain text fallback during debounced streaming
+	displayLines := cb.lines
+	if cb.usePlainFallback && cb.plainLines != nil {
+		displayLines = cb.plainLines
+	}
+
+	if endIdx > len(displayLines) {
+		endIdx = len(displayLines)
 	}
 
 	for i := cb.scrollOffset; i < endIdx && row < maxRow; i++ {
@@ -321,7 +387,7 @@ func (cb *CodeBlock) Paint(buf *buffer.Buffer) {
 		}
 
 		// Paint highlighted code
-		line := cb.lines[i]
+		line := displayLines[i]
 		col := codeX
 		for _, cell := range line {
 			if col >= bounds.X+bounds.W {
@@ -501,8 +567,17 @@ func (cb *CodeBlock) paintStreamingCursorLocked(buf *buffer.Buffer, bounds Rect)
 	if cb.showTitle {
 		lastIdx--
 	}
-	if lastIdx >= len(cb.lines) {
-		lastIdx = len(cb.lines) - 1
+
+	displayLines := cb.lines
+	if cb.usePlainFallback && cb.plainLines != nil {
+		displayLines = cb.plainLines
+	}
+
+	if lastIdx >= len(displayLines) {
+		lastIdx = len(displayLines) - 1
+	}
+	if lastIdx < 0 {
+		lastIdx = 0
 	}
 
 	gutterW := cb.gutterWidthLocked()
@@ -515,7 +590,7 @@ func (cb *CodeBlock) paintStreamingCursorLocked(buf *buffer.Buffer, bounds Rect)
 	}
 
 	// Calculate X position after last cell of the line
-	lastLine := cb.lines[lastIdx]
+	lastLine := displayLines[lastIdx]
 	x := codeX + cellWidth(lastLine)
 
 	// Clamp to bounds
