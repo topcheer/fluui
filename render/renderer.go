@@ -92,6 +92,16 @@ func (r *Renderer) EndFrame() error {
 		return nil
 	}
 
+	// Synchronized output: BSU (Begin Synchronized Update) must be flushed
+	// BEFORE the content so the terminal buffers the upcoming frame.
+	// ESC P = 1 s ESC \
+	if r.syncOutput {
+		r.tw.WriteRaw(syncBegin)
+		if err := r.tw.Flush(); err != nil {
+			return err
+		}
+	}
+
 	for _, op := range ops {
 		cell := op.Cell
 		// Skip padding cells (Width==0) — trailing half of wide CJK chars.
@@ -137,17 +147,14 @@ func (r *Renderer) EndFrame() error {
 
 	r.tw.ResetStyle()
 
-	// Wrap output in DCS sync sequences if enabled.
-	// BSU (Begin Synchronized Update): ESC P = 1 s ESC \
-	// ESU (End Synchronized Update):   ESC P = 2 s ESC \
-	if r.syncOutput {
-			r.tw.WriteRaw(syncBegin)
-	}
-
+	// Flush content (style + cell data).
 	if err := r.tw.Flush(); err != nil {
 		return err
 	}
 
+	// Synchronized output: ESU (End Synchronized Update) must be flushed
+	// AFTER the content so the terminal renders the buffered frame atomically.
+	// ESC P = 2 s ESC \
 	if r.syncOutput {
 		r.tw.WriteRaw(syncEnd)
 		if err := r.tw.Flush(); err != nil {

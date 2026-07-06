@@ -104,6 +104,18 @@ func TestP47_EndFrame_SyncOrder(t *testing.T) {
 	if bsuIdx >= esuIdx {
 		t.Error("BSU should come before ESU")
 	}
+	// BSU must precede the content ('A')
+	contentIdx := strings.Index(output, "A")
+	if contentIdx < 0 {
+		t.Fatal("expected content 'A' in output")
+	}
+	if bsuIdx >= contentIdx {
+		t.Errorf("BSU (at %d) should come before content 'A' (at %d)", bsuIdx, contentIdx)
+	}
+	// ESU must follow the content
+	if esuIdx <= contentIdx {
+		t.Errorf("ESU (at %d) should come after content 'A' (at %d)", esuIdx, contentIdx)
+	}
 }
 
 // bytesBuf is a simple io.Writer for capturing output in tests.
