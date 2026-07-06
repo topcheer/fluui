@@ -67,12 +67,19 @@ func (r *MarkdownRenderer) SetHighlighter(h *Highlighter) {
 
 // Render parses the markdown source and returns a slice of rendered Blocks.
 func (r *MarkdownRenderer) Render(source string) ([]*Block, error) {
-	reader := text.NewReader([]byte(source))
+	// Convert source to []byte ONCE — avoid repeated string→bytes copy per block.
+	srcBytes := []byte(source)
+	reader := text.NewReader(srcBytes)
 	doc := r.md.Parser().Parse(reader)
 
-	var blocks []*Block
+	// Pre-count top-level children for capacity hint.
+	nBlocks := 0
 	for child := doc.FirstChild(); child != nil; child = child.NextSibling() {
-		if blk := r.renderBlock(child, []byte(source)); blk != nil {
+		nBlocks++
+	}
+	blocks := make([]*Block, 0, nBlocks)
+	for child := doc.FirstChild(); child != nil; child = child.NextSibling() {
+		if blk := r.renderBlock(child, srcBytes); blk != nil {
 			blocks = append(blocks, blk)
 		}
 	}
@@ -127,7 +134,12 @@ func (r *MarkdownRenderer) renderHeading(n *ast.Heading, source []byte) *Block {
 // renderInline renders inline content (text, emphasis, code, links) into cells.
 // Uses recursive descent instead of ast.Walk to avoid double-processing.
 func (r *MarkdownRenderer) renderInline(n ast.Node, source []byte) []buffer.Cell {
-	var inline []buffer.Cell
+	// Count children for capacity hint to reduce reallocations.
+	nChildren := 0
+	for child := n.FirstChild(); child != nil; child = child.NextSibling() {
+		nChildren++
+	}
+	inline := make([]buffer.Cell, 0, nChildren*32) // estimate ~32 chars per child
 	for child := n.FirstChild(); child != nil; child = child.NextSibling() {
 		inline = append(inline, r.renderInlineNode(child, source)...)
 	}
