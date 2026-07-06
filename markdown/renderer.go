@@ -134,12 +134,27 @@ func (r *MarkdownRenderer) renderHeading(n *ast.Heading, source []byte) *Block {
 // renderInline renders inline content (text, emphasis, code, links) into cells.
 // Uses recursive descent instead of ast.Walk to avoid double-processing.
 func (r *MarkdownRenderer) renderInline(n ast.Node, source []byte) []buffer.Cell {
-	// Count children for capacity hint to reduce reallocations.
+	// Fast path: single text child — return its cells directly, avoiding
+	// an undersized intermediate slice that triggers 10+ reallocations
+	// for large paragraphs (common in AI streaming).
+	first := n.FirstChild()
+	if first != nil && first.NextSibling() == nil {
+		if t, ok := first.(*ast.Text); ok {
+			text := string(t.Value(source))
+			if HasInlineMath(text) {
+				converted := RenderInlineMath(text)
+				return r.textToCells(converted, r.theme.CodeFg, buffer.Italic)
+			}
+			return r.textToCells(text, r.theme.Body, 0)
+		}
+	}
+
+	// Multi-child path: estimate capacity and concatenate.
 	nChildren := 0
 	for child := n.FirstChild(); child != nil; child = child.NextSibling() {
 		nChildren++
 	}
-	inline := make([]buffer.Cell, 0, nChildren*32) // estimate ~32 chars per child
+	inline := make([]buffer.Cell, 0, nChildren*32)
 	for child := n.FirstChild(); child != nil; child = child.NextSibling() {
 		inline = append(inline, r.renderInlineNode(child, source)...)
 	}
@@ -528,44 +543,54 @@ func (r *MarkdownRenderer) textToCells(s string, fg buffer.Color, flags buffer.S
 }
 
 // wrapCells wraps a flat cell slice into lines of at most width display columns.
+// Uses a reusable line buffer to minimize allocations: each line produces exactly
+// one heap allocation (the copy into lines), instead of 4-8 from append growth.
 func (r *MarkdownRenderer) wrapCells(cells []buffer.Cell, width int) [][]buffer.Cell {
 	if width <= 0 {
 		return [][]buffer.Cell{cells}
 	}
-	// Pre-allocate with reasonable capacity for typical paragraph lengths.
 	lines := make([][]buffer.Cell, 0, len(cells)/width+1)
-	var current []buffer.Cell
+	// Pre-allocate line buffer with width capacity — lines never exceed width
+	// columns, so this buffer never needs to grow.
+	lineBuf := make([]buffer.Cell, 0, width)
 	curWidth := 0
 
 	for _, c := range cells {
 		if c.Width == 0 {
-			current = append(current, c)
+			lineBuf = append(lineBuf, c)
 			continue
 		}
 
 		if curWidth+c.Width > width && curWidth > 0 {
-			if spaceIdx := lastSpaceCell(current); spaceIdx >= 0 {
-				// Take content up to space as this line.
-				lines = append(lines, current[:spaceIdx])
-				// Reuse remaining capacity: copy tail into a fresh slice.
-				remaining := current[spaceIdx+1:]
-				newCurrent := make([]buffer.Cell, len(remaining), cap(remaining)+4)
-				copy(newCurrent, remaining)
-				current = newCurrent
-				curWidth = cellLineWidth(current)
+			if spaceIdx := lastSpaceCell(lineBuf); spaceIdx >= 0 {
+				// Word-wrap: copy content up to space into a fresh slice.
+				line := make([]buffer.Cell, spaceIdx)
+				copy(line, lineBuf[:spaceIdx])
+				lines = append(lines, line)
+				// Move remaining content to front of lineBuf (reuse buffer).
+				remaining := lineBuf[spaceIdx+1:]
+				copy(lineBuf, remaining)
+				lineBuf = lineBuf[:len(remaining)]
+				curWidth = cellLineWidth(lineBuf)
 			} else {
-				lines = append(lines, current)
-				current = nil
+				// Hard break: no space found.
+				line := make([]buffer.Cell, len(lineBuf))
+				copy(line, lineBuf)
+				lines = append(lines, line)
+				lineBuf = lineBuf[:0]
 				curWidth = 0
 			}
 		}
 
-		current = append(current, c)
+		lineBuf = append(lineBuf, c)
 		curWidth += c.Width
 	}
 
-	if len(current) > 0 {
-		lines = append(lines, current)
+	if len(lineBuf) > 0 {
+		// Copy final line into its own slice.
+		line := make([]buffer.Cell, len(lineBuf))
+		copy(line, lineBuf)
+		lines = append(lines, line)
 	}
 	if len(lines) == 0 {
 		lines = append(lines, []buffer.Cell{})
