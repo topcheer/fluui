@@ -77,5 +77,6 @@ func NewDefaultRegistry() *Registry {
 	r.Register("tool_result", func(id string) Block { return NewToolResultBlock(id) })
 	r.Register("error", func(id string) Block { return NewErrorBlock(id) })
 	r.Register("user_message", func(id string) Block { return NewUserMessageBlock(id, "") })
+	r.Register("image", func(id string) Block { return NewImageBlock(id, "", nil) })
 	return r
 }

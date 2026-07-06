@@ -54,6 +54,7 @@ const (
 	TypeError                         // Error message
 	TypeUserMessage                   // User input echo
 	TypeWorkflow                      // Agent workflow visualization
+	TypeImage                         // Inline image
 )
 
 // String returns a human-readable type name.
@@ -75,6 +76,8 @@ func (t BlockType) String() string {
 		return "user_message"
 	case TypeWorkflow:
 		return "workflow"
+	case TypeImage:
+		return "image"
 	}
 	return "unknown"
 }
