@@ -339,18 +339,6 @@ func (ts *ThemeStudio) openPickerLocked() {
 	ts.pickerOpen = true
 }
 
-func (ts *ThemeStudio) applyCurrentColor(c buffer.Color) {
-	ts.mu.Lock()
-	defer ts.mu.Unlock()
-
-	if ts.cursor < 0 || ts.cursor >= len(ts.slots) {
-		return
-	}
-	ts.slots[ts.cursor].setter(theme.Get(), c)
-	ts.changed = true
-	ts.fireChangeLocked()
-}
-
 func (ts *ThemeStudio) fireChangeLocked() {
 	if cb := ts.OnChange; cb != nil {
 		cb()
