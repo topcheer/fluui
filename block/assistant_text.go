@@ -43,16 +43,46 @@ func NewAssistantTextBlock(id string) *AssistantTextBlock {
 	return b
 }
 
-// ensureRenderer creates or recreates the markdown renderer for the current width.
+// rendererCache caches MarkdownRenderers by width to avoid creating a new
+// goldmark parser for every AssistantTextBlock. The goldmark parser allocates
+// ~100 objects on creation (block parsers, inline parsers, AST transformers,
+// table extension, etc.), so sharing one renderer across all blocks of the
+// same width eliminates ~100K allocations for 1000 blocks.
+var rendererCache sync.Map // int (width) → *markdown.MarkdownRenderer
+
+// sharedHighlighter is a package-level highlighter shared across all blocks.
+// The Highlighter is stateless (just a style reference), so sharing is safe.
+var (
+	highlighterOnce sync.Once
+	sharedHighlighter *markdown.Highlighter
+)
+
+func getSharedHighlighter() *markdown.Highlighter {
+	highlighterOnce.Do(func() {
+		sharedHighlighter = markdown.NewHighlighter()
+	})
+	return sharedHighlighter
+}
+
+// ensureRenderer creates or reuses a markdown renderer for the current width.
 func (b *AssistantTextBlock) ensureRenderer(width int) {
 	if b.renderer != nil && b.renderW == width {
 		return
 	}
-	b.renderer = markdown.NewMarkdownRenderer(markdown.DefaultTheme(), width)
-	if b.highlighter == nil {
-		b.highlighter = markdown.NewHighlighter()
+	// Try to reuse a cached renderer for this width
+	if v, ok := rendererCache.Load(width); ok {
+		b.renderer = v.(*markdown.MarkdownRenderer)
+		b.highlighter = getSharedHighlighter()
+		b.renderW = width
+		return
 	}
-	b.renderer.SetHighlighter(b.highlighter)
+	// Create new renderer and cache it for future blocks
+	r := markdown.NewMarkdownRenderer(markdown.DefaultTheme(), width)
+	h := getSharedHighlighter()
+	r.SetHighlighter(h)
+	rendererCache.Store(width, r)
+	b.renderer = r
+	b.highlighter = h
 	b.renderW = width
 }
 
