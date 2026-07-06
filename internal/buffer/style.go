@@ -1,6 +1,6 @@
 package buffer
 
-import "strings"
+
 
 // StyleFlags is a bitmask of text attributes.
 type StyleFlags uint8
@@ -48,73 +48,76 @@ func (s Style) Equal(o Style) bool {
 // SGRSequence returns the SGR (Select Graphic Rendition) parameter string
 // for this style, e.g. "1;38;2;255;128;0".
 func (s Style) SGRSequence() string {
-	var sb strings.Builder
-	sb.Grow(64)
+	var buf [80]byte
+	return string(s.AppendSGR(buf[:0]))
+}
 
+// AppendSGR writes the SGR parameter bytes for this style into b (without the
+// ESC[ prefix or 'm' suffix) and returns the updated slice. Callers should use
+// this instead of SGRSequence() when writing to a bytes.Buffer to avoid the
+// intermediate string allocation.
+func (s Style) AppendSGR(b []byte) []byte {
 	first := true
 
 	if s.Flags&Bold != 0 {
 		if !first {
-			sb.WriteByte(';')
+			b = append(b, ';')
 		}
-		sb.WriteByte('1')
+		b = append(b, '1')
 		first = false
 	}
 	if s.Flags&Dim != 0 {
 		if !first {
-			sb.WriteByte(';')
+			b = append(b, ';')
 		}
-		sb.WriteByte('2')
+		b = append(b, '2')
 		first = false
 	}
 	if s.Flags&Italic != 0 {
 		if !first {
-			sb.WriteByte(';')
+			b = append(b, ';')
 		}
-		sb.WriteByte('3')
+		b = append(b, '3')
 		first = false
 	}
 	if s.Flags&Underline != 0 {
 		if !first {
-			sb.WriteByte(';')
+			b = append(b, ';')
 		}
-		sb.WriteByte('4')
+		b = append(b, '4')
 		first = false
 	}
 	if s.Flags&Blink != 0 {
 		if !first {
-			sb.WriteByte(';')
+			b = append(b, ';')
 		}
-		sb.WriteByte('5')
+		b = append(b, '5')
 		first = false
 	}
 	if s.Flags&Reverse != 0 {
 		if !first {
-			sb.WriteByte(';')
+			b = append(b, ';')
 		}
-		sb.WriteByte('7')
+		b = append(b, '7')
 		first = false
 	}
 	if s.Flags&Strikethrough != 0 {
 		if !first {
-			sb.WriteByte(';')
+			b = append(b, ';')
 		}
-		sb.WriteByte('9')
+		b = append(b, '9')
 		first = false
 	}
 
-	// Write FG and BG sequences directly into the builder's byte buffer
-	// via byte-level methods to avoid intermediate string allocations.
-	var tmp [32]byte
+	// Write FG and BG color sequences directly into b.
 	if !first {
-		sb.WriteByte(';')
+		b = append(b, ';')
 	}
-	sb.Write(s.Fg.appendFG(tmp[:0]))
-	sb.WriteByte(';')
-	sb.Write(s.Bg.appendBG(tmp[:0]))
+	b = s.Fg.appendFG(b)
+	b = append(b, ';')
+	b = s.Bg.appendBG(b)
 
-	_ = first // first is always false after fg/bg are written
-	return sb.String()
+	return b
 }
 
 // ResetSGR returns the ANSI reset sequence.

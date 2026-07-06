@@ -56,9 +56,13 @@ func (w *Writer) SetStyle(s buffer.Style) {
 	}
 	w.curStyle = s
 	w.styleSet = true
-	sgr := s.SGRSequence()
-	w.buf.WriteString("\x1b[")
-	w.buf.WriteString(sgr)
+	// Write SGR escape sequence directly into buf using byte-level AppendSGR
+	// to avoid the intermediate string allocation from SGRSequence().
+	w.buf.WriteByte(0x1b)
+	w.buf.WriteByte('[')
+	var tmp [80]byte
+	params := s.AppendSGR(tmp[:0])
+	w.buf.Write(params)
 	w.buf.WriteByte('m')
 }
 
