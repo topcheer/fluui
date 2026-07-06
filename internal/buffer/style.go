@@ -49,48 +49,71 @@ func (s Style) Equal(o Style) bool {
 // for this style, e.g. "1;38;2;255;128;0".
 func (s Style) SGRSequence() string {
 	var sb strings.Builder
-	sb.Grow(64) // pre-allocate: worst case is 7 flags + fg + bg ≈ 50 chars
+	sb.Grow(64)
 
 	first := true
-	addPart := func(p string) {
-		if p == "" {
-			return
-		}
+
+	if s.Flags&Bold != 0 {
 		if !first {
 			sb.WriteByte(';')
 		}
-		sb.WriteString(p)
+		sb.WriteByte('1')
+		first = false
+	}
+	if s.Flags&Dim != 0 {
+		if !first {
+			sb.WriteByte(';')
+		}
+		sb.WriteByte('2')
+		first = false
+	}
+	if s.Flags&Italic != 0 {
+		if !first {
+			sb.WriteByte(';')
+		}
+		sb.WriteByte('3')
+		first = false
+	}
+	if s.Flags&Underline != 0 {
+		if !first {
+			sb.WriteByte(';')
+		}
+		sb.WriteByte('4')
+		first = false
+	}
+	if s.Flags&Blink != 0 {
+		if !first {
+			sb.WriteByte(';')
+		}
+		sb.WriteByte('5')
+		first = false
+	}
+	if s.Flags&Reverse != 0 {
+		if !first {
+			sb.WriteByte(';')
+		}
+		sb.WriteByte('7')
+		first = false
+	}
+	if s.Flags&Strikethrough != 0 {
+		if !first {
+			sb.WriteByte(';')
+		}
+		sb.WriteByte('9')
 		first = false
 	}
 
-	if s.Flags&Bold != 0 {
-		addPart("1")
+	// Write FG and BG sequences directly into the builder's byte buffer
+	// via byte-level methods to avoid intermediate string allocations.
+	var tmp [32]byte
+	if !first {
+		sb.WriteByte(';')
 	}
-	if s.Flags&Dim != 0 {
-		addPart("2")
-	}
-	if s.Flags&Italic != 0 {
-		addPart("3")
-	}
-	if s.Flags&Underline != 0 {
-		addPart("4")
-	}
-	if s.Flags&Blink != 0 {
-		addPart("5")
-	}
-	if s.Flags&Reverse != 0 {
-		addPart("7")
-	}
-	if s.Flags&Strikethrough != 0 {
-		addPart("9")
-	}
+	sb.Write(s.Fg.appendFG(tmp[:0]))
+	sb.WriteByte(';')
+	sb.Write(s.Bg.appendBG(tmp[:0]))
 
-	addPart(s.Fg.FGSequence())
-	addPart(s.Bg.BGSequence())
-
-	if first {
-		return "0" // no style attributes, emit reset
-	}
+	_ = first // first is always false after fg/bg are written
 	return sb.String()
 }
 

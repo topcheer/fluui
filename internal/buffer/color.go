@@ -123,54 +123,66 @@ func (c Color) R() uint8 { return uint8(c.Val >> 16) }
 func (c Color) G() uint8 { return uint8(c.Val >> 8) }
 func (c Color) B() uint8 { return uint8(c.Val) }
 
-// ANSI returns the SGR parameter(s) for this color as a foreground.
-func (c Color) FGSequence() string {
-	var buf [32]byte
+// appendFG writes the SGR parameter bytes for the foreground color directly
+// into b, returning the updated slice. Avoids the intermediate string
+// allocation that FGSequence() creates.
+func (c Color) appendFG(b []byte) []byte {
 	switch c.Type {
 	case ColorNone:
-		return "39"
+		return append(b, '3', '9')
 	case ColorNamed:
 		if c.Val >= 8 {
-			return string(strconv.AppendInt(buf[:0], int64(82+c.Val), 10))
+			return strconv.AppendInt(b, int64(82+c.Val), 10)
 		}
-		return string(strconv.AppendInt(buf[:0], int64(30+c.Val), 10))
+		return strconv.AppendInt(b, int64(30+c.Val), 10)
 	case Color256:
-		b := append(buf[:0], '3', '8', ';', '5', ';')
-		return string(strconv.AppendInt(b, int64(c.Val), 10))
+		b = append(b, '3', '8', ';', '5', ';')
+		return strconv.AppendInt(b, int64(c.Val), 10)
 	case ColorTrue:
-		b := append(buf[:0], '3', '8', ';', '2', ';')
+		b = append(b, '3', '8', ';', '2', ';')
 		b = strconv.AppendInt(b, int64(c.R()), 10)
 		b = append(b, ';')
 		b = strconv.AppendInt(b, int64(c.G()), 10)
 		b = append(b, ';')
-		b = strconv.AppendInt(b, int64(c.B()), 10)
-		return string(b)
+		return strconv.AppendInt(b, int64(c.B()), 10)
 	}
-	return "39"
+	return append(b, '3', '9')
+}
+
+// FGSequence returns the SGR parameter(s) for this color as a foreground.
+func (c Color) FGSequence() string {
+	var buf [32]byte
+	return string(c.appendFG(buf[:0]))
+}
+
+// appendBG writes the SGR parameter bytes for the background color directly
+// into b, returning the updated slice. Avoids the intermediate string
+// allocation that BGSequence() creates.
+func (c Color) appendBG(b []byte) []byte {
+	switch c.Type {
+	case ColorNone:
+		return append(b, '4', '9')
+	case ColorNamed:
+		if c.Val >= 8 {
+			return strconv.AppendInt(b, int64(92+c.Val), 10)
+		}
+		return strconv.AppendInt(b, int64(40+c.Val), 10)
+	case Color256:
+		b = append(b, '4', '8', ';', '5', ';')
+		return strconv.AppendInt(b, int64(c.Val), 10)
+	case ColorTrue:
+		b = append(b, '4', '8', ';', '2', ';')
+		b = strconv.AppendInt(b, int64(c.R()), 10)
+		b = append(b, ';')
+		b = strconv.AppendInt(b, int64(c.G()), 10)
+		b = append(b, ';')
+		return strconv.AppendInt(b, int64(c.B()), 10)
+	}
+	return append(b, '4', '9')
 }
 
 // BGSequence returns the SGR parameter(s) for this color as a background.
 func (c Color) BGSequence() string {
 	var buf [32]byte
-	switch c.Type {
-	case ColorNone:
-		return "49"
-	case ColorNamed:
-		if c.Val >= 8 {
-			return string(strconv.AppendInt(buf[:0], int64(92+c.Val), 10))
-		}
-		return string(strconv.AppendInt(buf[:0], int64(40+c.Val), 10))
-	case Color256:
-		b := append(buf[:0], '4', '8', ';', '5', ';')
-		return string(strconv.AppendInt(b, int64(c.Val), 10))
-	case ColorTrue:
-		b := append(buf[:0], '4', '8', ';', '2', ';')
-		b = strconv.AppendInt(b, int64(c.R()), 10)
-		b = append(b, ';')
-		b = strconv.AppendInt(b, int64(c.G()), 10)
-		b = append(b, ';')
-		b = strconv.AppendInt(b, int64(c.B()), 10)
-		return string(b)
-	}
-	return "49"
+	return string(c.appendBG(buf[:0]))
 }
