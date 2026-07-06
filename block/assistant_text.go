@@ -34,9 +34,13 @@ type AssistantTextBlock struct {
 
 // NewAssistantTextBlock creates an assistant text block in streaming state.
 func NewAssistantTextBlock(id string) *AssistantTextBlock {
-	return &AssistantTextBlock{
+	b := &AssistantTextBlock{
 		BaseBlock: NewBaseBlock(id, TypeAssistantText),
 	}
+	// Pre-grow to eliminate ~5 buffer growth allocations during typical streaming.
+	// 256 bytes covers ~50 words of average length, the common streaming case.
+	b.content.Grow(256)
+	return b
 }
 
 // ensureRenderer creates or recreates the markdown renderer for the current width.

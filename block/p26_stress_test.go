@@ -69,13 +69,18 @@ This has **bold** and *italic* text.
 // BenchmarkStreamingDelta benchmarks appending streaming deltas — simulates
 // real-time AI response with frequent small updates.
 func BenchmarkStreamingDelta(b *testing.B) {
+	// Pre-allocate words outside the loop to isolate streaming allocations
+	words := strings.Split("The quick brown fox jumps over the lazy dog and runs through the forest", " ")
+	wordPtrs := make([]string, len(words))
+	for i, w := range words {
+		wordPtrs[i] = w + " "
+	}
+	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		blk := NewAssistantTextBlock("stream")
-		// Simulate word-by-word streaming
-		words := strings.Split("The quick brown fox jumps over the lazy dog and runs through the forest", " ")
-		for _, w := range words {
-			blk.AppendDelta(w + " ")
+		for _, w := range wordPtrs {
+			blk.AppendDelta(w)
 		}
 		blk.Complete()
 	}

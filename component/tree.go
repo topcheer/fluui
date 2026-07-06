@@ -515,6 +515,7 @@ func (t *Tree) Paint(buf *buffer.Buffer) {
 		return
 	}
 
+	maxX := bounds.X + bounds.W
 	for row := 0; row < bounds.H; row++ {
 		idx := t.scrollY + row
 		if idx >= len(t.flatList) {
@@ -523,58 +524,49 @@ func (t *Tree) Paint(buf *buffer.Buffer) {
 		vn := t.flatList[idx]
 		y := bounds.Y + row
 
-		// Build the display line
-		var sb strings.Builder
-		// Indentation
-		for i := 0; i < vn.depth; i++ {
-			sb.WriteString("  ")
-		}
-		// Expand/collapse indicator
-		if vn.node.HasChildren() {
-			if vn.node.Expanded {
-				sb.WriteString("▼ ")
-			} else {
-				sb.WriteString("▶ ")
-			}
-		} else {
-			sb.WriteString("  ")
-		}
-		// Icon
-		if vn.node.Icon != "" {
-			sb.WriteString(vn.node.Icon)
-			sb.WriteString(" ")
-		}
-		// Label
-		sb.WriteString(vn.node.Label)
-
-		text := sb.String()
 		style := t.defStyle
-
 		// Highlight current row
 		if idx == t.current {
 			style = t.selStyle
 		}
 
-		// Draw the text
+		// Draw the text directly via DrawText — avoids strings.Builder allocation
 		x := bounds.X
-		for _, r := range text {
-			if x >= bounds.X+bounds.W {
-				break
+
+		// Indentation
+		for i := 0; i < vn.depth && x < maxX; i++ {
+			x = buf.DrawText(x, y, "  ", style)
+		}
+
+		// Expand/collapse indicator
+		if x < maxX {
+			if vn.node.HasChildren() {
+				if vn.node.Expanded {
+					x = buf.DrawText(x, y, "▼ ", style)
+				} else {
+					x = buf.DrawText(x, y, "▶ ", style)
+				}
+			} else {
+				x = buf.DrawText(x, y, "  ", style)
 			}
-			rw := buffer.RuneWidth(r)
-			buf.SetCell(x, y, buffer.Cell{
-				Rune:  r,
-				Width: rw,
-				Fg:    style.Fg,
-				Bg:    style.Bg,
-				Flags: style.Flags,
-			})
-			x += rw
+		}
+
+		// Icon
+		if vn.node.Icon != "" && x < maxX {
+			x = buf.DrawText(x, y, vn.node.Icon, style)
+			if x < maxX {
+				x = buf.DrawText(x, y, " ", style)
+			}
+		}
+
+		// Label (DrawText handles width truncation implicitly via buf bounds)
+		if x < maxX {
+			x = buf.DrawText(x, y, vn.node.Label, style)
 		}
 
 		// Fill rest of row with background style (for highlight)
 		if idx == t.current {
-			for ; x < bounds.X+bounds.W; x++ {
+			for ; x < maxX; x++ {
 				buf.SetCell(x, y, buffer.Cell{
 					Rune:  ' ',
 					Width: 1,
