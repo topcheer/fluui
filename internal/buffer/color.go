@@ -125,36 +125,52 @@ func (c Color) B() uint8 { return uint8(c.Val) }
 
 // ANSI returns the SGR parameter(s) for this color as a foreground.
 func (c Color) FGSequence() string {
+	var buf [32]byte
 	switch c.Type {
 	case ColorNone:
 		return "39"
 	case ColorNamed:
 		if c.Val >= 8 {
-			return fmt.Sprintf("%d", 90+c.Val-8)
+			return string(strconv.AppendInt(buf[:0], int64(82+c.Val), 10))
 		}
-		return fmt.Sprintf("%d", 30+c.Val)
+		return string(strconv.AppendInt(buf[:0], int64(30+c.Val), 10))
 	case Color256:
-		return fmt.Sprintf("38;5;%d", c.Val)
+		b := append(buf[:0], '3', '8', ';', '5', ';')
+		return string(strconv.AppendInt(b, int64(c.Val), 10))
 	case ColorTrue:
-		return fmt.Sprintf("38;2;%d;%d;%d", c.R(), c.G(), c.B())
+		b := append(buf[:0], '3', '8', ';', '2', ';')
+		b = strconv.AppendInt(b, int64(c.R()), 10)
+		b = append(b, ';')
+		b = strconv.AppendInt(b, int64(c.G()), 10)
+		b = append(b, ';')
+		b = strconv.AppendInt(b, int64(c.B()), 10)
+		return string(b)
 	}
 	return "39"
 }
 
 // BGSequence returns the SGR parameter(s) for this color as a background.
 func (c Color) BGSequence() string {
+	var buf [32]byte
 	switch c.Type {
 	case ColorNone:
 		return "49"
 	case ColorNamed:
 		if c.Val >= 8 {
-			return fmt.Sprintf("%d", 100+c.Val-8)
+			return string(strconv.AppendInt(buf[:0], int64(92+c.Val), 10))
 		}
-		return fmt.Sprintf("%d", 40+c.Val)
+		return string(strconv.AppendInt(buf[:0], int64(40+c.Val), 10))
 	case Color256:
-		return fmt.Sprintf("48;5;%d", c.Val)
+		b := append(buf[:0], '4', '8', ';', '5', ';')
+		return string(strconv.AppendInt(b, int64(c.Val), 10))
 	case ColorTrue:
-		return fmt.Sprintf("48;2;%d;%d;%d", c.R(), c.G(), c.B())
+		b := append(buf[:0], '4', '8', ';', '2', ';')
+		b = strconv.AppendInt(b, int64(c.R()), 10)
+		b = append(b, ';')
+		b = strconv.AppendInt(b, int64(c.G()), 10)
+		b = append(b, ';')
+		b = strconv.AppendInt(b, int64(c.B()), 10)
+		return string(b)
 	}
 	return "49"
 }

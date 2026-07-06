@@ -24,8 +24,9 @@ type Renderer struct {
 	back        *buffer.Buffer
 	width       int
 	height      int
-	runeBuf     [4]byte // reusable buffer for rune-to-utf8 encoding
-	syncOutput  bool    // if true, wrap frame output in DCS sync sequences
+	runeBuf     [4]byte        // reusable buffer for rune-to-utf8 encoding
+	syncOutput  bool           // if true, wrap frame output in DCS sync sequences
+	diffOps     []buffer.DiffOp // reused across frames to avoid per-frame allocation
 }
 
 // New creates a new Renderer.
@@ -71,7 +72,8 @@ func (r *Renderer) BeginFrame() {
 
 // EndFrame diffs front vs back and writes the changes to the terminal.
 func (r *Renderer) EndFrame() error {
-	ops := buffer.Diff(r.front, r.back)
+	r.diffOps = buffer.DiffInto(r.front, r.back, r.diffOps[:0])
+	ops := r.diffOps
 
 	// Fast path: no changes detected — skip all terminal I/O and buffer copy.
 	if len(ops) == 0 {
