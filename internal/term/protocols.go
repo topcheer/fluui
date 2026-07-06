@@ -482,3 +482,176 @@ func colorItoa(n int) string {
 	}
 	return string(buf[i:])
 }
+
+// ---------------------------------------------------------------------------
+// iTerm2 Inline Images (OSC 1337)
+// ---------------------------------------------------------------------------
+//
+// The iTerm2 inline image protocol allows displaying images directly in
+// the terminal. Supported by: iTerm2, WezTerm (partial), and other terminals.
+//
+// Format: ESC ] 1337 ; File=<args> : <base64-encoded-data> BEL
+//
+// Arguments:
+//   name=base64(filename)
+//   size=<bytes>
+//   width=<N|Npx|N%|auto>
+//   height=<N|Npx|N%|auto>
+//   preserveAspectRatio=0|1
+//   inline=0|1
+
+// ImageSize specifies how an image dimension should be interpreted.
+type ImageSize struct {
+	Value int    // N (for cells or pixels) or percentage
+	Unit  string // "", "px", "%", or "auto"
+}
+
+// AutoSize represents an automatic image dimension.
+var AutoSize = ImageSize{Unit: "auto"}
+
+// ImageOptions controls how an inline image is displayed.
+type ImageOptions struct {
+	Name                 string    // filename (will be base64 encoded)
+	Width                ImageSize // display width
+	Height               ImageSize // display height
+	PreserveAspectRatio  bool      // default true
+	Inline               bool      // default true (display inline vs download)
+}
+
+// DefaultImageOptions returns sensible defaults for inline image display.
+func DefaultImageOptions() ImageOptions {
+	return ImageOptions{
+		Width:               AutoSize,
+		Height:              AutoSize,
+		PreserveAspectRatio: true,
+		Inline:              true,
+	}
+}
+
+// InlineImage generates an iTerm2 OSC 1337 escape sequence for displaying
+// a base64-encoded image inline in the terminal.
+// The data should be raw image bytes (PNG, JPEG, GIF, etc.).
+func InlineImage(data []byte, opts ImageOptions) string {
+	var args strings.Builder
+	args.Grow(128)
+
+	// name (base64 encoded filename)
+	if opts.Name != "" {
+		args.WriteString("name=")
+		args.WriteString(base64.StdEncoding.EncodeToString([]byte(opts.Name)))
+		args.WriteString(";")
+	}
+
+	// size
+	args.WriteString("size=")
+	args.WriteString(colorItoa(len(data)))
+	args.WriteString(";")
+
+	// width
+	if opts.Width.Unit == "auto" {
+		args.WriteString("width=auto;")
+	} else if opts.Width.Value > 0 {
+		args.WriteString("width=")
+		args.WriteString(colorItoa(opts.Width.Value))
+		args.WriteString(opts.Width.Unit)
+		args.WriteString(";")
+	}
+
+	// height
+	if opts.Height.Unit == "auto" {
+		args.WriteString("height=auto;")
+	} else if opts.Height.Value > 0 {
+		args.WriteString("height=")
+		args.WriteString(colorItoa(opts.Height.Value))
+		args.WriteString(opts.Height.Unit)
+		args.WriteString(";")
+	}
+
+	// preserveAspectRatio
+	if opts.PreserveAspectRatio {
+		args.WriteString("preserveAspectRatio=1;")
+	} else {
+		args.WriteString("preserveAspectRatio=0;")
+	}
+
+	// inline
+	if opts.Inline {
+		args.WriteString("inline=1;")
+	} else {
+		args.WriteString("inline=0;")
+	}
+
+	// Build the full sequence
+	b64 := base64.StdEncoding.EncodeToString(data)
+	return "\x1b]1337;File=" + args.String() + ":" + b64 + "\x07"
+}
+
+// InlineImageBase64 generates an iTerm2 OSC 1337 escape sequence using
+// pre-base64-encoded image data. This avoids re-encoding if the data is
+// already base64.
+func InlineImageBase64(b64Data string, opts ImageOptions) string {
+	var args strings.Builder
+	args.Grow(128)
+
+	if opts.Name != "" {
+		args.WriteString("name=")
+		args.WriteString(base64.StdEncoding.EncodeToString([]byte(opts.Name)))
+		args.WriteString(";")
+	}
+
+	if opts.Width.Unit == "auto" {
+		args.WriteString("width=auto;")
+	} else if opts.Width.Value > 0 {
+		args.WriteString("width=")
+		args.WriteString(colorItoa(opts.Width.Value))
+		args.WriteString(opts.Width.Unit)
+		args.WriteString(";")
+	}
+
+	if opts.Height.Unit == "auto" {
+		args.WriteString("height=auto;")
+	} else if opts.Height.Value > 0 {
+		args.WriteString("height=")
+		args.WriteString(colorItoa(opts.Height.Value))
+		args.WriteString(opts.Height.Unit)
+		args.WriteString(";")
+	}
+
+	if opts.PreserveAspectRatio {
+		args.WriteString("preserveAspectRatio=1;")
+	} else {
+		args.WriteString("preserveAspectRatio=0;")
+	}
+
+	if opts.Inline {
+		args.WriteString("inline=1;")
+	} else {
+		args.WriteString("inline=0;")
+	}
+
+	return "\x1b]1337;File=" + args.String() + ":" + b64Data + "\x07"
+}
+
+// KittyImageBase64 generates a Kitty Graphics Protocol escape sequence for
+// displaying a base64-encoded image. Kitty uses a different format from iTerm2.
+//
+// Format: ESC _ Gi=31;<base64-data> ESC \
+//
+// This is the "transmit pixel data" action (a=t, i=31 for new image).
+func KittyImageBase64(b64Data string, width, height int) string {
+	// Kitty graphics: ESC _ G <key=value pairs>;<base64 data> ESC \
+	params := "a=t,f=100,s=" + colorItoa(width) + ",v=" + colorItoa(height)
+	return "\x1b_G" + params + ";" + b64Data + "\x1b\\"
+}
+
+// KittyDeleteAllImages generates a Kitty Graphics Protocol sequence that
+// removes all placed images from the terminal.
+func KittyDeleteAllImages() string {
+	return "\x1b_Ga=d,d=a\x1b\\"
+}
+
+// KittyQueryCell generates a Kitty Graphics Protocol sequence that queries
+// whether there is an image at the specified cell position.
+func KittyQueryCell(col, row int) string {
+	return "\x1b_Ga=q,s=" + colorItoa(col) + ",v=" + colorItoa(row) + "\x1b\\"
+}
