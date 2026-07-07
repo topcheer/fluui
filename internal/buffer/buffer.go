@@ -99,7 +99,7 @@ func (b *Buffer) DrawText(x, y int, text string, style Style) int {
 		}
 		b.SetCell(x, y, Cell{
 			Rune:  r,
-			Width: w,
+			Width: uint8(w),
 			Fg:    style.Fg,
 			Bg:    style.Bg,
 			Flags: style.Flags,
@@ -127,7 +127,7 @@ func (b *Buffer) DrawTextClamped(x, y int, text string, style Style) int {
 		}
 		b.SetCell(x, y, Cell{
 			Rune:  r,
-			Width: w,
+			Width: uint8(w),
 			Fg:    style.Fg,
 			Bg:    style.Bg,
 			Flags: style.Flags,
@@ -162,7 +162,7 @@ func (b *Buffer) SetRow(y int, cells []Cell, xOffset int) {
 		if c.Width == 2 && x+1 < b.Width {
 			b.SetCell(x+1, y, Cell{Rune: 0, Width: 0, Bg: c.Bg})
 		}
-		x += c.Width
+		x += int(c.Width)
 		if c.Width == 0 {
 			// combining char, don't advance x
 		}

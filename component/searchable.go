@@ -200,7 +200,7 @@ func PaintHighlight(buf *buffer.Buffer, x, y int, result FilterResult, normalSty
 			w := buffer.RuneWidth(r)
 			buf.SetCell(curX, y, buffer.Cell{
 				Rune:  r,
-				Width: w,
+				Width: uint8(w),
 				Fg:    style.Fg,
 				Bg:    style.Bg,
 				Flags: style.Flags,

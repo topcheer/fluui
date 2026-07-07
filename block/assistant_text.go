@@ -287,7 +287,7 @@ func (b *AssistantTextBlock) Paint(buf *buffer.Buffer) {
 					break
 				}
 				buf.SetCell(x, y, cell)
-				x += cell.Width
+				x += int(cell.Width)
 				if cell.Width == 0 {
 					x++
 				}

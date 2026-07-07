@@ -220,7 +220,7 @@ func (il *inputLine) paint(buf *buffer.Buffer, x, y, w int) {
 		if visualX+rw > textStart+availW {
 			break
 		}
-		buf.SetCell(visualX, y, buffer.Cell{Rune: r, Width: rw, Fg: textStyle.Fg, Bg: textStyle.Bg})
+		buf.SetCell(visualX, y, buffer.Cell{Rune: r, Width: uint8(rw), Fg: textStyle.Fg, Bg: textStyle.Bg})
 		if rw == 2 {
 			buf.SetCell(visualX+1, y, buffer.Cell{Rune: 0, Width: 0, Fg: textStyle.Fg, Bg: textStyle.Bg})
 		}

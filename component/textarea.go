@@ -436,13 +436,13 @@ func (ta *TextArea) Paint(buf *buffer.Buffer) {
 			}
 			cell := buffer.Cell{
 				Rune:  r,
-				Width: buffer.RuneWidth(r),
+				Width: uint8(buffer.RuneWidth(r)),
 				Fg:    ta.defStyle.Fg,
 				Bg:    ta.defStyle.Bg,
 				Flags: ta.defStyle.Flags,
 			}
 			buf.SetCell(x, bounds.Y+row, cell)
-			x += cell.Width
+			x += int(cell.Width)
 		}
 
 		// Draw cursor if on this line
@@ -461,7 +461,7 @@ func (ta *TextArea) Paint(buf *buffer.Buffer) {
 					r := line[ta.cursorX]
 					cur = buffer.Cell{
 						Rune:  r,
-						Width: buffer.RuneWidth(r),
+						Width: uint8(buffer.RuneWidth(r)),
 						Fg:    ta.defStyle.Bg,
 						Bg:    ta.defStyle.Fg,
 						Flags: ta.defStyle.Flags | buffer.Reverse,

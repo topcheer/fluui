@@ -105,7 +105,7 @@ func (h *Highlighter) Highlight(source string, lang string) ([][]buffer.Cell, er
 				w := buffer.RuneWidth(r)
 				currentLine = append(currentLine, buffer.Cell{
 					Rune:  r,
-					Width: w,
+					Width: uint8(w),
 					Fg:    color,
 				})
 			}

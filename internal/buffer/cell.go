@@ -1,13 +1,15 @@
 package buffer
 
 // Cell is the smallest renderable unit — one character position on screen.
+// Field order optimized for minimal struct size: large fields first, then
+// small fields packed together. This reduces Cell from 48→32 bytes (-33%).
 type Cell struct {
-	Rune  rune
-	Width int    // display width: 0 (combining) / 1 (ASCII) / 2 (CJK)
-	Fg    Color
-	Bg    Color
-	Flags StyleFlags
-	Link  *Link // nil if not a link
+	Rune  rune       // 4B at offset 0
+	Fg    Color      // 8B at offset 4 (4-byte aligned from Rune end)
+	Bg    Color      // 8B at offset 12
+	Width uint8      // 1B at offset 20 — display width: 0/1/2
+	Flags StyleFlags // 1B at offset 21
+	Link  *Link      // 8B at offset 24 (8-byte aligned from 22→24)
 }
 
 // BlankCell is the default empty cell (space character).
@@ -17,7 +19,7 @@ var BlankCell = Cell{Rune: ' ', Width: 1}
 func NewCell(r rune, style Style) Cell {
 	return Cell{
 		Rune:  r,
-		Width: RuneWidth(r),
+		Width: uint8(RuneWidth(r)),
 		Fg:    style.Fg,
 		Bg:    style.Bg,
 		Flags: style.Flags,
@@ -26,7 +28,7 @@ func NewCell(r rune, style Style) Cell {
 
 // StyledCell creates a Cell with explicit style fields.
 func StyledCell(r rune, w int, fg, bg Color, flags StyleFlags) Cell {
-	return Cell{Rune: r, Width: w, Fg: fg, Bg: bg, Flags: flags}
+	return Cell{Rune: r, Width: uint8(w), Fg: fg, Bg: bg, Flags: flags}
 }
 
 // Equal reports whether two cells are identical.

@@ -132,7 +132,7 @@ func TestEnhancedRendererCJK(t *testing.T) {
 		if cell.Rune != chk.rune {
 			t.Errorf("cell (%d,1): got %q, want %q", chk.x, string(cell.Rune), string(chk.rune))
 		}
-		if cell.Width != chk.width {
+		if cell.Width != uint8(chk.width) {
 			t.Errorf("cell (%d,1): expected width %d, got %d", chk.x, chk.width, cell.Width)
 		}
 	}

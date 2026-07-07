@@ -90,13 +90,13 @@ func (i *InputLine) Paint(buf *buffer.Buffer) {
 		}
 		cell := buffer.Cell{
 			Rune:  r,
-			Width: buffer.RuneWidth(r),
+			Width: uint8(buffer.RuneWidth(r)),
 			Fg:    i.textStyle.Fg,
 			Bg:    i.textStyle.Bg,
 			Flags: i.textStyle.Flags,
 		}
 		buf.SetCell(x, y, cell)
-		x += cell.Width
+		x += int(cell.Width)
 	}
 
 	// Draw cursor: reverse-video block at cursor position.
@@ -107,7 +107,7 @@ func (i *InputLine) Paint(buf *buffer.Buffer) {
 			// Cursor on existing character.
 			cur = buffer.Cell{
 				Rune:  i.buf[i.cursor],
-				Width: buffer.RuneWidth(i.buf[i.cursor]),
+				Width: uint8(buffer.RuneWidth(i.buf[i.cursor])),
 				Fg:    i.textStyle.Bg, // swap fg/bg for reverse
 				Bg:    i.textStyle.Fg,
 				Flags: i.textStyle.Flags | buffer.Reverse,

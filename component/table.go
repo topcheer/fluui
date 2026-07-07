@@ -522,7 +522,7 @@ func (t *Table) Paint(buf *buffer.Buffer) {
 		col := t.columns[ci]
 		title := t.truncateToWidth(col.Title, col.Width)
 		t.drawCellLocked(buf, colX, y, title, col.Width, ci, headerStyle)
-		colX += col.Width + 1 // +1 for separator space
+		colX += int(col.Width) + 1 // +1 for separator space
 		if colX >= x+w {
 			break
 		}
@@ -536,9 +536,9 @@ func (t *Table) Paint(buf *buffer.Buffer) {
 		}
 		indicatorX := x
 		for i := 0; i < t.sortCol; i++ {
-			indicatorX += t.columns[i].Width + 1
+			indicatorX += int(t.columns[i].Width) + 1
 		}
-		indicatorX += t.columns[t.sortCol].Width - 1
+		indicatorX += int(t.columns[t.sortCol].Width) - 1
 		if indicatorX < x+w-1 {
 			for _, r := range arrow {
 				buf.SetCell(indicatorX, y, buffer.Cell{
@@ -608,7 +608,7 @@ func (t *Table) Paint(buf *buffer.Buffer) {
 			}
 
 			t.drawCellLocked(buf, colX, rowY, cellText, col.Width, ci, style)
-			colX += col.Width + 1
+			colX += int(col.Width) + 1
 			if colX >= x+w {
 				break
 			}
@@ -733,7 +733,7 @@ func (t *Table) recomputeColumnsLocked() {
 func (t *Table) totalWidthLocked() int {
 	w := 0
 	for i, c := range t.columns {
-		w += c.Width
+		w += int(c.Width)
 		if i < len(t.columns)-1 {
 			w++ // separator
 		}
@@ -757,7 +757,7 @@ func (t *Table) visibleColumnsLocked(maxW int) []int {
 	var result []int
 	usedW := 0
 	for i := start; i < len(t.columns); i++ {
-		colW := t.columns[i].Width + 1 // +1 for separator
+		colW := int(t.columns[i].Width) + 1 // +1 for separator
 		if usedW+colW > maxW && len(result) > 0 {
 			break
 		}

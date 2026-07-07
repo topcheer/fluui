@@ -725,7 +725,7 @@ func RenderMathToCells(latex string, fg buffer.Color) []buffer.Cell {
 		w := buffer.RuneWidth(ch)
 		cells = append(cells, buffer.Cell{
 			Rune:  ch,
-			Width: w,
+			Width: uint8(w),
 			Fg:    fg,
 		})
 	}

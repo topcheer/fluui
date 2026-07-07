@@ -614,7 +614,7 @@ func (r *MarkdownRenderer) textToCells(s string, fg buffer.Color, flags buffer.S
 	for _, ch := range s {
 		cells = append(cells, buffer.Cell{
 			Rune:  ch,
-			Width: buffer.RuneWidth(ch),
+			Width: uint8(buffer.RuneWidth(ch)),
 			Fg:    fg,
 			Flags: flags,
 		})
@@ -664,7 +664,7 @@ func (r *MarkdownRenderer) wrapCells(cells []buffer.Cell, width int) [][]buffer.
 			continue // skip 0-width cells (combining marks, wide-char padding)
 		}
 
-		if curWidth+c.Width > width && curWidth > 0 {
+		if curWidth+int(c.Width) > width && curWidth > 0 {
 			// Need to wrap before this cell.
 			if spaceIdx, afterSpaceW := lastSpaceCellAndWidth(cells[lineStart:i]); spaceIdx >= 0 {
 				// Word-wrap: line ends before the space.
@@ -679,7 +679,7 @@ func (r *MarkdownRenderer) wrapCells(cells []buffer.Cell, width int) [][]buffer.
 				curWidth = 0
 			}
 		}
-		curWidth += c.Width
+		curWidth += int(c.Width)
 	}
 
 	// Final line: remaining cells.
@@ -705,7 +705,7 @@ func lastSpaceCellAndWidth(cells []buffer.Cell) (int, int) {
 		if cells[i].Rune == ' ' {
 			return i, afterWidth
 		}
-		afterWidth += cells[i].Width
+		afterWidth += int(cells[i].Width)
 	}
 	return -1, 0
 }
@@ -713,7 +713,7 @@ func lastSpaceCellAndWidth(cells []buffer.Cell) (int, int) {
 func cellLineWidth(cells []buffer.Cell) int {
 	w := 0
 	for _, c := range cells {
-		w += c.Width
+		w += int(c.Width)
 	}
 	return w
 }
