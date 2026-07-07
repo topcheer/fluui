@@ -316,18 +316,35 @@ func (r *MarkdownRenderer) renderList(n *ast.List, source []byte) *Block {
 
 // wrapCellsWithPrefix wraps inline cells with a prefix on the first line
 // and indentation on subsequent lines.
+//
+// Zero-copy optimization: Instead of allocating a combined allCells slice
+// (which copies ALL cells), we wrap the content cells first, then prepend
+// the prefix cells to the first line and continuation cells to subsequent
+// lines. This avoids a full-slice copy for every paragraph/list item.
 func (r *MarkdownRenderer) wrapCellsWithPrefix(cells []buffer.Cell, firstPrefix, contPrefix string, width int) [][]buffer.Cell {
 	prefixCells := r.textToCells(firstPrefix, r.theme.Body, 0)
 	contCells := r.textToCells(contPrefix, r.theme.Body, 0)
 
-	allCells := append(prefixCells, cells...)
-	wrapped := r.wrapCells(allCells, width)
-
-	// Prepend continuation prefix to lines after the first
-	for i := 1; i < len(wrapped); i++ {
-		wrapped[i] = append(contCells, wrapped[i]...)
+	// Compute effective wrapping width minus prefix
+	prefixW := cellLineWidth(prefixCells)
+	effWidth := width - prefixW
+	if effWidth <= 0 {
+		effWidth = width
 	}
-	return wrapped
+
+	// Wrap content without prefix (zero-copy into input cells)
+	wrapped := r.wrapCells(cells, effWidth)
+
+	// Prepend prefix to first line, continuation prefix to subsequent lines
+	result := make([][]buffer.Cell, len(wrapped))
+	for i, line := range wrapped {
+		if i == 0 {
+			result[i] = append(prefixCells, line...)
+		} else {
+			result[i] = append(contCells, line...)
+		}
+	}
+	return result
 }
 
 // renderTable renders a markdown table with borders.
