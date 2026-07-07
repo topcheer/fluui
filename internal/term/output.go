@@ -25,12 +25,14 @@ func NewWriter(w io.Writer, profile ColorProfile) *Writer {
 }
 
 // MoveTo moves the cursor to (x, y), 1-based.
+// cursorMovePrefix is ESC[ as a 2-byte slice for single Write call.
+var cursorMovePrefix = []byte{0x1b, '['}
+
 func (w *Writer) MoveTo(x, y int) {
 	// Format: ESC [ <y+1> ; <x+1> H
-	// Use strconv to avoid fmt.Fprintf allocations.
+	// Combine prefix into single Write to reduce buffer method calls.
 	var num [20]byte
-	w.buf.WriteByte(0x1b)
-	w.buf.WriteByte('[')
+	w.buf.Write(cursorMovePrefix)
 	n := strconv.AppendInt(num[:0], int64(y+1), 10)
 	w.buf.Write(n)
 	w.buf.WriteByte(';')
@@ -65,8 +67,7 @@ func (w *Writer) SetStyle(s buffer.Style) {
 	}
 	// Write SGR escape sequence directly into buf using byte-level AppendSGR
 	// to avoid the intermediate string allocation from SGRSequence().
-	w.buf.WriteByte(0x1b)
-	w.buf.WriteByte('[')
+	w.buf.Write(cursorMovePrefix) // ESC[
 	var tmp [80]byte
 	params := s.AppendSGR(tmp[:0])
 	w.buf.Write(params)

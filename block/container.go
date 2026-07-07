@@ -21,10 +21,25 @@ type BlockContainer struct {
 }
 
 // NewBlockContainer creates an empty container with default spacing of 1.
+// The blocks slice is pre-allocated with capacity 8 to avoid reallocations
+// during typical AI chat usage (5-20 blocks per conversation).
 func NewBlockContainer() *BlockContainer {
 	return &BlockContainer{
+		blocks:  make([]Block, 0, 8),
 		spacing: 1,
 		dirty:   true,
+	}
+}
+
+// Reserve pre-allocates capacity for n blocks. Call this before adding many
+// blocks to eliminate slice reallocations entirely.
+func (c *BlockContainer) Reserve(n int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if cap(c.blocks) < n {
+		newBlocks := make([]Block, len(c.blocks), n)
+		copy(newBlocks, c.blocks)
+		c.blocks = newBlocks
 	}
 }
 
