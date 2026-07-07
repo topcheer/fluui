@@ -29,16 +29,27 @@ func init() {
 	}
 }
 
+// ImageOverlay represents a raw escape sequence to be emitted at a
+// specific terminal position during EndFrame. This is used for terminal
+// image protocols (iTerm2, Kitty Graphics, Sixel) which require
+// multi-byte sequences at specific cursor positions rather than
+// cell-by-cell rendering.
+type ImageOverlay struct {
+	X, Y     int    // terminal coordinates (0-based)
+	Sequence string // raw escape sequence (e.g. iTerm2 OSC 1337, Kitty Graphics)
+}
+
 // Renderer implements double-buffer diff rendering.
 type Renderer struct {
-	tw          *term.Writer
-	front       *buffer.Buffer
-	back        *buffer.Buffer
-	width       int
-	height      int
-	runeBuf     [4]byte        // reusable buffer for rune-to-utf8 encoding
-	syncOutput  bool           // if true, wrap frame output in DCS sync sequences
-	diffOps     []buffer.DiffOp // reused across frames to avoid per-frame allocation
+	tw            *term.Writer
+	front         *buffer.Buffer
+	back          *buffer.Buffer
+	width         int
+	height        int
+	runeBuf       [4]byte        // reusable buffer for rune-to-utf8 encoding
+	syncOutput    bool           // if true, wrap frame output in DCS sync sequences
+	diffOps       []buffer.DiffOp // reused across frames to avoid per-frame allocation
+	imageOverlays []ImageOverlay // terminal image sequences for this frame
 }
 
 // New creates a new Renderer.
@@ -152,6 +163,22 @@ func (r *Renderer) EndFrame() error {
 		return err
 	}
 
+	// Emit image overlays (iTerm2/Kitty/Sixel) at their terminal positions.
+	// These are raw escape sequences that the terminal interprets to display
+	// images inline. Overlays are emitted after cell content so they appear
+	// on top of any placeholder text.
+	for i := range r.imageOverlays {
+		ov := &r.imageOverlays[i]
+		r.tw.MoveTo(ov.X, ov.Y)
+		r.tw.WriteRaw([]byte(ov.Sequence))
+	}
+	if len(r.imageOverlays) > 0 {
+		if err := r.tw.Flush(); err != nil {
+			return err
+		}
+		r.imageOverlays = r.imageOverlays[:0] // reset for next frame
+	}
+
 	// Synchronized output: ESU (End Synchronized Update) must be flushed
 	// AFTER the content so the terminal renders the buffered frame atomically.
 	// ESC P = 2 s ESC \
@@ -188,4 +215,16 @@ func (r *Renderer) SetSyncOutput(enabled bool) {
 // SyncOutput returns whether synchronized output is enabled.
 func (r *Renderer) SyncOutput() bool {
 	return r.syncOutput
+}
+
+// AddImageOverlay queues an image escape sequence to be emitted at the given
+// terminal position during EndFrame. The sequence is written after all cell
+// content has been rendered. Multiple overlays can be added per frame.
+func (r *Renderer) AddImageOverlay(x, y int, sequence string) {
+	r.imageOverlays = append(r.imageOverlays, ImageOverlay{X: x, Y: y, Sequence: sequence})
+}
+
+// ClearImageOverlays removes all pending image overlays without emitting them.
+func (r *Renderer) ClearImageOverlays() {
+	r.imageOverlays = r.imageOverlays[:0]
 }
