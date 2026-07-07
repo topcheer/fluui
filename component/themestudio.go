@@ -26,10 +26,16 @@ type ThemeStudio struct {
 	BaseComponent
 	mu sync.RWMutex
 
-	slots     []themeColorSlot
-	cursor    int
+	slots      []themeColorSlot
+	cursor     int
 	pickerOpen bool
-	picker    *ColorPicker
+	picker     *ColorPicker
+
+	// Browse mode
+	browseOpen   bool
+	browseFiles  []theme.ThemeFileInfo
+	browseCursor int
+	browseDir    string
 
 	originalTheme *theme.Theme // for reset
 	changed       bool
@@ -37,6 +43,7 @@ type ThemeStudio struct {
 	// Callbacks
 	OnChange func() // fired when a color changes
 	OnSave   func() // fired when 's' is pressed
+	OnLoad   func() // fired when a theme is loaded from file
 
 	// Styles
 	style ThemeStudioStyle
@@ -160,6 +167,13 @@ func (ts *ThemeStudio) SetStyle(s ThemeStudioStyle) {
 func (ts *ThemeStudio) HandleKey(k *term.KeyEvent) bool {
 	ts.mu.Lock()
 
+	// If browse mode is open, handle browse keys.
+	if ts.browseOpen {
+		result := ts.handleBrowseKeyLocked(k)
+		ts.mu.Unlock()
+		return result
+	}
+
 	// If picker is open, route to picker first.
 	// IMPORTANT: release mu before calling picker.HandleKey because the
 	// picker's OnChange callback re-acquires mu. Holding mu would deadlock.
@@ -201,8 +215,12 @@ func (ts *ThemeStudio) HandleKey(k *term.KeyEvent) bool {
 			cb()
 		}
 		return true
+	case k.Rune == 'o':
+		ts.openBrowseLocked()
+		return true
 	case k.Rune == 'q':
 		ts.pickerOpen = false
+		ts.browseOpen = false
 		return true
 	}
 	return false
@@ -299,13 +317,18 @@ func (ts *ThemeStudio) Paint(buf *buffer.Buffer) {
 
 	// Help line
 	if y < bounds.Y+bounds.H {
-		help := "↑↓/jk nav · Enter edit · r reset · s save · q close"
+		help := "↑↓/jk nav · Enter edit · r reset · s save · o open · q close"
 		drawStringAt(buf, x, bounds.Y+bounds.H-1, help, ts.style.Help)
 	}
 
 	// Render picker overlay if open
 	if ts.pickerOpen {
 		ts.paintPickerOverlay(buf, bounds)
+	}
+
+	// Render browse overlay if open
+	if ts.browseOpen {
+		ts.paintBrowseOverlay(buf, bounds)
 	}
 }
 
@@ -468,4 +491,153 @@ func drawStringAt(buf *buffer.Buffer, x, y int, s string, style buffer.Style) {
 	for i, r := range s {
 		buf.SetCell(x+i, y, buffer.Cell{Rune: r, Width: 1, Fg: style.Fg, Bg: style.Bg, Flags: style.Flags})
 	}
+}
+
+// ─── Browse Mode ───
+
+// openBrowseLocked opens the theme file browser overlay.
+// Caller must hold mu.
+func (ts *ThemeStudio) openBrowseLocked() {
+	ts.browseDir = theme.DefaultThemeDir()
+	files, _ := theme.ListThemeFiles(ts.browseDir)
+	ts.browseFiles = files
+	ts.browseCursor = 0
+	ts.browseOpen = true
+}
+
+// handleBrowseKeyLocked handles keys while browse overlay is open.
+// Caller must hold mu.
+func (ts *ThemeStudio) handleBrowseKeyLocked(k *term.KeyEvent) bool {
+	switch {
+	case k.Key == term.KeyUp || k.Rune == 'k':
+		if ts.browseCursor > 0 {
+			ts.browseCursor--
+		}
+		return true
+	case k.Key == term.KeyDown || k.Rune == 'j':
+		if ts.browseCursor < len(ts.browseFiles)-1 {
+			ts.browseCursor++
+		}
+		return true
+	case k.Key == term.KeyEnter:
+		// Load the selected theme.
+		if ts.browseCursor < len(ts.browseFiles) {
+			path := ts.browseFiles[ts.browseCursor].Path
+			if err := theme.LoadAndActivate(path); err == nil {
+				ts.slots = ts.initSlotsRaw(theme.Get())
+				ts.changed = false
+				ts.fireChangeLocked()
+				if cb := ts.OnLoad; cb != nil {
+					cb()
+				}
+			}
+		}
+		ts.browseOpen = false
+		return true
+	case k.Key == term.KeyEscape || k.Rune == 'q' || k.Rune == 'o':
+		ts.browseOpen = false
+		return true
+	}
+	return false
+}
+
+// paintBrowseOverlay renders the theme file browser as a modal overlay.
+func (ts *ThemeStudio) paintBrowseOverlay(buf *buffer.Buffer, bounds Rect) {
+	// Overlay dimensions.
+	overlayW := bounds.W - 10
+	if overlayW > 50 {
+		overlayW = 50
+	}
+	if overlayW < 20 {
+		overlayW = 20
+	}
+	overlayH := bounds.H - 6
+	if overlayH > 15 {
+		overlayH = 15
+	}
+	if overlayH < 5 {
+		overlayH = 5
+	}
+	overlayX := bounds.X + 5
+	overlayY := bounds.Y + 3
+
+	th := theme.Get()
+
+	// Draw overlay background.
+	for y := overlayY; y < overlayY+overlayH; y++ {
+		for x := overlayX; x < overlayX+overlayW; x++ {
+			buf.SetCell(x, y, buffer.Cell{
+				Rune:  ' ',
+				Width: 1,
+				Bg:    th.Bg,
+			})
+		}
+	}
+
+	// Draw border.
+	borderStyle := buffer.Style{Fg: th.Border, Bg: th.Bg}
+	for x := overlayX; x < overlayX+overlayW; x++ {
+		buf.SetCell(x, overlayY, buffer.Cell{Rune: '─', Width: 1, Fg: borderStyle.Fg, Bg: borderStyle.Bg})
+		buf.SetCell(x, overlayY+overlayH-1, buffer.Cell{Rune: '─', Width: 1, Fg: borderStyle.Fg, Bg: borderStyle.Bg})
+	}
+	for y := overlayY; y < overlayY+overlayH; y++ {
+		buf.SetCell(overlayX, y, buffer.Cell{Rune: '│', Width: 1, Fg: borderStyle.Fg, Bg: borderStyle.Bg})
+		buf.SetCell(overlayX+overlayW-1, y, buffer.Cell{Rune: '│', Width: 1, Fg: borderStyle.Fg, Bg: borderStyle.Bg})
+	}
+
+	// Title.
+	titleStyle := buffer.Style{Fg: th.Accent, Bg: th.Bg, Flags: buffer.Bold}
+	drawStringAt(buf, overlayX+2, overlayY, " Open Theme ", titleStyle)
+
+	// Theme files list.
+	listY := overlayY + 2
+	maxVisible := overlayH - 4 // leave room for title + help
+	if maxVisible < 1 {
+		maxVisible = 1
+	}
+
+	if len(ts.browseFiles) == 0 {
+		emptyStyle := buffer.Style{Fg: th.Muted, Bg: th.Bg}
+		drawStringAt(buf, overlayX+2, listY, "No saved themes found", emptyStyle)
+		drawStringAt(buf, overlayX+2, listY+1, "Press 's' to save first", emptyStyle)
+	} else {
+		cursorStyle := buffer.Style{Fg: th.Bg, Bg: th.Accent, Flags: buffer.Bold}
+		normalStyle := buffer.Style{Fg: th.Fg, Bg: th.Bg}
+
+		for i := 0; i < maxVisible && i < len(ts.browseFiles); i++ {
+			idx := i
+			file := ts.browseFiles[idx]
+			style := normalStyle
+			if idx == ts.browseCursor {
+				style = cursorStyle
+			}
+
+			indicator := "  "
+			if idx == ts.browseCursor {
+				indicator = "▶ "
+			}
+			drawStringAt(buf, overlayX+2, listY+i, indicator+file.Name, style)
+		}
+	}
+
+	// Help line.
+	helpY := overlayY + overlayH - 2
+	helpStyle := buffer.Style{Fg: th.Muted, Bg: th.Bg}
+	drawStringAs(buf, overlayX+2, helpY, "↑↓/jk nav · Enter load · Esc cancel", helpStyle)
+}
+
+// initSlotsRaw rebuilds the slot list from a theme without locking.
+// Used during load operations where we're already holding the lock.
+func (ts *ThemeStudio) initSlotsRaw(t *theme.Theme) []themeColorSlot {
+	// Save current slots, call initSlots, capture result, restore.
+	saved := ts.slots
+	ts.initSlots(t)
+	result := ts.slots
+	ts.slots = saved
+	return result
+}
+
+// drawStringAs is an alias to avoid name collision in this file scope.
+func drawStringAs(buf *buffer.Buffer, x, y int, s string, style buffer.Style) {
+	drawStringAt(buf, x, y, s, style)
 }

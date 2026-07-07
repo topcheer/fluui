@@ -154,6 +154,78 @@ func LoadAndActivate(path string) error {
 	return nil
 }
 
+// DefaultThemeDir returns the default directory for saving/loading theme files.
+// On Unix: ~/.config/fluui/themes
+// On Windows: %APPDATA%\fluui\themes
+func DefaultThemeDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "."
+	}
+	return filepath.Join(home, ".config", "fluui", "themes")
+}
+
+// ThemeFileInfo holds metadata about a saved theme file.
+type ThemeFileInfo struct {
+	Name string // theme name from JSON "name" field
+	Path string // full file path
+}
+
+// ListThemeFiles scans a directory for .json theme files and returns
+// their metadata (name + path). If dir is empty, DefaultThemeDir() is used.
+// If the directory doesn't exist, returns nil without error.
+func ListThemeFiles(dir string) ([]ThemeFileInfo, error) {
+	if dir == "" {
+		dir = DefaultThemeDir()
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil // directory doesn't exist yet — not an error
+		}
+		return nil, fmt.Errorf("theme: read dir: %w", err)
+	}
+
+	var result []ThemeFileInfo
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if filepath.Ext(name) != ".json" {
+			continue
+		}
+
+		fullPath := filepath.Join(dir, name)
+
+		// Read the file to get theme name from JSON.
+		data, err := os.ReadFile(fullPath)
+		if err != nil {
+			continue // skip unreadable files
+		}
+		var s serializableTheme
+		if err := json.Unmarshal(data, &s); err != nil {
+			// Not a valid theme file — skip but use filename as name.
+			result = append(result, ThemeFileInfo{
+				Name: name[:len(name)-len(filepath.Ext(name))],
+				Path: fullPath,
+			})
+			continue
+		}
+
+		displayName := s.Name
+		if displayName == "" {
+			displayName = name[:len(name)-len(filepath.Ext(name))]
+		}
+		result = append(result, ThemeFileInfo{
+			Name: displayName,
+			Path: fullPath,
+		})
+	}
+
+	return result, nil
+}
+
 // colorToHexStr converts a Color to a hex string.
 func colorToHexStr(c Color) string {
 	if c.Type == 3 { // buffer.ColorTrue
