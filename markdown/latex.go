@@ -669,7 +669,12 @@ func findInlineMath(text string) int {
 func RenderInlineMath(text string) string {
 	var result strings.Builder
 	result.Grow(len(text) * 2)
+	renderInlineMathToBuilder(text, &result)
+	return result.String()
+}
 
+// renderInlineMathToBuilder writes inline math result into a caller-provided builder.
+func renderInlineMathToBuilder(text string, result *strings.Builder) {
 	i := 0
 	for i < len(text) {
 		// Check for escaped \$
@@ -681,7 +686,6 @@ func RenderInlineMath(text string) string {
 
 		// Check for inline math $...$
 		if text[i] == '$' && i+1 < len(text) && text[i+1] != '$' {
-			// Find closing $
 			end := -1
 			for j := i + 1; j < len(text); j++ {
 				if text[j] == '$' && text[j-1] != '\\' {
@@ -691,7 +695,7 @@ func RenderInlineMath(text string) string {
 			}
 			if end > 0 {
 				latex := text[i+1 : end]
-				renderLatexToBuilder(latex, &result)
+				renderLatexToBuilder(latex, result)
 				i = end + 1
 				continue
 			}
@@ -702,7 +706,7 @@ func RenderInlineMath(text string) string {
 			end := strings.Index(text[i+2:], "\\)")
 			if end >= 0 {
 				latex := text[i+2 : i+2+end]
-				renderLatexToBuilder(latex, &result)
+				renderLatexToBuilder(latex, result)
 				i = i + 2 + end + 2
 				continue
 			}
@@ -711,8 +715,6 @@ func RenderInlineMath(text string) string {
 		result.WriteByte(text[i])
 		i++
 	}
-
-	return result.String()
 }
 
 // RenderMathToCells converts a LaTeX math expression to styled cells.

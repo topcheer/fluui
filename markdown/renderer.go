@@ -147,8 +147,10 @@ func (r *MarkdownRenderer) renderInline(n ast.Node, source []byte) []buffer.Cell
 		if t, ok := first.(*ast.Text); ok {
 			text := string(t.Value(source))
 			if HasInlineMath(text) {
-				converted := RenderInlineMath(text)
-				return r.textToCells(converted, r.theme.CodeFg, buffer.Italic)
+				var sb strings.Builder
+				sb.Grow(len(text) * 2)
+				renderInlineMathToBuilder(text, &sb)
+				return r.textToCells(sb.String(), r.theme.CodeFg, buffer.Italic)
 			}
 			return r.textToCells(text, r.theme.Body, 0)
 		}
