@@ -27,6 +27,7 @@ type MarkdownTheme struct {
 	TableHeader buffer.Color
 	Hr          buffer.Color
 	Body        buffer.Color
+	ImageFg     buffer.Color
 }
 
 // DefaultTheme returns a sensible dark-terminal markdown theme.
@@ -52,6 +53,7 @@ func DefaultTheme() *MarkdownTheme {
 		TableHeader: buffer.RGB(0xBD, 0x93, 0xF9),
 		Hr:          buffer.RGB(0x62, 0x72, 0xA4),
 		Body:        buffer.NoColor(),
+		ImageFg:     buffer.RGB(0xFF, 0xB8, 0x6C), // orange
 	}
 }
 
@@ -83,6 +85,7 @@ func MarkdownThemeFromTheme(t *theme.Theme) *MarkdownTheme {
 		TableHeader: t.Accent,
 		Hr:          t.Separator,
 		Body:        buffer.NoColor(),
+		ImageFg:     t.Warning,
 	}
 }
 

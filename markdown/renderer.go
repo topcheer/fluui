@@ -24,6 +24,7 @@ const (
 	BlockQuote
 	BlockThematicBreak
 	BlockTable
+	BlockImage
 )
 
 // Block is a rendered markdown block.
@@ -207,6 +208,37 @@ func (r *MarkdownRenderer) renderInlineNode(n ast.Node, source []byte) []buffer.
 		if r.linkRenderer != nil && !r.linkRenderer.Enabled() && url != "" {
 			fallback := " (" + url + ")"
 			cells = append(cells, r.textToCells(fallback, r.theme.LinkFg, 0)...)
+		}
+		return cells
+	case *ast.Image:
+		// Render image as "[image: alt] (url)" with image style.
+		// Terminal can't display inline images in markdown flow, so we
+		// show a styled indicator with alt text and the URL.
+		url := string(v.Destination)
+		altText := ""
+		for child := v.FirstChild(); child != nil; child = child.NextSibling() {
+			if t, ok := child.(*ast.Text); ok {
+				if altText != "" {
+					altText += " "
+				}
+				altText += string(t.Value(source))
+			}
+		}
+		// Build display: [image: alt] (url)
+		var cells []buffer.Cell
+		if altText != "" {
+			cells = append(cells, r.textToCells("[image: "+altText+"]", r.theme.ImageFg, buffer.Dim)...)
+		} else {
+			cells = append(cells, r.textToCells("[image]", r.theme.ImageFg, buffer.Dim)...)
+		}
+		if url != "" {
+			cells = append(cells, r.textToCells(" ("+url+")", r.theme.LinkUrlFg, 0)...)
+			// Attach OSC8 link so URL is clickable
+			if r.linkRenderer != nil && r.linkRenderer.Enabled() {
+				for i := range cells {
+					cells[i].Link = &buffer.Link{URL: url, Text: string(cells[i].Rune)}
+				}
+			}
 		}
 		return cells
 	case *ast.Emphasis:
