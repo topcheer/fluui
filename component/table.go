@@ -2,6 +2,7 @@ package component
 
 import (
 	"sort"
+	"strings"
 	"sync"
 	"unicode/utf8"
 
@@ -57,6 +58,10 @@ type Table struct {
 	// display options
 	zebra       bool
 	showRowNum  bool
+
+	// filtering
+	filter       string // case-insensitive substring filter
+	filteredRows [][]string // computed subset when filter is active
 
 	// callback
 	onSelect func(row int, rowData []string)
@@ -133,6 +138,7 @@ func (t *Table) SetRows(rows [][]string) {
 		t.rows = append(t.rows, row)
 	}
 	t.recomputeColumnsLocked()
+	t.applyFilterLocked()
 	t.clampSelectionLocked()
 }
 
@@ -144,13 +150,14 @@ func (t *Table) AddRow(row []string) {
 	copy(r, row)
 	t.rows = append(t.rows, r)
 	t.recomputeColumnsLocked()
+	t.applyFilterLocked()
 }
 
-// RowCount returns the number of data rows.
+// RowCount returns the number of visible rows (filtered if filter active).
 func (t *Table) RowCount() int {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-	return len(t.rows)
+	return len(t.displayRowsLocked())
 }
 
 // SelectedRow returns the index of the currently selected row.
@@ -164,11 +171,12 @@ func (t *Table) SelectedRow() int {
 func (t *Table) SelectedRowData() []string {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-	if t.selectedRow < 0 || t.selectedRow >= len(t.rows) {
+	rows := t.displayRowsLocked()
+	if t.selectedRow < 0 || t.selectedRow >= len(rows) {
 		return nil
 	}
-	row := make([]string, len(t.rows[t.selectedRow]))
-	copy(row, t.rows[t.selectedRow])
+	row := make([]string, len(rows[t.selectedRow]))
+	copy(row, rows[t.selectedRow])
 	return row
 }
 
@@ -370,7 +378,8 @@ func (t *Table) HandleKey(key *term.KeyEvent) bool {
 		return true
 
 	case term.KeyDown:
-		if t.selectedRow < len(t.rows)-1 {
+		rows := t.displayRowsLocked()
+		if t.selectedRow < len(rows)-1 {
 			t.selectedRow++
 		}
 		t.ensureVisibleLocked(t.boundsH)
@@ -395,8 +404,9 @@ func (t *Table) HandleKey(key *term.KeyEvent) bool {
 		return true
 
 	case term.KeyEnd:
-		if len(t.rows) > 0 {
-			t.selectedRow = len(t.rows) - 1
+		rows := t.displayRowsLocked()
+		if len(rows) > 0 {
+			t.selectedRow = len(rows) - 1
 		}
 		t.ensureVisibleLocked(t.boundsH)
 		return true
@@ -422,8 +432,9 @@ func (t *Table) HandleKey(key *term.KeyEvent) bool {
 			dataH = 1
 		}
 		t.selectedRow += dataH
-		if t.selectedRow >= len(t.rows) {
-			t.selectedRow = len(t.rows) - 1
+		rows := t.displayRowsLocked()
+		if t.selectedRow >= len(rows) {
+			t.selectedRow = len(rows) - 1
 		}
 		if t.selectedRow < 0 {
 			t.selectedRow = 0
@@ -432,9 +443,10 @@ func (t *Table) HandleKey(key *term.KeyEvent) bool {
 		return true
 
 	case term.KeyEnter:
-		if t.onSelect != nil && t.selectedRow >= 0 && t.selectedRow < len(t.rows) {
-			row := make([]string, len(t.rows[t.selectedRow]))
-			copy(row, t.rows[t.selectedRow])
+		rows := t.displayRowsLocked()
+		if t.onSelect != nil && t.selectedRow >= 0 && t.selectedRow < len(rows) {
+			row := make([]string, len(rows[t.selectedRow]))
+			copy(row, rows[t.selectedRow])
 			cb := t.onSelect
 			t.mu.Unlock()
 			cb(t.selectedRow, row)
@@ -473,7 +485,7 @@ func (t *Table) Measure(cs Constraints) Size {
 	defer t.mu.RUnlock()
 
 	w := t.totalWidthLocked()
-	h := 1 + len(t.rows)
+	h := 1 + len(t.displayRowsLocked())
 
 	if cs.MaxWidth > 0 && w > cs.MaxWidth {
 		w = cs.MaxWidth
@@ -568,6 +580,7 @@ func (t *Table) Paint(buf *buffer.Buffer) {
 	}
 
 	// --- Data rows ---
+	rows := t.displayRowsLocked()
 	dataStartY := y + 2 // header + separator
 	dataH := h - 2
 	if dataH < 0 {
@@ -580,7 +593,7 @@ func (t *Table) Paint(buf *buffer.Buffer) {
 
 	for vi := 0; vi < dataH; vi++ {
 		rowIdx := t.scrollY + vi
-		if rowIdx >= len(t.rows) {
+		if rowIdx >= len(rows) {
 			break
 		}
 
@@ -591,9 +604,9 @@ func (t *Table) Paint(buf *buffer.Buffer) {
 		colX = x
 		for _, ci := range visibleCols {
 			col := t.columns[ci]
-			cellText := ""
-			if ci < len(t.rows[rowIdx]) {
-				cellText = t.rows[rowIdx][ci]
+				cellText := ""
+			if ci < len(rows[rowIdx]) {
+				cellText = rows[rowIdx][ci]
 			}
 			cellText = t.truncateToWidth(cellText, col.Width)
 
@@ -674,6 +687,77 @@ func (t *Table) Paint(buf *buffer.Buffer) {
 
 // Children returns nil (Table is a leaf component).
 func (t *Table) Children() []Component { return nil }
+
+// --- Filtering ---
+
+// SetFilter applies a case-insensitive substring filter to the table.
+// Only rows where any column contains the query are shown.
+// An empty string clears the filter.
+func (t *Table) SetFilter(query string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.filter = query
+	t.applyFilterLocked()
+	t.selectedRow = 0
+	t.scrollY = 0
+}
+
+// Filter returns the current filter string (empty = no filter).
+func (t *Table) Filter() string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.filter
+}
+
+// ClearFilter removes any active filter.
+func (t *Table) ClearFilter() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.filter = ""
+	t.filteredRows = nil
+	t.selectedRow = 0
+	t.scrollY = 0
+}
+
+// IsFiltered returns true if a filter is currently active.
+func (t *Table) IsFiltered() bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.filter != ""
+}
+
+// displayRowsLocked returns the rows that should be displayed (filtered or all).
+func (t *Table) displayRowsLocked() [][]string {
+	if t.filter != "" {
+		return t.filteredRows
+	}
+	return t.rows
+}
+
+// applyFilterLocked recomputes filteredRows from the current filter.
+func (t *Table) applyFilterLocked() {
+	if t.filter == "" {
+		t.filteredRows = nil
+		return
+	}
+	t.filteredRows = t.filteredRows[:0]
+	for _, row := range t.rows {
+		if rowMatchesFilter(row, t.filter) {
+			t.filteredRows = append(t.filteredRows, row)
+		}
+	}
+}
+
+// rowMatchesFilter checks if any cell in the row contains the query.
+func rowMatchesFilter(row []string, query string) bool {
+	q := strings.ToLower(query)
+	for _, cell := range row {
+		if strings.Contains(strings.ToLower(cell), q) {
+			return true
+		}
+	}
+	return false
+}
 
 // --- Internal helpers ---
 
@@ -863,20 +947,22 @@ func (t *Table) sortRowsLocked() {
 
 // clampSelectionLocked ensures selectedRow is within valid range.
 func (t *Table) clampSelectionLocked() {
+	rows := t.displayRowsLocked()
 	if t.selectedRow < 0 {
 		t.selectedRow = 0
 	}
-	if len(t.rows) > 0 && t.selectedRow >= len(t.rows) {
-		t.selectedRow = len(t.rows) - 1
+	if len(rows) > 0 && t.selectedRow >= len(rows) {
+		t.selectedRow = len(rows) - 1
 	}
-	if len(t.rows) == 0 {
+	if len(rows) == 0 {
 		t.selectedRow = 0
 	}
 }
 
 // clampScrollYLocked ensures scrollY is within valid range.
 func (t *Table) clampScrollYLocked() {
-	maxScroll := len(t.rows)
+	rows := t.displayRowsLocked()
+	maxScroll := len(rows)
 	if t.scrollY > maxScroll {
 		t.scrollY = maxScroll
 	}
