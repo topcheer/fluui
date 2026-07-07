@@ -30,15 +30,14 @@ var cursorMovePrefix = []byte{0x1b, '['}
 
 func (w *Writer) MoveTo(x, y int) {
 	// Format: ESC [ <y+1> ; <x+1> H
-	// Combine prefix into single Write to reduce buffer method calls.
-	var num [20]byte
-	w.buf.Write(cursorMovePrefix)
-	n := strconv.AppendInt(num[:0], int64(y+1), 10)
-	w.buf.Write(n)
-	w.buf.WriteByte(';')
-	n = strconv.AppendInt(num[:0], int64(x+1), 10)
-	w.buf.Write(n)
-	w.buf.WriteByte('H')
+	// Build entire sequence in stack buffer, single Write to reduce calls.
+	var buf [24]byte
+	b := append(buf[:0], cursorMovePrefix...)
+	b = strconv.AppendInt(b, int64(y+1), 10)
+	b = append(b, ';')
+	b = strconv.AppendInt(b, int64(x+1), 10)
+	b = append(b, 'H')
+	w.buf.Write(b)
 }
 
 // HideCursor hides the terminal cursor.
@@ -67,11 +66,12 @@ func (w *Writer) SetStyle(s buffer.Style) {
 	}
 	// Write SGR escape sequence directly into buf using byte-level AppendSGR
 	// to avoid the intermediate string allocation from SGRSequence().
-	w.buf.Write(cursorMovePrefix) // ESC[
-	var tmp [80]byte
-	params := s.AppendSGR(tmp[:0])
-	w.buf.Write(params)
-	w.buf.WriteByte('m')
+	// Combine ESC[ + params + 'm' into a single Write.
+	var tmp [84]byte
+	b := append(tmp[:0], cursorMovePrefix...)
+	b = s.AppendSGR(b)
+	b = append(b, 'm')
+	w.buf.Write(b)
 }
 
 // ResetStyle resets to terminal defaults.
