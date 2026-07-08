@@ -297,8 +297,14 @@ func (m *MenuBar) nextSelectableLocked(menuIdx, from int) int {
 	if n == 0 {
 		return -1
 	}
+	if from < 0 {
+		from = -1 // will be incremented to 0 on first iteration
+	}
 	for i := 1; i <= n; i++ {
 		idx := (from + i) % n
+		if idx < 0 {
+			idx += n
+		}
 		if !items[idx].Separator && !items[idx].Disabled {
 			return idx
 		}
@@ -316,8 +322,14 @@ func (m *MenuBar) prevSelectableLocked(menuIdx, from int) int {
 	if n == 0 {
 		return -1
 	}
+	if from < 0 {
+		from = 0
+	}
 	for i := 1; i <= n; i++ {
 		idx := (from - i + n) % n
+		if idx < 0 {
+			idx += n
+		}
 		if !items[idx].Separator && !items[idx].Disabled {
 			return idx
 		}
