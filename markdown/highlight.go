@@ -99,14 +99,25 @@ func (h *Highlighter) Highlight(source string, lang string) ([][]buffer.Cell, er
 			h.colorCache[token.Type] = color
 		}
 
-		// Fast path: token has no newline, append directly.
+		// Fast path: token has no newline.
 		if strings.IndexByte(token.Value, '\n') < 0 {
-			for _, r := range token.Value {
-				currentLine = append(currentLine, buffer.Cell{
-					Rune:  r,
-					Width: uint8(buffer.RuneWidth(r)),
-					Fg:    color,
-				})
+			// Ultra-fast path: pure ASCII token (common for code).
+			if isAllASCII(token.Value) {
+				for i := 0; i < len(token.Value); i++ {
+					currentLine = append(currentLine, buffer.Cell{
+						Rune:  rune(token.Value[i]),
+						Width: 1,
+						Fg:    color,
+					})
+				}
+			} else {
+				for _, r := range token.Value {
+					currentLine = append(currentLine, buffer.Cell{
+						Rune:  r,
+						Width: uint8(buffer.RuneWidth(r)),
+						Fg:    color,
+					})
+				}
 			}
 			continue
 		}
