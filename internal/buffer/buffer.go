@@ -259,10 +259,14 @@ func DiffInto(front, back *Buffer, base []DiffOp) []DiffOp {
 			continue
 		}
 		for x := 0; x < back.Width; x++ {
-			fc := front.Cells[rowStart+x]
-			bc := back.Cells[rowStart+x]
-			if !cellFastEqual(fc, bc) {
-				ops = append(ops, DiffOp{X: x, Y: y, Cell: bc})
+			idx := rowStart + x
+			// Use pointer-based comparison to avoid copying 32-byte Cell values.
+			fp := &front.Cells[idx]
+			bp := &back.Cells[idx]
+			if fp.Rune != bp.Rune || fp.Width != bp.Width ||
+				fp.Fg != bp.Fg || fp.Bg != bp.Bg ||
+				fp.Flags != bp.Flags || fp.Link != bp.Link {
+				ops = append(ops, DiffOp{X: x, Y: y, Cell: *bp})
 			}
 		}
 	}
