@@ -48,6 +48,37 @@ func BenchmarkWriterBatchStyleChanges(b *testing.B) {
 	}
 }
 
+// BenchmarkWriterMoveAndStyle benchmarks the optimized MoveAndStyle path
+// (single Write per cell) — this is what the renderer actually uses.
+func BenchmarkWriterMoveAndStyle(b *testing.B) {
+	styles := []buffer.Style{
+		buffer.DefaultStyle.WithFg(buffer.RGB(255, 0, 0)),
+		buffer.DefaultStyle.WithFg(buffer.RGB(0, 255, 0)).AddFlags(buffer.Bold),
+		buffer.DefaultStyle.WithFg(buffer.RGB(0, 0, 255)).AddFlags(buffer.Italic),
+		buffer.DefaultStyle.WithFg(buffer.RGB(255, 255, 0)).AddFlags(buffer.Underline),
+		buffer.DefaultStyle.WithFg(buffer.RGB(255, 0, 255)).AddFlags(buffer.Reverse),
+		buffer.DefaultStyle.WithFg(buffer.RGB(0, 255, 255)),
+		buffer.DefaultStyle.WithFg(buffer.RGB(128, 128, 128)).AddFlags(buffer.Dim),
+		buffer.DefaultStyle.WithFg(buffer.RGB(64, 64, 64)).AddFlags(buffer.Strikethrough),
+	}
+
+	bw := &byteWriter{}
+	tw := NewWriter(bw, ProfileTrue)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		tw.buf.Reset()
+		for j := 0; j < 100; j++ {
+			s := styles[j%len(styles)]
+			tw.MoveAndStyle(j%80, j%24, s)
+			tw.WriteString("X")
+		}
+		tw.ResetStyle()
+		_ = tw.Flush()
+	}
+}
+
 // BenchmarkWriterFlush benchmarks flushing a ~1KB buffer to the underlying writer.
 func BenchmarkWriterFlush(b *testing.B) {
 	// Pre-build a 1KB payload.
