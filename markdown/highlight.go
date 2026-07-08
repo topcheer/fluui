@@ -88,8 +88,17 @@ func (h *Highlighter) Highlight(source string, lang string) ([][]buffer.Cell, er
 	}
 
 	// Build cell lines.
+	// Pre-allocate first line with estimated capacity from source length.
+	// This eliminates ~5-10 append growth reallocations for typical code.
+	estCap := len(source) / 10
+	if estCap < 64 {
+		estCap = 64
+	}
+	if estCap > 4096 {
+		estCap = 4096
+	}
 	var lines [][]buffer.Cell
-	var currentLine []buffer.Cell
+	currentLine := make([]buffer.Cell, 0, estCap)
 
 	for token := iterator(); token != chroma.EOF; token = iterator() {
 		// Cached color lookup (avoids style.Get map lookup per token).
@@ -127,15 +136,26 @@ func (h *Highlighter) Highlight(source string, lang string) ([][]buffer.Cell, er
 		for i, part := range parts {
 			if i > 0 {
 				lines = append(lines, currentLine)
-				currentLine = nil
+				currentLine = make([]buffer.Cell, 0, estCap)
 			}
 
-			for _, r := range part {
-				currentLine = append(currentLine, buffer.Cell{
-					Rune:  r,
-					Width: uint8(buffer.RuneWidth(r)),
-					Fg:    color,
-				})
+			// Apply ASCII fast path to split parts too.
+			if isAllASCII(part) {
+				for j := 0; j < len(part); j++ {
+					currentLine = append(currentLine, buffer.Cell{
+						Rune:  rune(part[j]),
+						Width: 1,
+						Fg:    color,
+					})
+				}
+			} else {
+				for _, r := range part {
+					currentLine = append(currentLine, buffer.Cell{
+						Rune:  r,
+						Width: uint8(buffer.RuneWidth(r)),
+						Fg:    color,
+					})
+				}
 			}
 		}
 	}
