@@ -112,20 +112,17 @@ func (h *Highlighter) Highlight(source string, lang string) ([][]buffer.Cell, er
 		if strings.IndexByte(token.Value, '\n') < 0 {
 			// Ultra-fast path: pure ASCII token (common for code).
 			if isAllASCII(token.Value) {
+				c := buffer.Cell{Width: 1, Fg: color}
 				for i := 0; i < len(token.Value); i++ {
-					currentLine = append(currentLine, buffer.Cell{
-						Rune:  rune(token.Value[i]),
-						Width: 1,
-						Fg:    color,
-					})
+					c.Rune = rune(token.Value[i])
+					currentLine = append(currentLine, c)
 				}
 			} else {
+				c := buffer.Cell{Fg: color}
 				for _, r := range token.Value {
-					currentLine = append(currentLine, buffer.Cell{
-						Rune:  r,
-						Width: uint8(buffer.RuneWidth(r)),
-						Fg:    color,
-					})
+					c.Rune = r
+					c.Width = uint8(buffer.RuneWidth(r))
+					currentLine = append(currentLine, c)
 				}
 			}
 			continue
@@ -141,20 +138,17 @@ func (h *Highlighter) Highlight(source string, lang string) ([][]buffer.Cell, er
 
 			// Apply ASCII fast path to split parts too.
 			if isAllASCII(part) {
+				c := buffer.Cell{Width: 1, Fg: color}
 				for j := 0; j < len(part); j++ {
-					currentLine = append(currentLine, buffer.Cell{
-						Rune:  rune(part[j]),
-						Width: 1,
-						Fg:    color,
-					})
+					c.Rune = rune(part[j])
+					currentLine = append(currentLine, c)
 				}
 			} else {
+				c := buffer.Cell{Fg: color}
 				for _, r := range part {
-					currentLine = append(currentLine, buffer.Cell{
-						Rune:  r,
-						Width: uint8(buffer.RuneWidth(r)),
-						Fg:    color,
-					})
+					c.Rune = r
+					c.Width = uint8(buffer.RuneWidth(r))
+					currentLine = append(currentLine, c)
 				}
 			}
 		}
