@@ -365,13 +365,25 @@ func (r *MarkdownRenderer) wrapCellsWithPrefix(cells []buffer.Cell, firstPrefix,
 	// Wrap content without prefix (zero-copy into input cells)
 	wrapped := r.wrapCells(cells, effWidth)
 
-	// Prepend prefix to first line, continuation prefix to subsequent lines
+	// Prepend prefix to first line, continuation prefix to subsequent lines.
+	// Optimization: wrap the content cells first (zero-copy), then only
+	// prepend prefix to the resulting lines. This avoids a full-slice copy
+	// of all content cells.
 	result := make([][]buffer.Cell, len(wrapped))
 	for i, line := range wrapped {
+		var prefix []buffer.Cell
 		if i == 0 {
-			result[i] = append(prefixCells, line...)
+			prefix = prefixCells
 		} else {
-			result[i] = append(contCells, line...)
+			prefix = contCells
+		}
+		if len(prefix) == 0 {
+			result[i] = line
+		} else {
+			merged := make([]buffer.Cell, len(prefix)+len(line))
+			copy(merged, prefix)
+			copy(merged[len(prefix):], line)
+			result[i] = merged
 		}
 	}
 	return result
