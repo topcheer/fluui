@@ -1,6 +1,10 @@
 package buffer
 
-import "strings"
+import (
+	"bytes"
+	"strings"
+	"unsafe"
+)
 
 // Rect describes a rectangular area in the buffer.
 type Rect struct {
@@ -240,16 +244,21 @@ func DiffInto(front, back *Buffer, base []DiffOp) []DiffOp {
 		return ops
 	}
 
+	cellSize := int(unsafe.Sizeof(Cell{}))
 	for y := 0; y < back.Height; y++ {
 		rowStart := y * back.Width
-		rowSame := true
-		for x := 0; x < back.Width; x++ {
-			if !cellFastEqual(front.Cells[rowStart+x], back.Cells[rowStart+x]) {
-				rowSame = false
-				break
-			}
-		}
-		if rowSame {
+		// Fast row-skip: compare raw bytes of entire row using memcmp.
+		// This is correct because Cell's fields are all value types or
+		// pointers, and byte-equality implies field-equality. If bytes
+		// differ, we fall through to the per-cell check which handles
+		// the rare case of different pointers with equal content.
+		frontBytes := unsafe.Slice(
+			(*byte)(unsafe.Pointer(&front.Cells[rowStart])),
+			back.Width*cellSize)
+		backBytes := unsafe.Slice(
+			(*byte)(unsafe.Pointer(&back.Cells[rowStart])),
+			back.Width*cellSize)
+		if bytes.Equal(frontBytes, backBytes) {
 			continue
 		}
 		for x := 0; x < back.Width; x++ {

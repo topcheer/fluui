@@ -168,7 +168,7 @@ func (r *Renderer) EndFrame() error {
 	for i := range r.imageOverlays {
 		ov := &r.imageOverlays[i]
 		r.tw.MoveTo(ov.X, ov.Y)
-		r.tw.WriteRaw([]byte(ov.Sequence))
+		r.tw.WriteString(ov.Sequence)
 	}
 	if len(r.imageOverlays) > 0 {
 		if err := r.tw.Flush(); err != nil {
