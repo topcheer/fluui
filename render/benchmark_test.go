@@ -118,3 +118,52 @@ func BenchmarkRenderLargeScreen(b *testing.B) {
 		_ = r.EndFrame()
 	}
 }
+
+// BenchmarkRenderSequentialBytes measures output byte count for sequential
+// text rendering — the cursor tracking optimization should reduce bytes
+// by skipping MoveTo for adjacent cells.
+func BenchmarkRenderSequentialBytes(b *testing.B) {
+	counter := &countWriter{}
+	tw := term.NewWriter(counter, term.ProfileTrue)
+	r := New(tw, 80, 24)
+
+	// Initial fill.
+	for y := 0; y < 24; y++ {
+		for x := 0; x < 80; x++ {
+			r.Back().SetCell(x, y, buffer.Cell{
+				Rune:  'A',
+				Width: 1,
+				Fg:    buffer.RGB(255, 255, 255),
+			})
+		}
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	var total int
+	for i := 0; i < b.N; i++ {
+		counter.n = 0
+		r.BeginFrame()
+		for y := 0; y < 24; y++ {
+			for x := 0; x < 80; x++ {
+				r.Back().SetCell(x, y, buffer.Cell{
+					Rune:  rune('A' + (i % 26)),
+					Width: 1,
+					Fg:    buffer.RGB(255, 255, 255),
+				})
+			}
+		}
+		_ = r.EndFrame()
+		total = counter.n
+	}
+	b.ReportMetric(float64(total)/1024, "KB/op")
+}
+
+type countWriter struct {
+	n int
+}
+
+func (c *countWriter) Write(p []byte) (int, error) {
+	c.n += len(p)
+	return len(p), nil
+}
