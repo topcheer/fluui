@@ -55,17 +55,17 @@ func (b *Buffer) idx(x, y int) int {
 
 // SetCell sets the cell at (x, y). Does nothing if out of bounds.
 func (b *Buffer) SetCell(x, y int, cell Cell) {
-	i := b.idx(x, y)
-	if i >= 0 {
-		b.Cells[i] = cell
+	// Inline bounds check — avoids idx() function call overhead.
+	// This is the second most frequently called method after DrawText.
+	if x >= 0 && x < b.Width && y >= 0 && y < b.Height {
+		b.Cells[y*b.Width+x] = cell
 	}
 }
 
 // GetCell returns the cell at (x, y). Returns BlankCell if out of bounds.
 func (b *Buffer) GetCell(x, y int) Cell {
-	i := b.idx(x, y)
-	if i >= 0 {
-		return b.Cells[i]
+	if x >= 0 && x < b.Width && y >= 0 && y < b.Height {
+		return b.Cells[y*b.Width+x]
 	}
 	return BlankCell
 }
