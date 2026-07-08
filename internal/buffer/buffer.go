@@ -79,17 +79,14 @@ func (b *Buffer) DrawText(x, y int, text string, style Style) int {
 	if y >= 0 && y < b.Height && x < b.Width && isAllASCIIBytes(text) {
 		rowBase := y * b.Width
 		maxX := b.Width
+		// Build template cell once — only Rune changes per iteration.
+		c := Cell{Width: 1, Fg: style.Fg, Bg: style.Bg, Flags: style.Flags}
 		for i := 0; i < len(text); i++ {
 			if x >= maxX {
 				break
 			}
-			b.Cells[rowBase+x] = Cell{
-				Rune:  rune(text[i]),
-				Width: 1,
-				Fg:    style.Fg,
-				Bg:    style.Bg,
-				Flags: style.Flags,
-			}
+			c.Rune = rune(text[i])
+			b.Cells[rowBase+x] = c
 			x++
 		}
 		return x
