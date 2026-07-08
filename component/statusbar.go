@@ -233,7 +233,18 @@ func (sb *StatusBar) recomputeTextsLocked() {
 
 // buildTextLocked joins texts for items matching the given alignment. Must hold Lock.
 func (sb *StatusBar) buildTextLocked(align StatusItemAlignment) string {
-	var parts []string
+	n := 0
+	var single string
+	for _, it := range sb.items {
+		if it.Align == align {
+			n++
+			single = it.Text
+		}
+	}
+	if n <= 1 {
+		return single // 0→"", 1→direct ref (no alloc)
+	}
+	parts := make([]string, 0, n)
 	for _, it := range sb.items {
 		if it.Align == align {
 			parts = append(parts, it.Text)
