@@ -51,7 +51,7 @@ func NewMarkdownRenderer(theme *MarkdownTheme, width int) *MarkdownRenderer {
 	return &MarkdownRenderer{
 		theme:        theme,
 		width:        width,
-		md:           goldmark.New(goldmark.WithExtensions(extension.Table)),
+		md:           goldmark.New(goldmark.WithExtensions(extension.Table, extension.Strikethrough)),
 		linkRenderer: NewLinkRenderer(false), // OSC8 disabled by default
 	}
 }
@@ -255,6 +255,16 @@ func (r *MarkdownRenderer) renderInlineNode(n ast.Node, source []byte) []buffer.
 		}
 		for i := range cells {
 			cells[i].Flags |= flag
+		}
+		return cells
+	case *extast.Strikethrough:
+		// Render children with strikethrough flag
+		var cells []buffer.Cell
+		for child := v.FirstChild(); child != nil; child = child.NextSibling() {
+			cells = append(cells, r.renderInlineNode(child, source)...)
+		}
+		for i := range cells {
+			cells[i].Flags |= buffer.Strikethrough
 		}
 		return cells
 	default:
