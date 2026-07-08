@@ -12,13 +12,15 @@ import (
 
 // Highlighter wraps chroma lexer/style for code highlighting.
 type Highlighter struct {
-	style *chroma.Style
+	style    *chroma.Style
+	colorCache map[chroma.TokenType]buffer.Color // cache tokenTypeColor results
 }
 
 // NewHighlighter creates a Highlighter with the dracula theme.
 func NewHighlighter() *Highlighter {
 	return &Highlighter{
-		style: styles.Get("dracula"),
+		style:      styles.Get("dracula"),
+		colorCache: make(map[chroma.TokenType]buffer.Color),
 	}
 }
 
@@ -29,7 +31,7 @@ func NewHighlighterWithStyle(styleName string) *Highlighter {
 	if s == nil {
 		s = styles.Get("dracula")
 	}
-	return &Highlighter{style: s}
+	return &Highlighter{style: s, colorCache: make(map[chroma.TokenType]buffer.Color)}
 }
 
 // tokenTypeColor maps chroma token types to buffer.Color values.
@@ -90,22 +92,37 @@ func (h *Highlighter) Highlight(source string, lang string) ([][]buffer.Cell, er
 	var currentLine []buffer.Cell
 
 	for token := iterator(); token != chroma.EOF; token = iterator() {
-		color := tokenTypeColor(token.Type, h.style)
+		// Cached color lookup (avoids style.Get map lookup per token).
+		color, ok := h.colorCache[token.Type]
+		if !ok {
+			color = tokenTypeColor(token.Type, h.style)
+			h.colorCache[token.Type] = color
+		}
 
-		// Split token value by newlines.
+		// Fast path: token has no newline, append directly.
+		if strings.IndexByte(token.Value, '\n') < 0 {
+			for _, r := range token.Value {
+				currentLine = append(currentLine, buffer.Cell{
+					Rune:  r,
+					Width: uint8(buffer.RuneWidth(r)),
+					Fg:    color,
+				})
+			}
+			continue
+		}
+
+		// Slow path: token contains newlines, split.
 		parts := strings.Split(token.Value, "\n")
 		for i, part := range parts {
 			if i > 0 {
-				// Push current line and start a new one.
 				lines = append(lines, currentLine)
 				currentLine = nil
 			}
 
 			for _, r := range part {
-				w := buffer.RuneWidth(r)
 				currentLine = append(currentLine, buffer.Cell{
 					Rune:  r,
-					Width: uint8(w),
+					Width: uint8(buffer.RuneWidth(r)),
 					Fg:    color,
 				})
 			}
