@@ -288,19 +288,39 @@ func (r *MarkdownRenderer) renderList(n *ast.List, source []byte) *Block {
 		if ordered {
 			prefix = fmt.Sprintf("%d. ", index)
 		} else {
-			prefix = "\u2022 " // bullet •
+			// Check for GitHub-style task list: "- [ ] text" or "- [x] text"
+			taskChar, isTask := detectTaskListItem(item, source)
+			if isTask {
+				if taskChar == ' ' {
+					prefix = "\u2610 " // ☐ ballot box (unchecked)
+				} else {
+					prefix = "\u2611 " // ☑ ballot box with check (checked)
+				}
+			} else {
+				prefix = "\u2022 " // bullet •
+			}
 		}
 		index++
+
+		// For task list items, strip the "[ ]" or "[x]" prefix from content
+		itemSource := source
+		stripTask := !ordered && isTaskListItem(item, source)
 
 		// Render item content
 		for child := item.FirstChild(); child != nil; child = child.NextSibling() {
 			switch v := child.(type) {
 			case *ast.Paragraph:
-				inline := r.renderInline(v, source)
+				inline := r.renderInline(v, itemSource)
+				if stripTask {
+					inline = stripTaskPrefix(inline)
+				}
 				wrapped := r.wrapCellsWithPrefix(inline, prefix, "   ", r.width)
 				cells = append(cells, wrapped...)
 			case *ast.TextBlock:
-				inline := r.renderInline(v, source)
+				inline := r.renderInline(v, itemSource)
+				if stripTask {
+					inline = stripTaskPrefix(inline)
+				}
 				wrapped := r.wrapCellsWithPrefix(inline, prefix, "   ", r.width)
 				cells = append(cells, wrapped...)
 			default:
@@ -727,4 +747,49 @@ func extractCodeBlockText(node ast.Node, source []byte) string {
 		sb.Write(seg.Value(source))
 	}
 	return sb.String()
+}
+
+// isTaskListItem returns true if the list item's first text starts with "[ ]" or "[x]"/"[X]".
+func isTaskListItem(item ast.Node, source []byte) bool {
+	_, ok := detectTaskListItem(item, source)
+	return ok
+}
+
+// detectTaskListItem returns the checkbox character (' ' or 'x') and true if
+// the list item's first child text starts with "[ ]", "[x]", or "[X]".
+func detectTaskListItem(item ast.Node, source []byte) (byte, bool) {
+	first := item.FirstChild()
+	if first == nil {
+		return 0, false
+	}
+	text := string(first.Text(source))
+	if len(text) < 3 {
+		return 0, false
+	}
+	if text[0] == '[' && text[2] == ']' {
+		c := text[1]
+		if c == ' ' || c == 'x' || c == 'X' {
+			return c, true
+		}
+	}
+	return 0, false
+}
+
+// stripTaskPrefix removes the leading "[ ] " or "[x] " cells (3 cells: '[', char, ']')
+// plus the following space, returning cells starting from the actual content.
+func stripTaskPrefix(cells []buffer.Cell) []buffer.Cell {
+	// Pattern: [ <char> ] <space> <content...>
+	// Need at least 5 cells: '[', char, ']', ' ', content
+	if len(cells) < 4 {
+		return cells
+	}
+	if cells[0].Rune != '[' || cells[2].Rune != ']' {
+		return cells
+	}
+	// Skip "[x] " (4 cells including the space after ])
+	if len(cells) >= 5 && cells[3].Rune == ' ' {
+		return cells[4:]
+	}
+	// Skip "[x]" if no trailing space
+	return cells[3:]
 }
