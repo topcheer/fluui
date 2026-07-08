@@ -898,29 +898,34 @@ func (t *Table) truncateToWidth(text string, width int) string {
 	if w <= width {
 		return text
 	}
-	// Truncate character by character.
-	var result []rune
+	// Truncate by tracking byte offset of rune boundary.
 	curW := 0
-	for _, r := range text {
+	byteEnd := 0
+	lastRuneW := 0
+	lastRuneStart := 0
+	for i := 0; i < len(text); {
+		r, size := utf8.DecodeRuneInString(text[i:])
+		if r == utf8.RuneError && size == 1 {
+			r = rune(text[i])
+		}
 		rw := buffer.RuneWidth(r)
 		if curW+rw > width {
 			break
 		}
-		result = append(result, r)
+		lastRuneW = rw
+		lastRuneStart = i
 		curW += rw
+		byteEnd = i + size
+		i += size
 	}
 	// Add ellipsis if there's room.
-	if width >= 3 && curW+1 <= width {
-		// Replace last char(s) with ellipsis.
-		if len(result) > 0 {
-			lastW := buffer.RuneWidth(result[len(result)-1])
-			if curW-lastW+3 <= width {
-				result = result[:len(result)-1]
-				result = append(result, '…')
-			}
+	if width >= 3 && curW+1 <= width && byteEnd > 0 {
+		if curW-lastRuneW+3 <= width {
+			// Replace last rune with ellipsis.
+			return text[:lastRuneStart] + "…"
 		}
 	}
-	return string(result)
+	return text[:byteEnd]
 }
 
 // sortRowsLocked sorts rows by sortCol/sortAscending. Caller must hold lock.
