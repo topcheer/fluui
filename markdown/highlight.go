@@ -26,12 +26,17 @@ func NewHighlighter() *Highlighter {
 
 // NewHighlighterWithStyle creates a Highlighter with a named chroma style.
 // Falls back to dracula if the style is not found.
+// NewHighlighterWithStyle creates a Highlighter using the named chroma style.
+// Chroma's styles.Get always returns a non-nil style (falls back to "swapoff"),
+// so the nil check is unnecessary. We default to "dracula" for empty style name.
 func NewHighlighterWithStyle(styleName string) *Highlighter {
-	s := styles.Get(styleName)
-	if s == nil {
-		s = styles.Get("dracula")
+	if styleName == "" {
+		styleName = "dracula"
 	}
-	return &Highlighter{style: s, colorCache: make(map[chroma.TokenType]buffer.Color)}
+	return &Highlighter{
+		style:     styles.Get(styleName),
+		colorCache: make(map[chroma.TokenType]buffer.Color),
+	}
 }
 
 // tokenTypeColor maps chroma token types to buffer.Color values.
