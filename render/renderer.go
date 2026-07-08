@@ -113,11 +113,24 @@ func (r *Renderer) EndFrame() error {
 		}
 	}
 
+	// Track cursor position to skip redundant MoveTo calls.
+	// When cells are adjacent (same row, next column), the terminal cursor
+	// auto-advances after writing a character, so we can skip the
+	// ESC[row;colH sequence entirely. This saves ~8-12 bytes per cell.
+	prevX, prevY := -1, -1
+	prevWidth := 0
+
 	for _, op := range ops {
 		cell := op.Cell
 		// Skip padding cells (Width==0) — trailing half of wide CJK chars.
 		if cell.Width == 0 {
 			continue
+		}
+
+		style := buffer.Style{
+			Fg:    cell.Fg,
+			Bg:    cell.Bg,
+			Flags: cell.Flags,
 		}
 
 		// OSC8 hyperlink: wrap linked cells in escape sequences so they are
@@ -128,13 +141,15 @@ func (r *Renderer) EndFrame() error {
 			r.tw.WriteRaw(osc8StartPrefix)
 			r.tw.WriteString(cell.Link.URL)
 			r.tw.WriteRaw(osc8ST)
+			// Linked cells always need full MoveAndStyle (OSC8 breaks cursor continuity).
+			r.tw.MoveAndStyle(op.X, op.Y, style)
+		} else if op.Y == prevY && op.X == prevX+prevWidth {
+			// Adjacent cell — cursor already here, skip MoveTo entirely.
+			r.tw.SetStyle(style)
+		} else {
+			r.tw.MoveAndStyle(op.X, op.Y, style)
 		}
 
-		r.tw.MoveAndStyle(op.X, op.Y, buffer.Style{
-			Fg:    cell.Fg,
-			Bg:    cell.Bg,
-			Flags: cell.Flags,
-		})
 		if cell.Rune != 0 {
 			// Fast path for ASCII — use pre-computed string (zero allocation).
 			if cell.Rune < 128 {
@@ -152,6 +167,10 @@ func (r *Renderer) EndFrame() error {
 			// OSC8 end: ESC ] 8 ; ; ST
 			r.tw.WriteRaw(osc8End)
 		}
+
+		prevX = op.X
+		prevY = op.Y
+		prevWidth = int(cell.Width)
 	}
 
 	r.tw.ResetStyle()
