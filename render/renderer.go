@@ -130,13 +130,11 @@ func (r *Renderer) EndFrame() error {
 			r.tw.WriteRaw(osc8ST)
 		}
 
-		r.tw.MoveTo(op.X, op.Y)
-		style := buffer.Style{
+		r.tw.MoveAndStyle(op.X, op.Y, buffer.Style{
 			Fg:    cell.Fg,
 			Bg:    cell.Bg,
 			Flags: cell.Flags,
-		}
-		r.tw.SetStyle(style)
+		})
 		if cell.Rune != 0 {
 			// Fast path for ASCII — use pre-computed string (zero allocation).
 			if cell.Rune < 128 {

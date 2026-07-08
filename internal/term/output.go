@@ -74,6 +74,33 @@ func (w *Writer) SetStyle(s buffer.Style) {
 	w.buf.Write(b)
 }
 
+// MoveAndStyle combines MoveTo + SetStyle into a single buffer write.
+// This halves the number of bytes.Buffer.Write calls vs calling them
+// separately, which is the hot path in the renderer's EndFrame loop.
+func (w *Writer) MoveAndStyle(x, y int, s buffer.Style) {
+	var tmp [128]byte
+	b := append(tmp[:0], cursorMovePrefix...)
+	b = strconv.AppendInt(b, int64(y+1), 10)
+	b = append(b, ';')
+	b = strconv.AppendInt(b, int64(x+1), 10)
+	b = append(b, 'H')
+
+	// Only emit SGR if style changed.
+	if !(w.styleSet && w.curStyle.Equal(s)) {
+		w.curStyle = s
+		w.styleSet = true
+		if s.Flags == 0 && s.Fg.Type == buffer.ColorNone && s.Bg.Type == buffer.ColorNone {
+			b = append(b, buffer.ResetSGR...)
+		} else {
+			b = append(b, cursorMovePrefix...) // ESC[
+			b = s.AppendSGR(b)
+			b = append(b, 'm')
+		}
+	}
+
+	w.buf.Write(b)
+}
+
 // ResetStyle resets to terminal defaults.
 func (w *Writer) ResetStyle() {
 	w.buf.WriteString(buffer.ResetSGR)
