@@ -1,7 +1,7 @@
 package markdown
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 	"unsafe"
 
@@ -296,7 +296,8 @@ func (r *MarkdownRenderer) renderList(n *ast.List, source []byte) *Block {
 	for item := n.FirstChild(); item != nil; item = item.NextSibling() {
 		var prefix string
 		if ordered {
-			prefix = fmt.Sprintf("%d. ", index)
+			// Avoid fmt.Sprintf allocation — use strconv directly.
+			prefix = strconv.Itoa(index) + ". "
 		} else {
 			// Check for GitHub-style task list: "- [ ] text" or "- [x] text"
 			taskChar, isTask := detectTaskListItem(item, source)
