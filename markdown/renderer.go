@@ -51,7 +51,11 @@ func NewMarkdownRenderer(theme *MarkdownTheme, width int) *MarkdownRenderer {
 	return &MarkdownRenderer{
 		theme:        theme,
 		width:        width,
-		md:           goldmark.New(goldmark.WithExtensions(extension.Table, extension.Strikethrough)),
+		md: goldmark.New(goldmark.WithExtensions(
+			extension.Table,
+			extension.Strikethrough,
+			extension.Linkify, // auto-link raw URLs in text
+		)),
 		linkRenderer: NewLinkRenderer(false), // OSC8 disabled by default
 	}
 }
