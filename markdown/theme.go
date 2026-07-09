@@ -28,6 +28,11 @@ type MarkdownTheme struct {
 	Hr          buffer.Color
 	Body        buffer.Color
 	ImageFg     buffer.Color
+	NoteFg      buffer.Color // GitHub [!NOTE] alert
+	TipFg       buffer.Color // GitHub [!TIP] alert
+	ImportantFg buffer.Color // GitHub [!IMPORTANT] alert
+	WarningFg   buffer.Color // GitHub [!WARNING] alert
+	CautionFg   buffer.Color // GitHub [!CAUTION] alert
 }
 
 // DefaultTheme returns a sensible dark-terminal markdown theme.
@@ -54,6 +59,11 @@ func DefaultTheme() *MarkdownTheme {
 		Hr:          buffer.RGB(0x62, 0x72, 0xA4),
 		Body:        buffer.NoColor(),
 		ImageFg:     buffer.RGB(0xFF, 0xB8, 0x6C), // orange
+		NoteFg:      buffer.RGB(0x8B, 0xE9, 0xFD), // cyan (info)
+		TipFg:       buffer.RGB(0x50, 0xFA, 0x7B), // green (success)
+		ImportantFg: buffer.RGB(0xBD, 0x93, 0xF9), // purple (highlight)
+		WarningFg:   buffer.RGB(0xFF, 0xB8, 0x6C), // orange (warning)
+		CautionFg:   buffer.RGB(0xFF, 0x55, 0x55), // red (danger)
 	}
 }
 

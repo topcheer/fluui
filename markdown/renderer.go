@@ -604,18 +604,143 @@ func (r *MarkdownRenderer) renderCodeBlock(n *ast.CodeBlock, source []byte) *Blo
 }
 
 // renderBlockquote renders a blockquote with │ prefix and dim color.
+// githubAlertType detects GitHub-style alerts in blockquotes.
+// Pattern: "> [!NOTE]", "> [!TIP]", "> [!IMPORTANT]", "> [!WARNING]", "> [!CAUTION]"
+// Returns the alert type (lowercase) and true if detected.
+func githubAlertType(n *ast.Blockquote, source []byte) (string, bool) {
+	first := n.FirstChild()
+	if first == nil {
+		return "", false
+	}
+	// The first child should be a paragraph containing the alert marker.
+	para, ok := first.(*ast.Paragraph)
+	if !ok {
+		return "", false
+	}
+	textNode := para.FirstChild()
+	if textNode == nil {
+		return "", false
+	}
+	text, ok := textNode.(*ast.Text)
+	if !ok {
+		return "", false
+	}
+	val := string(text.Value(source))
+	// Match [!TYPE] pattern (case-insensitive).
+	if len(val) < 5 || val[0] != '[' || val[1] != '!' {
+		return "", false
+	}
+	end := strings.Index(val, "]")
+	if end < 0 {
+		return "", false
+	}
+	alertType := strings.ToLower(val[2:end])
+	switch alertType {
+	case "note", "tip", "important", "warning", "caution":
+		return alertType, true
+	}
+	return "", false
+}
+
+// alertColors maps GitHub alert types to their theme colors and icons.
+var alertIcons = map[string]string{
+	"note":      "\u2139 ",  // ℹ (information source)
+	"tip":       "\u2713 ",  // ✓ (check mark)
+	"important": "\u2756 ",  // ❖ (black diamond minus white X)
+	"warning":   "\u26a0 ",  // ⚠ (warning sign)
+	"caution":   "\u2717 ",  // ✗ (ballot X)
+}
+
+// alertIcon returns the display icon for a GitHub alert type.
+func alertIcon(alertType string) string {
+	if icon, ok := alertIcons[alertType]; ok {
+		return icon
+	}
+	return "\u25cf " // ● (black circle) fallback
+}
+
+func (r *MarkdownRenderer) alertColor(alertType string) buffer.Color {
+	switch alertType {
+	case "note":
+		return r.theme.NoteFg
+	case "tip":
+		return r.theme.TipFg
+	case "important":
+		return r.theme.ImportantFg
+	case "warning":
+		return r.theme.WarningFg
+	case "caution":
+		return r.theme.CautionFg
+	}
+	return r.theme.QuoteBar
+}
+
 func (r *MarkdownRenderer) renderBlockquote(n *ast.Blockquote, source []byte) *Block {
+	// Check for GitHub-style alert: > [!NOTE], > [!TIP], etc.
+	alertType, isAlert := githubAlertType(n, source)
+
 	var cells [][]buffer.Cell
-	for child := n.FirstChild(); child != nil; child = child.NextSibling() {
+	child := n.FirstChild()
+	for child != nil {
+		// Skip the alert marker paragraph (first child when it's an alert).
+		if isAlert && child == n.FirstChild() {
+			// For alerts, we render the alert type as a header line
+			// and skip the [!TYPE] marker.
+			para, ok := child.(*ast.Paragraph)
+			if ok {
+				// Render the rest of the paragraph after the marker.
+				textNode := para.FirstChild()
+				if textNode != nil {
+					if t, ok := textNode.(*ast.Text); ok {
+						val := string(t.Value(source))
+						end := strings.Index(val, "]")
+						if end >= 0 {
+							rest := strings.TrimSpace(val[end+1:])
+							if rest != "" {
+								icon := alertIcon(alertType)
+								color := r.alertColor(alertType)
+								line := r.textToCells(icon+rest, color, 0)
+								barCell := buffer.Cell{Rune: '\u2502', Width: 1, Fg: color}
+								spacing := buffer.Cell{Rune: ' ', Width: 1}
+								line = append([]buffer.Cell{barCell, spacing}, line...)
+								cells = append(cells, line)
+							}
+						}
+					}
+				}
+				child = child.NextSibling()
+				continue
+			}
+		}
+
 		if blk := r.renderBlock(child, source); blk != nil {
+			var barColor buffer.Color
+			if isAlert {
+				barColor = r.alertColor(alertType)
+			} else {
+				barColor = r.theme.QuoteBar
+			}
 			for _, line := range blk.Cells {
-				barCell := buffer.Cell{Rune: '\u2502', Width: 1, Fg: r.theme.QuoteBar} // │
+				barCell := buffer.Cell{Rune: '\u2502', Width: 1, Fg: barColor}
 				spacing := buffer.Cell{Rune: ' ', Width: 1}
 				line = append([]buffer.Cell{barCell, spacing}, line...)
 				cells = append(cells, line)
 			}
 		}
+		child = child.NextSibling()
 	}
+
+	// For alerts, prepend the alert type header line.
+	if isAlert && len(cells) > 0 {
+		color := r.alertColor(alertType)
+		label := strings.ToUpper(alertType)
+		header := r.textToCells(alertIcon(alertType)+label, color, buffer.Bold)
+		barCell := buffer.Cell{Rune: '\u2502', Width: 1, Fg: color}
+		spacing := buffer.Cell{Rune: ' ', Width: 1}
+		header = append([]buffer.Cell{barCell, spacing}, header...)
+		cells = append([][]buffer.Cell{header}, cells...)
+	}
+
 	return &Block{Type: BlockQuote, Cells: cells}
 }
 
