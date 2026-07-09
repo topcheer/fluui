@@ -108,6 +108,11 @@ func (w *Writer) ResetStyle() {
 	w.curStyle = buffer.DefaultStyle
 }
 
+// StyleEquals returns true if the given style matches the current style.
+func (w *Writer) StyleEquals(s buffer.Style) bool {
+	return w.styleSet && w.curStyle.Equal(s)
+}
+
 // WriteString writes a string with the current style.
 func (w *Writer) WriteString(s string) {
 	w.buf.WriteString(s)

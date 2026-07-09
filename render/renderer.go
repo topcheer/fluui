@@ -120,6 +120,20 @@ func (r *Renderer) EndFrame() error {
 	prevX, prevY := -1, -1
 	prevWidth := 0
 
+	// Batch consecutive same-style ASCII characters into a single WriteRaw
+	// call to reduce per-character function call overhead.
+	var charBatch [256]byte
+	batchLen := 0
+	batchStyleSet := false
+
+	flushBatch := func() {
+		if batchLen > 0 {
+			r.tw.WriteRaw(charBatch[:batchLen])
+			batchLen = 0
+		}
+		batchStyleSet = false
+	}
+
 	for _, op := range ops {
 		cell := op.Cell
 		// Skip padding cells (Width==0) — trailing half of wide CJK chars.
@@ -133,45 +147,78 @@ func (r *Renderer) EndFrame() error {
 			Flags: cell.Flags,
 		}
 
+		isAdjacent := op.Y == prevY && op.X == prevX+prevWidth
+		isASCII := cell.Rune < 128
+		runeByte := byte(cell.Rune)
+		if cell.Rune == 0 {
+			runeByte = ' '
+		}
+
 		// OSC8 hyperlink: wrap linked cells in escape sequences so they are
 		// clickable in terminals that support it (Kitty, iTerm2, WezTerm,
 		// GNOME Terminal, etc.).
 		if cell.Link != nil {
+			flushBatch()
 			// OSC8 start: ESC ] 8 ; <params> ; <url> ST
 			r.tw.WriteRaw(osc8StartPrefix)
 			r.tw.WriteString(cell.Link.URL)
 			r.tw.WriteRaw(osc8ST)
 			// Linked cells always need full MoveAndStyle (OSC8 breaks cursor continuity).
 			r.tw.MoveAndStyle(op.X, op.Y, style)
-		} else if op.Y == prevY && op.X == prevX+prevWidth {
-			// Adjacent cell — cursor already here, skip MoveTo entirely.
-			r.tw.SetStyle(style)
-		} else {
-			r.tw.MoveAndStyle(op.X, op.Y, style)
-		}
-
-		if cell.Rune != 0 {
-			// Fast path for ASCII — use pre-computed string (zero allocation).
-			if cell.Rune < 128 {
-				r.tw.WriteString(asciiChars[cell.Rune])
+			if cell.Rune != 0 {
+				if isASCII {
+					r.tw.WriteString(asciiChars[cell.Rune])
+				} else {
+					n := utf8.EncodeRune(r.runeBuf[:], cell.Rune)
+					r.tw.WriteRaw(r.runeBuf[:n])
+				}
 			} else {
-				// Encode rune to UTF-8 bytes in stack buffer, write as raw bytes.
-				n := utf8.EncodeRune(r.runeBuf[:], cell.Rune)
-				r.tw.WriteRaw(r.runeBuf[:n])
+				r.tw.WriteString(" ")
 			}
-		} else {
-			r.tw.WriteString(" ")
-		}
-
-		if cell.Link != nil {
-			// OSC8 end: ESC ] 8 ; ; ST
 			r.tw.WriteRaw(osc8End)
+		} else if isAdjacent && isASCII && batchLen < len(charBatch) {
+			// Adjacent ASCII cell — try to batch.
+			if !batchStyleSet {
+				// First char of a potential batch — set style.
+				r.tw.SetStyle(style)
+				batchStyleSet = true
+			} else if !r.tw.StyleEquals(style) {
+				// Style changed — flush old batch, set new style.
+				flushBatch()
+				r.tw.SetStyle(style)
+				batchStyleSet = true
+			}
+			charBatch[batchLen] = runeByte
+			batchLen++
+		} else {
+			// Non-batchable cell: flush any pending batch first.
+			flushBatch()
+			if isAdjacent {
+				r.tw.SetStyle(style)
+			} else {
+				r.tw.MoveAndStyle(op.X, op.Y, style)
+			}
+			batchStyleSet = true
+			if cell.Rune != 0 {
+				if isASCII {
+					charBatch[0] = runeByte
+					batchLen = 1
+				} else {
+					n := utf8.EncodeRune(r.runeBuf[:], cell.Rune)
+					r.tw.WriteRaw(r.runeBuf[:n])
+					batchStyleSet = false
+				}
+			} else {
+				charBatch[0] = ' '
+				batchLen = 1
+			}
 		}
 
 		prevX = op.X
 		prevY = op.Y
 		prevWidth = int(cell.Width)
 	}
+	flushBatch()
 
 	r.tw.ResetStyle()
 
