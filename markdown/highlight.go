@@ -12,8 +12,9 @@ import (
 
 // Highlighter wraps chroma lexer/style for code highlighting.
 type Highlighter struct {
-	style    *chroma.Style
+	style      *chroma.Style
 	colorCache map[chroma.TokenType]buffer.Color // cache tokenTypeColor results
+	lexerCache map[string]chroma.Lexer           // cache lexers.Get(lang) — avoids mutex-locked registry lookup
 }
 
 // NewHighlighter creates a Highlighter with the dracula theme.
@@ -21,6 +22,7 @@ func NewHighlighter() *Highlighter {
 	return &Highlighter{
 		style:      styles.Get("dracula"),
 		colorCache: make(map[chroma.TokenType]buffer.Color),
+		lexerCache: make(map[string]chroma.Lexer),
 	}
 }
 
@@ -34,8 +36,9 @@ func NewHighlighterWithStyle(styleName string) *Highlighter {
 		styleName = "dracula"
 	}
 	return &Highlighter{
-		style:     styles.Get(styleName),
+		style:      styles.Get(styleName),
 		colorCache: make(map[chroma.TokenType]buffer.Color),
+		lexerCache: make(map[string]chroma.Lexer),
 	}
 }
 
@@ -76,11 +79,16 @@ func tokenTypeColor(tt chroma.TokenType, style *chroma.Style) buffer.Color {
 // Highlight converts source code into highlighted Cell lines.
 // Returns a [][]buffer.Cell where each inner slice is one line.
 func (h *Highlighter) Highlight(source string, lang string) ([][]buffer.Cell, error) {
+	// Get lexer for the language (cached to avoid registry mutex).
 	var lexer chroma.Lexer
-
-	// Get lexer for the language.
 	if lang != "" && lang != "plaintext" {
-		lexer = lexers.Get(lang)
+		lexer = h.lexerCache[lang]
+		if lexer == nil {
+			lexer = lexers.Get(lang)
+			if lexer != nil {
+				h.lexerCache[lang] = lexer
+			}
+		}
 	}
 	if lexer == nil {
 		lexer = lexers.Fallback
