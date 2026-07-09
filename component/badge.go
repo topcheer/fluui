@@ -195,10 +195,8 @@ func (b *Badge) Measure(cs Constraints) Size {
 	if w < 2 {
 		w = 2
 	}
+	// Badge is always single-line height regardless of size.
 	h := 1
-	if b.size == BadgeSizeLarge {
-		h = 1 // still single line, just wider
-	}
 
 	if cs.HasWidth() && w > cs.MaxWidth {
 		w = cs.MaxWidth
