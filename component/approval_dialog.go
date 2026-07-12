@@ -575,6 +575,13 @@ func (d *ApprovalDialog) drawBoxLocked(buf *buffer.Buffer, x, y, w, h int, style
 	}
 }
 
+// pendingAction stores callbacks to fire after lock release.
+type pendingAction struct {
+	resultID string
+	answers  map[string]string
+	close    bool
+}
+
 // HandleKey processes keyboard input for the dialog.
 func (d *ApprovalDialog) HandleKey(k *term.KeyEvent) bool {
 	if k == nil {
@@ -582,15 +589,32 @@ func (d *ApprovalDialog) HandleKey(k *term.KeyEvent) bool {
 	}
 
 	d.mu.Lock()
-	defer d.mu.Unlock()
+	var pa *pendingAction
+	var result bool
 
 	if d.dialogType == ApprovalDialogQuestionnaire {
-		return d.handleQuestionnaireKeyLocked(k)
+		result, pa = d.handleQuestionnaireKeyLocked(k)
+	} else {
+		result, pa = d.handleApprovalKeyLocked(k)
 	}
-	return d.handleApprovalKeyLocked(k)
+	d.mu.Unlock()
+
+	// Fire callbacks after lock release
+	if pa != nil {
+		cb := d.OnResult
+		closeCB := d.OnClose
+		if cb != nil {
+			cb(pa.resultID, pa.answers)
+		}
+		if pa.close && closeCB != nil {
+			closeCB()
+		}
+	}
+
+	return result
 }
 
-func (d *ApprovalDialog) handleApprovalKeyLocked(k *term.KeyEvent) bool {
+func (d *ApprovalDialog) handleApprovalKeyLocked(k *term.KeyEvent) (bool, *pendingAction) {
 	switch k.Key {
 	case term.KeyLeft:
 		if d.actionIdx > 0 {
@@ -598,33 +622,24 @@ func (d *ApprovalDialog) handleApprovalKeyLocked(k *term.KeyEvent) bool {
 		} else {
 			d.actionIdx = len(d.actions) - 1
 		}
-		return true
+		return true, nil
 
 	case term.KeyRight, term.KeyTab:
 		d.actionIdx++
 		if d.actionIdx >= len(d.actions) {
 			d.actionIdx = 0
 		}
-		return true
+		return true, nil
 
 	case term.KeyEnter:
 		return d.executeActionLocked()
 
 	case term.KeyEscape:
-		cb := d.OnClose
-		resultCB := d.OnResult
-		if resultCB != nil {
-			resultCB("cancel", nil)
-		}
-		if cb != nil {
-			cb()
-		}
-		return true
+		return true, &pendingAction{resultID: "cancel", close: true}
 	}
 
-	// Keyboard shortcuts for common actions
+	// Keyboard shortcuts
 	if k.Rune != 0 && (k.Modifiers&term.ModCtrl != 0) {
-		// Ctrl+Y = approve, Ctrl+N = deny
 		switch k.Rune {
 		case 'y', 'Y':
 			d.actionIdx = 0
@@ -637,12 +652,12 @@ func (d *ApprovalDialog) handleApprovalKeyLocked(k *term.KeyEvent) bool {
 		}
 	}
 
-	return false
+	return false, nil
 }
 
-func (d *ApprovalDialog) handleQuestionnaireKeyLocked(k *term.KeyEvent) bool {
+func (d *ApprovalDialog) handleQuestionnaireKeyLocked(k *term.KeyEvent) (bool, *pendingAction) {
 	if d.currentQ < 0 || d.currentQ >= len(d.questions) {
-		return false
+		return false, nil
 	}
 	q := &d.questions[d.currentQ]
 
@@ -655,35 +670,27 @@ func (d *ApprovalDialog) handleQuestionnaireKeyLocked(k *term.KeyEvent) bool {
 			} else {
 				q.SingleIndex = len(q.Options) - 1
 			}
-			return true
+			return true, nil
 		case term.KeyDown:
 			q.SingleIndex++
 			if q.SingleIndex >= len(q.Options) {
 				q.SingleIndex = 0
 			}
-			return true
+			return true, nil
 		case term.KeyEnter:
 			return d.handleQuestionnaireActionLocked(k)
 		case term.KeyEscape:
-			cb := d.OnClose
-			resultCB := d.OnResult
-			if resultCB != nil {
-				resultCB("cancel", nil)
-			}
-			if cb != nil {
-				cb()
-			}
-			return true
+			return true, &pendingAction{resultID: "cancel", close: true}
 		case term.KeyLeft:
 			if d.actionIdx > 0 {
 				d.actionIdx--
 			}
-			return true
+			return true, nil
 		case term.KeyRight:
 			if d.actionIdx < len(d.actions)-1 {
 				d.actionIdx++
 			}
-			return true
+			return true, nil
 		}
 
 	case QMulti:
@@ -692,35 +699,36 @@ func (d *ApprovalDialog) handleQuestionnaireKeyLocked(k *term.KeyEvent) bool {
 			if d.actionIdx > 0 {
 				d.actionIdx--
 			}
-			return true
+			return true, nil
 		case term.KeyDown:
 			if d.actionIdx < len(q.Options)-1 {
 				d.actionIdx++
 			}
-			return true
+			return true, nil
 		case term.KeyEnter, term.KeySpace:
-			// Check if we're on the action buttons row (actionIdx >= len(q.Options))
 			if d.actionIdx < len(q.Options) {
 				if d.actionIdx < len(q.Selected) {
 					q.Selected[d.actionIdx] = !q.Selected[d.actionIdx]
 				}
-				return true
+				return true, nil
 			}
 			return d.handleQuestionnaireActionLocked(k)
 		case term.KeyEscape:
-			cb := d.OnClose
-			resultCB := d.OnResult
-			if resultCB != nil {
-				resultCB("cancel", nil)
-			}
-			if cb != nil {
-				cb()
-			}
-			return true
+			return true, &pendingAction{resultID: "cancel", close: true}
 		}
 
 	case QText:
 		switch k.Key {
+		case term.KeyTab:
+			// Tab cycles between text input and action buttons
+			if len(d.actions) > 1 {
+				if d.actionIdx == 0 {
+					d.actionIdx = 1
+				} else {
+					d.actionIdx = 0
+				}
+			}
+			return true, nil
 		case term.KeyEnter:
 			return d.handleQuestionnaireActionLocked(k)
 		case term.KeyBackspace:
@@ -728,76 +736,57 @@ func (d *ApprovalDialog) handleQuestionnaireKeyLocked(k *term.KeyEvent) bool {
 				q.TextAnswer = q.TextAnswer[:q.textCursor-1] + q.TextAnswer[q.textCursor:]
 				q.textCursor--
 			}
-			return true
+			return true, nil
 		case term.KeyEscape:
-			cb := d.OnClose
-			resultCB := d.OnResult
-			if resultCB != nil {
-				resultCB("cancel", nil)
-			}
-			if cb != nil {
-				cb()
-			}
-			return true
+			return true, &pendingAction{resultID: "cancel", close: true}
 		case term.KeyLeft:
 			if q.textCursor > 0 {
 				q.textCursor--
 			}
-			return true
+			return true, nil
 		case term.KeyRight:
 			if q.textCursor < len(q.TextAnswer) {
 				q.textCursor++
 			}
-			return true
+			return true, nil
 		default:
 			if k.Rune >= 0x20 {
 				q.TextAnswer = q.TextAnswer[:q.textCursor] + string(k.Rune) + q.TextAnswer[q.textCursor:]
 				q.textCursor++
-				return true
+				return true, nil
 			}
 		}
 	}
 
-	return false
+	return false, nil
 }
 
-func (d *ApprovalDialog) handleQuestionnaireActionLocked(k *term.KeyEvent) bool {
-	// Determine action based on actionIdx
+func (d *ApprovalDialog) handleQuestionnaireActionLocked(k *term.KeyEvent) (bool, *pendingAction) {
+	// Next/Submit (actionIdx == 0)
 	if d.actionIdx == 0 {
-		// Next/Submit
 		q := &d.questions[d.currentQ]
 		if q.Required && !q.IsAnswered() {
-			return true // Don't advance if required and unanswered
+			return true, nil
 		}
 
 		if d.currentQ < len(d.questions)-1 {
 			d.currentQ++
-			// Update actions for last question
 			if d.currentQ == len(d.questions)-1 {
 				d.actions = []DialogAction{ActionSubmit, ActionBack}
 			} else {
 				d.actions = []DialogAction{ActionNext, ActionCancel}
 			}
 			d.actionIdx = 0
-			return true
+			return true, nil
 		}
 
 		// Submit
 		d.completed = true
-		answers := d.CollectAnswers()
-		cb := d.OnResult
-		closeCB := d.OnClose
-		if cb != nil {
-			cb("submit", answers)
-		}
-		if closeCB != nil {
-			closeCB()
-		}
-		return true
+		return true, &pendingAction{resultID: "submit", answers: d.collectAnswersLocked(), close: true}
 	}
 
-	// Cancel or Back
-	if d.actions[d.actionIdx].ID == "back" && d.currentQ > 0 {
+	// Back
+	if d.actionIdx < len(d.actions) && d.actions[d.actionIdx].ID == "back" && d.currentQ > 0 {
 		d.currentQ--
 		if d.currentQ == 0 {
 			d.actions = []DialogAction{ActionNext, ActionCancel}
@@ -805,40 +794,20 @@ func (d *ApprovalDialog) handleQuestionnaireActionLocked(k *term.KeyEvent) bool 
 			d.actions = []DialogAction{ActionNext, ActionBack}
 		}
 		d.actionIdx = 0
-		return true
+		return true, nil
 	}
 
 	// Cancel
-	cb := d.OnResult
-	closeCB := d.OnClose
-	if cb != nil {
-		cb("cancel", nil)
-	}
-	if closeCB != nil {
-		closeCB()
-	}
-	return true
+	return true, &pendingAction{resultID: "cancel", close: true}
 }
 
-func (d *ApprovalDialog) executeActionLocked() bool {
+func (d *ApprovalDialog) executeActionLocked() (bool, *pendingAction) {
 	if d.actionIdx < 0 || d.actionIdx >= len(d.actions) {
-		return false
+		return false, nil
 	}
 	action := d.actions[d.actionIdx]
 	answers := d.collectAnswersLocked()
-
-	cb := d.OnResult
-	closeCB := d.OnClose
-	// Callbacks deferred to avoid holding lock during user code
-	go func() {
-		if cb != nil {
-			cb(action.ID, answers)
-		}
-		if closeCB != nil {
-			closeCB()
-		}
-	}()
-	return true
+	return true, &pendingAction{resultID: action.ID, answers: answers, close: true}
 }
 
 // Children returns nil.

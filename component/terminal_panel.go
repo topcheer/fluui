@@ -308,7 +308,10 @@ func (tp *TerminalPanel) ScrollUp(n int) {
 	tp.mu.Lock()
 	defer tp.mu.Unlock()
 	tp.scrollOff += n
-	maxOff := len(tp.lines)
+	maxOff := len(tp.lines) - 1
+	if maxOff < 0 {
+		maxOff = 0
+	}
 	if tp.scrollOff > maxOff {
 		tp.scrollOff = maxOff
 	}
@@ -533,7 +536,7 @@ func (tp *TerminalPanel) HandleKey(k *term.KeyEvent) bool {
 	}
 
 	// Text input (when at bottom / auto-scroll mode)
-	if tp.scrollOff == 0 && k.Rune != 0 {
+	if tp.scrollOff == 0 {
 		if k.Key == term.KeyEnter {
 			input := string(tp.inputBuf)
 			tp.inputBuf = tp.inputBuf[:0]
