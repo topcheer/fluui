@@ -18,6 +18,11 @@ type BlockContainer struct {
 	dirty       bool
 	positions   []BlockPosition // cached during SetBounds
 	totalHeight int             // cached during Measure
+	// Virtual scroll support
+	scrollOffset  int  // current scroll offset (0 = bottom)
+	autoScroll    bool // auto-scroll to bottom on new content
+	visibleStartY int  // visible range start Y (for virtual scroll)
+	visibleHeight int  // visible range height
 }
 
 // NewBlockContainer creates an empty container with default spacing of 1.
@@ -217,4 +222,40 @@ func (c *BlockContainer) ClearDirty() {
 	for _, b := range c.blocks {
 		b.ClearDirty()
 	}
+}
+
+// SetVisibleRange sets the visible scroll range for virtual scrolling optimization.
+// This is a hint that can be used by the rendering pipeline to skip off-screen blocks.
+func (c *BlockContainer) SetVisibleRange(startY, height int) {
+	c.mu.Lock()
+	c.visibleStartY = startY
+	c.visibleHeight = height
+	c.mu.Unlock()
+}
+
+// AutoScrollEnabled returns whether auto-scroll to bottom is enabled.
+func (c *BlockContainer) AutoScrollEnabled() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.autoScroll
+}
+
+// SetAutoScroll enables or disables auto-scroll to bottom on new content.
+func (c *BlockContainer) SetAutoScroll(enabled bool) {
+	c.mu.Lock()
+	c.autoScroll = enabled
+	c.mu.Unlock()
+}
+
+// ScrollToBottom requests the container to scroll to the bottom.
+// Returns true if the scroll position changed.
+func (c *BlockContainer) ScrollToBottom() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.scrollOffset == 0 && c.autoScroll {
+		return false
+	}
+	c.scrollOffset = 0
+	c.autoScroll = true
+	return true
 }
