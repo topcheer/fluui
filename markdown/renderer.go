@@ -25,6 +25,8 @@ const (
 	BlockThematicBreak
 	BlockTable
 	BlockImage
+	BlockDefinitionList
+	BlockFootnote
 )
 
 // Block is a rendered markdown block.
@@ -54,7 +56,9 @@ func NewMarkdownRenderer(theme *MarkdownTheme, width int) *MarkdownRenderer {
 		md: goldmark.New(goldmark.WithExtensions(
 			extension.Table,
 			extension.Strikethrough,
-			extension.Linkify, // auto-link raw URLs in text
+			extension.Linkify,        // auto-link raw URLs in text
+			extension.DefinitionList, // PHP Markdown Extra definition lists
+			extension.Footnote,       // footnote syntax [^1]
 		)),
 		linkRenderer: NewLinkRenderer(false), // OSC8 disabled by default
 	}
@@ -123,6 +127,10 @@ func (r *MarkdownRenderer) renderBlock(node ast.Node, source []byte) *Block {
 			cells = append(cells, r.textToCells(line, r.theme.Body, 0))
 		}
 		return &Block{Type: BlockParagraph, Cells: cells}
+	case *extast.DefinitionList:
+		return r.renderDefinitionList(n, source)
+	case *extast.FootnoteList:
+		return r.renderFootnoteList(n, source)
 	}
 	return nil
 }
@@ -271,6 +279,12 @@ func (r *MarkdownRenderer) renderInlineNode(n ast.Node, source []byte) []buffer.
 			cells[i].Flags |= buffer.Strikethrough
 		}
 		return cells
+	case *extast.FootnoteLink:
+		// Render footnote reference as superscript-style [N]
+		return r.textToCells("["+strconv.Itoa(v.Index+1)+"]", r.theme.LinkFg, buffer.Dim)
+	case *extast.FootnoteBacklink:
+		// Render backlink as small arrow
+		return r.textToCells(" \u2191", r.theme.LinkFg, buffer.Dim)
 	default:
 		// Fallback: try to get text content
 		text := string(n.Text(source))
@@ -742,6 +756,74 @@ func (r *MarkdownRenderer) renderBlockquote(n *ast.Blockquote, source []byte) *B
 	}
 
 	return &Block{Type: BlockQuote, Cells: cells}
+}
+
+// renderDefinitionList renders a PHP Markdown Extra definition list.
+// Syntax: Term\n: Definition
+func (r *MarkdownRenderer) renderDefinitionList(n *extast.DefinitionList, source []byte) *Block {
+	var cells [][]buffer.Cell
+	for child := n.FirstChild(); child != nil; child = child.NextSibling() {
+		// Each child is a DefinitionTerm or DefinitionDescription
+		switch v := child.(type) {
+		case *extast.DefinitionTerm:
+			// Term: bold, no prefix
+			inline := r.renderInline(v, source)
+			wrapped := r.wrapCells(inline, r.width)
+			for _, line := range wrapped {
+				for i := range line {
+					line[i].Flags |= buffer.Bold
+				}
+				cells = append(cells, line)
+			}
+		case *extast.DefinitionDescription:
+			// Description contains a TextBlock; render its inline children
+			var inline []buffer.Cell
+			for tb := v.FirstChild(); tb != nil; tb = tb.NextSibling() {
+				inline = append(inline, r.renderInline(tb, source)...)
+			}
+			wrapped := r.wrapCells(inline, r.width-2)
+			for i, line := range wrapped {
+				if i == 0 {
+					prefix := r.textToCells(": ", r.theme.Body, 0)
+					line = append(prefix, line...)
+				} else {
+					prefix := r.textToCells("  ", r.theme.Body, 0)
+					line = append(prefix, line...)
+				}
+				cells = append(cells, line)
+			}
+		}
+	}
+	return &Block{Type: BlockDefinitionList, Cells: cells}
+}
+
+// renderFootnoteList renders the footnote definitions section at the bottom.
+func (r *MarkdownRenderer) renderFootnoteList(n *extast.FootnoteList, source []byte) *Block {
+	var cells [][]buffer.Cell
+	idx := 0
+	for child := n.FirstChild(); child != nil; child = child.NextSibling() {
+		fn, ok := child.(*extast.Footnote)
+		if !ok {
+			continue
+		}
+		idx++
+		// Footnote contains Paragraph(s); render their inline children
+		var inline []buffer.Cell
+		for p := fn.FirstChild(); p != nil; p = p.NextSibling() {
+			inline = append(inline, r.renderInline(p, source)...)
+		}
+		prefix := r.textToCells("["+strconv.Itoa(idx)+"] ", r.theme.LinkFg, buffer.Dim)
+		all := append(prefix, inline...)
+		wrapped := r.wrapCells(all, r.width)
+		for i, line := range wrapped {
+			if i > 0 {
+				indent := r.textToCells("   ", r.theme.Body, 0)
+				line = append(indent, line...)
+			}
+			cells = append(cells, line)
+		}
+	}
+	return &Block{Type: BlockFootnote, Cells: cells}
 }
 
 // renderThematicBreak renders a horizontal rule.
