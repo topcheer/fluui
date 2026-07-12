@@ -47,6 +47,9 @@ type Loop struct {
 	doneCh   chan struct{}  // closed on Quit — broadcasts to ALL goroutines
 	once     sync.Once      // ensures doneCh is closed only once
 
+	// Async Cmd execution
+	cmdExec *CmdExecutor
+
 	// Render
 	onRender func() bool
 	dirty    atomic.Bool
@@ -58,7 +61,7 @@ type Loop struct {
 
 // NewLoop creates a new event loop.
 func NewLoop(t *term.Terminal, d *Dispatcher) *Loop {
-	return &Loop{
+	l := &Loop{
 		terminal:   t,
 		parser:     term.NewParser(),
 		dispatcher: d,
@@ -67,6 +70,8 @@ func NewLoop(t *term.Terminal, d *Dispatcher) *Loop {
 		doneCh:     make(chan struct{}),
 		fps:        60,
 	}
+	l.cmdExec = NewCmdExecutor(l)
+	return l
 }
 
 // OnRender sets the render callback.
@@ -85,6 +90,19 @@ func (l *Loop) Send(e Event) {
 	case l.customCh <- e:
 	case <-l.doneCh:
 	}
+}
+
+// Exec runs a Cmd asynchronously. The Cmd executes in a goroutine;
+// its result Event is injected back into the loop via Send.
+// If the loop has stopped, the Cmd is not executed.
+func (l *Loop) Exec(cmd Cmd) {
+	l.cmdExec.Exec(cmd)
+}
+
+// CmdExecutor returns the loop's Cmd executor for advanced use
+// (Tick/Every/Batch scheduling with context cancellation).
+func (l *Loop) CmdExecutor() *CmdExecutor {
+	return l.cmdExec
 }
 
 // Quit signals the loop to stop.
@@ -125,6 +143,7 @@ func (l *Loop) Run() error {
 		select {
 		case <-l.doneCh:
 			l.running.Store(false)
+			l.cmdExec.Stop()
 			return nil
 
 		case data := <-l.rawCh:

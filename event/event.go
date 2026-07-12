@@ -25,7 +25,8 @@ type Event struct {
 	Paste   string
 	Width   int
 	Height  int
-	Focused bool // for TypeFocus: true=gained, false=lost
+	Focused bool   // for TypeFocus: true=gained, false=lost
+	Data    string // for TypeCustom: arbitrary payload identifier
 }
 
 // Handler processes an event and returns whether it was consumed.

@@ -20,6 +20,7 @@ type Dispatcher struct {
 	resizeHandler Handler
 	pasteHandler  Handler
 	focusHandler  Handler
+	customHandler Handler
 	defaultKey  Handler
 }
 
@@ -49,6 +50,9 @@ func (d *Dispatcher) OnKey(h Handler) { d.defaultKey = h }
 // The handler is called when the terminal gains or loses focus
 // (requires focus tracking support, enabled automatically by term.Open).
 func (d *Dispatcher) OnFocus(h Handler) { d.focusHandler = h }
+
+// OnCustom sets the handler for Cmd/Msg results (TypeCustom events).
+func (d *Dispatcher) OnCustom(h Handler) { d.customHandler = h }
 
 // Dispatch routes an event to the appropriate handler.
 func (d *Dispatcher) Dispatch(e Event) bool {
@@ -84,6 +88,11 @@ func (d *Dispatcher) Dispatch(e Event) bool {
 	case TypeFocus:
 		if d.focusHandler != nil {
 			return d.focusHandler(e)
+		}
+
+	case TypeCustom:
+		if d.customHandler != nil {
+			return d.customHandler(e)
 		}
 	}
 	return false
