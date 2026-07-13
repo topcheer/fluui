@@ -377,3 +377,84 @@ func parseUint(s string) int {
 	}
 	return n
 }
+// BorderForeground sets the border foreground color (lipgloss-compatible).
+func (s *StyleBuilder) BorderForeground(c buffer.Color) *StyleBuilder {
+	// Store as a special field via Fg temporarily — adapter will handle
+	// In fluui, borders are handled by the Border component, not Style
+	return s
+}
+
+// BorderBackground sets the border background color (lipgloss-compatible).
+func (s *StyleBuilder) BorderBackground(c buffer.Color) *StyleBuilder {
+	return s
+}
+
+// MaxWidth sets the maximum width (lipgloss-compatible, no-op in fluui).
+func (s *StyleBuilder) MaxWidth(w int) *StyleBuilder {
+	return s
+}
+
+// MaxHeight sets the maximum height (lipgloss-compatible, no-op in fluui).
+func (s *StyleBuilder) MaxHeight(h int) *StyleBuilder {
+	return s
+}
+
+// MarginLeft sets left margin (lipgloss-compatible, no-op in fluui).
+func (s *StyleBuilder) MarginLeft(n int) *StyleBuilder {
+	return s
+}
+
+// MarginRight sets right margin (lipgloss-compatible, no-op in fluui).
+func (s *StyleBuilder) MarginRight(n int) *StyleBuilder {
+	return s
+}
+
+// MarginTop sets top margin (lipgloss-compatible, no-op in fluui).
+func (s *StyleBuilder) MarginTop(n int) *StyleBuilder {
+	return s
+}
+
+// MarginBottom sets bottom margin (lipgloss-compatible, no-op in fluui).
+func (s *StyleBuilder) MarginBottom(n int) *StyleBuilder {
+	return s
+}
+
+// PaddingLeft sets left padding (lipgloss-compatible, no-op in fluui).
+func (s *StyleBuilder) PaddingLeft(n int) *StyleBuilder {
+	return s
+}
+
+// PaddingRight sets right padding (lipgloss-compatible, no-op in fluui).
+func (s *StyleBuilder) PaddingRight(n int) *StyleBuilder {
+	return s
+}
+
+// PaddingTop sets top padding (lipgloss-compatible, no-op in fluui).
+func (s *StyleBuilder) PaddingTop(n int) *StyleBuilder {
+	return s
+}
+
+// PaddingBottom sets bottom padding (lipgloss-compatible, no-op in fluui).
+func (s *StyleBuilder) PaddingBottom(n int) *StyleBuilder {
+	return s
+}
+
+// Align sets text alignment (lipgloss-compatible, no-op in fluui).
+func (s *StyleBuilder) Align(align HorizontalAlign) *StyleBuilder {
+	return s
+}
+
+// TabWidth sets tab width (lipgloss-compatible, no-op in fluui).
+func (s *StyleBuilder) TabWidth(n int) *StyleBuilder {
+	return s
+}
+
+// UnderlineSpaces enables underlining spaces (lipgloss-compatible, no-op).
+func (s *StyleBuilder) UnderlineSpaces(b ...bool) *StyleBuilder {
+	return s
+}
+
+// StrikethroughSpaces enables strikethrough on spaces (lipgloss-compatible, no-op).
+func (s *StyleBuilder) StrikethroughSpaces(b ...bool) *StyleBuilder {
+	return s
+}
