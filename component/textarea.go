@@ -479,3 +479,93 @@ func (ta *TextArea) Paint(buf *buffer.Buffer) {
 		}
 	}
 }
+
+// ─── bubbles.textarea-compatible API additions (P165) ───
+
+// Value returns the text content (alias for Text, bubbles.textarea compatible).
+func (ta *TextArea) Value() string {
+	return ta.Text()
+}
+
+// SetValue sets the text content (alias for SetText, bubbles.textarea compatible).
+func (ta *TextArea) SetValue(s string) {
+	ta.SetText(s)
+}
+
+// Prompt returns the prompt string (always empty for TextArea, bubbles compatible).
+func (ta *TextArea) Prompt() string {
+	return ""
+}
+
+// SetPrompt sets the prompt string (no-op for TextArea, bubbles compatible).
+func (ta *TextArea) SetPrompt(s string) {}
+
+// Placeholder returns the placeholder string (always empty, bubbles compatible).
+func (ta *TextArea) Placeholder() string {
+	return ""
+}
+
+// SetPlaceholder sets the placeholder (no-op for TextArea, bubbles compatible).
+func (ta *TextArea) SetPlaceholder(s string) {}
+
+// Focus marks the textarea as focused (bubbles.textarea compatible).
+func (ta *TextArea) Focus() {
+	// No-op: TextArea doesn't have a focused state currently
+}
+
+// Blur marks the textarea as unfocused (bubbles.textarea compatible).
+func (ta *TextArea) Blur() {
+	// No-op: TextArea doesn't have a focused state currently
+}
+
+// Blink returns false (no cursor blink for TextArea, bubbles compatible).
+func (ta *TextArea) Blink() bool {
+	return false
+}
+
+// SetHeight sets the display height (bubbles.textarea compatible).
+func (ta *TextArea) SetHeight(h int) {
+	// Store in bounds via SetBounds if needed
+	ta.SetBounds(Rect{X: ta.Bounds().X, Y: ta.Bounds().Y, W: ta.Bounds().W, H: h})
+}
+
+// SetWidth sets the display width (bubbles.textarea compatible).
+func (ta *TextArea) SetWidth(w int) {
+	ta.SetBounds(Rect{X: ta.Bounds().X, Y: ta.Bounds().Y, W: w, H: ta.Bounds().H})
+}
+
+// Line returns the current cursor line index (bubbles.textarea compatible).
+func (ta *TextArea) Line() int {
+	return ta.cursorY
+}
+
+// Column returns the current cursor column index (bubbles.textarea compatible).
+func (ta *TextArea) Column() int {
+	return ta.cursorX
+}
+
+// Reset clears the textarea and resets cursor (bubbles.textarea compatible).
+func (ta *TextArea) Reset() {
+	ta.Clear()
+	ta.cursorX = 0
+	ta.cursorY = 0
+	ta.scrollY = 0
+}
+
+// CharLimit returns 0 (no limit, bubbles.textarea compatible).
+func (ta *TextArea) CharLimit() int {
+	return 0
+}
+
+// SetCharLimit is a no-op (bubbles.textarea compatible).
+func (ta *TextArea) SetCharLimit(n int) {}
+
+// CursorDown moves cursor down one line.
+func (ta *TextArea) CursorDown() {
+	ta.moveLine(1)
+}
+
+// CursorUp moves cursor up one line.
+func (ta *TextArea) CursorUp() {
+	ta.moveLine(-1)
+}
