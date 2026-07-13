@@ -119,6 +119,9 @@ func (s *Switch) notifyChange() {
 
 // HandleKey toggles on Enter or Space.
 func (s *Switch) HandleKey(ev *term.KeyEvent) bool {
+	if ev == nil {
+		return false
+	}
 	if ev.Key == term.KeyEnter || ev.Key == term.KeySpace || ev.Rune == ' ' {
 		s.Toggle()
 		return true
