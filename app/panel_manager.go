@@ -3,430 +3,266 @@ package app
 import (
 	"sync"
 
-	"github.com/topcheer/fluui/component"
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/topcheer/fluui/internal/term"
-	"github.com/topcheer/fluui/theme"
 )
 
-// Panel is a component that can be registered with the PanelManager.
-// Each panel occupies the main content area and is switched via tab-like navigation.
+// ─── PanelManager: Panel Stack Architecture ───
+//
+// PanelManager replaces the monolithic handleKeyPress pattern:
+//
+//	// Before: 50+ if-branches
+//	func (m Model) handleKeyPress(msg tea.KeyPressMsg) {
+//	    if m.fileBrowser != nil { return m.handleFileBrowserKey(msg) }
+//	    if m.previewPanel != nil { return m.handlePreviewKey(msg) }
+//	    if m.modelPanel != nil { return m.handleModelPanelKey(msg) }
+//	    if m.providerPanel != nil { return m.handleProviderPanelKey(msg) }
+//	    if m.qqPanel != nil { return m.handleQQPanelKey(msg) }
+//	    if m.tgPanel != nil { return m.handleTGPanelKey(msg) }
+//	    // ... 44 more branches
+//	}
+//
+//	// After: one-line routing
+//	panelMgr.HandleKey(ev)  // routes to active panel automatically
+//
+// Each Panel owns its state. No shared 236-field Model struct.
+// Esc closes the topmost panel (standard modal behavior).
+
+// Panel is the interface for a screen-level UI component that owns
+// its own state and event handling. This is the unit of composition
+// in fluui's component-declarative architecture.
+//
+// A Panel is NOT a Component — it's higher level. A Panel manages
+// a full screen area and handles all input while active. Internally
+// it may compose multiple Components.
 type Panel interface {
-	component.Component
+	// ID returns a unique identifier for this panel type.
 	ID() string
+
+	// Title returns the panel title (shown in sidebar/breadcrumb).
 	Title() string
-	Icon() string
-	OnActivate()
-	OnDeactivate()
+
+	// HandleKey processes a key event. Returns true if consumed.
+	// The active panel gets first chance at all key events.
+	HandleKey(ev *term.KeyEvent) bool
+
+	// HandleMouse processes a mouse event. Returns true if consumed.
+	HandleMouse(x, y int, action string) bool
+
+	// Paint renders the panel content into the buffer.
+	Paint(buf *buffer.Buffer, w, h int)
+
+	// OnShow is called when this panel becomes the active (topmost) panel.
+	OnShow()
+
+	// OnHide is called when this panel is no longer the active panel.
+	OnHide()
 }
 
-// PanelManager manages multiple panels with a tab bar at the bottom.
-// Only the active panel is rendered; others are hidden.
-// Thread-safe via sync.RWMutex.
+// BasePanel provides default no-op implementations for optional Panel methods.
+// Embed this to avoid implementing all 7 methods.
+type BasePanel struct{}
+
+func (BasePanel) HandleMouse(x, y int, action string) bool { return false }
+func (BasePanel) OnShow()                                  {}
+func (BasePanel) OnHide()                                  {}
+
+// PanelManager manages a stack of Panels. Only the topmost (active)
+// panel receives keyboard and mouse events. Esc closes the topmost
+// panel (unless it's the root panel).
+//
+// Thread-safe.
 type PanelManager struct {
-	component.BaseComponent
+	mu     sync.RWMutex
+	panels []Panel
+	root   Panel // bottom panel — never popped
 
-	mu        sync.RWMutex
-	panels    map[string]Panel
-	order     []string // panel IDs in registration order
-	activeID  string
-	visible   []string // visible tab IDs (for scroll arrows)
-	scrollIdx int      // first visible tab index
-	unread    map[string]int
-	current   *theme.Theme
+	onChange func() // callback when panel stack changes (for MarkDirty)
 }
 
-// NewPanelManager creates an empty panel manager.
-func NewPanelManager() *PanelManager {
+// NewPanelManager creates a PanelManager with a root panel.
+// The root panel is always at the bottom and cannot be popped.
+func NewPanelManager(root Panel) *PanelManager {
 	return &PanelManager{
-		panels: make(map[string]Panel),
-		unread: make(map[string]int),
+		panels: []Panel{root},
+		root:   root,
 	}
 }
 
-// RegisterPanel registers a panel at the given index (appends if index < 0 or > len).
-func (pm *PanelManager) RegisterPanel(p Panel, index int) {
+// SetOnChange sets a callback invoked when the panel stack changes
+// (push/pop/replace). Use this to trigger a re-render.
+func (pm *PanelManager) SetOnChange(fn func()) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
+	pm.onChange = fn
+}
 
-	id := p.ID()
-	if _, exists := pm.panels[id]; exists {
-		return // already registered
-	}
-
-	if index < 0 || index >= len(pm.order) {
-		pm.order = append(pm.order, id)
-	} else {
-		pm.order = append(pm.order[:index], append([]string{id}, pm.order[index:]...)...)
-	}
-	pm.panels[id] = p
-
-	// First panel becomes active
-	if pm.activeID == "" {
-		pm.activeID = id
-		p.OnActivate()
+func (pm *PanelManager) notifyChange() {
+	if pm.onChange != nil {
+		pm.onChange()
 	}
 }
 
-// UnregisterPanel removes a panel by ID.
-func (pm *PanelManager) UnregisterPanel(id string) {
+// Push opens a new panel on top of the stack. The new panel becomes
+// active and receives all keyboard/mouse events until popped.
+// OnShow is called on the new panel; OnHide on the previously active panel.
+func (pm *PanelManager) Push(p Panel) {
 	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
-	if _, exists := pm.panels[id]; !exists {
-		return
+	if len(pm.panels) > 0 {
+		pm.panels[len(pm.panels)-1].OnHide()
 	}
-
-	wasActive := pm.activeID == id
-	delete(pm.panels, id)
-	delete(pm.unread, id)
-
-	// Remove from order
-	for i, oid := range pm.order {
-		if oid == id {
-			pm.order = append(pm.order[:i], pm.order[i+1:]...)
-			break
-		}
-	}
-
-	// If we removed the active panel, switch to the first remaining
-	if wasActive && len(pm.order) > 0 {
-		pm.activeID = pm.order[0]
-		if p, ok := pm.panels[pm.activeID]; ok {
-			pm.mu.Unlock()
-			p.OnActivate()
-			pm.mu.Lock()
-		}
-	} else if wasActive {
-		pm.activeID = ""
-	}
+	pm.panels = append(pm.panels, p)
+	pm.mu.Unlock()
+	p.OnShow()
+	pm.notifyChange()
 }
 
-// SwitchTo activates the panel with the given ID. Returns false if not found.
-func (pm *PanelManager) SwitchTo(id string) bool {
+// Pop closes the topmost panel. Returns the popped panel, or nil
+// if only the root panel remains (root cannot be popped).
+// OnHide is called on the popped panel; OnShow on the new topmost.
+func (pm *PanelManager) Pop() Panel {
 	pm.mu.Lock()
-
-	newPanel, ok := pm.panels[id]
-	if !ok {
+	if len(pm.panels) <= 1 {
 		pm.mu.Unlock()
-		return false
+		return nil
 	}
+	popped := pm.panels[len(pm.panels)-1]
+	pm.panels = pm.panels[:len(pm.panels)-1]
+	newTop := pm.panels[len(pm.panels)-1]
+	pm.mu.Unlock()
 
-	oldID := pm.activeID
-	if oldID == id {
+	popped.OnHide()
+	newTop.OnShow()
+	pm.notifyChange()
+	return popped
+}
+
+// Replace swaps the topmost panel with a new one. If only the root
+// remains, the new panel is pushed on top. Returns the old topmost panel.
+func (pm *PanelManager) Replace(p Panel) Panel {
+	pm.mu.Lock()
+	if len(pm.panels) <= 1 {
+		pm.panels = append(pm.panels, p)
 		pm.mu.Unlock()
+		p.OnShow()
+		pm.notifyChange()
+		return nil
+	}
+	old := pm.panels[len(pm.panels)-1]
+	pm.panels[len(pm.panels)-1] = p
+	pm.mu.Unlock()
+
+	old.OnHide()
+	p.OnShow()
+	pm.notifyChange()
+	return old
+}
+
+// Active returns the topmost (active) panel, or nil if empty.
+func (pm *PanelManager) Active() Panel {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+	if len(pm.panels) == 0 {
+		return nil
+	}
+	return pm.panels[len(pm.panels)-1]
+}
+
+// Root returns the root (bottom) panel.
+func (pm *PanelManager) Root() Panel {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+	return pm.root
+}
+
+// Depth returns the number of panels in the stack (including root).
+func (pm *PanelManager) Depth() int {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+	return len(pm.panels)
+}
+
+// IsRoot returns true if only the root panel is in the stack.
+func (pm *PanelManager) IsRoot() bool {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+	return len(pm.panels) == 1
+}
+
+// FindByID returns the first panel with the given ID (searching top-down).
+func (pm *PanelManager) FindByID(id string) Panel {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+	for i := len(pm.panels) - 1; i >= 0; i-- {
+		if pm.panels[i].ID() == id {
+			return pm.panels[i]
+		}
+	}
+	return nil
+}
+
+// HandleKey routes a key event to the active panel.
+// If the active panel doesn't consume it and it's Escape, the panel is popped.
+// Returns true if the event was consumed.
+func (pm *PanelManager) HandleKey(ev *term.KeyEvent) bool {
+	pm.mu.RLock()
+	active := pm.panels[len(pm.panels)-1]
+	canPop := len(pm.panels) > 1
+	pm.mu.RUnlock()
+
+	// Active panel gets first chance
+	if active.HandleKey(ev) {
 		return true
 	}
 
-	var oldPanel Panel
-	if oldID != "" {
-		oldPanel = pm.panels[oldID]
-	}
-	pm.activeID = id
-	pm.unread[id] = 0 // clear unread on view
-
-	pm.mu.Unlock()
-
-	// Callbacks outside lock to avoid deadlock
-	if oldPanel != nil {
-		oldPanel.OnDeactivate()
-	}
-	newPanel.OnActivate()
-	return true
-}
-
-// Next switches to the next panel (wraps around).
-func (pm *PanelManager) Next() {
-	pm.mu.RLock()
-	if len(pm.order) == 0 {
-		pm.mu.RUnlock()
-		return
-	}
-	currentIdx := 0
-	for i, id := range pm.order {
-		if id == pm.activeID {
-			currentIdx = i
-			break
-		}
-	}
-	nextID := pm.order[(currentIdx+1)%len(pm.order)]
-	pm.mu.RUnlock()
-	pm.SwitchTo(nextID)
-}
-
-// Prev switches to the previous panel (wraps around).
-func (pm *PanelManager) Prev() {
-	pm.mu.RLock()
-	if len(pm.order) == 0 {
-		pm.mu.RUnlock()
-		return
-	}
-	currentIdx := 0
-	for i, id := range pm.order {
-		if id == pm.activeID {
-			currentIdx = i
-			break
-		}
-	}
-	prevIdx := currentIdx - 1
-	if prevIdx < 0 {
-		prevIdx = len(pm.order) - 1
-	}
-	prevID := pm.order[prevIdx]
-	pm.mu.RUnlock()
-	pm.SwitchTo(prevID)
-}
-
-// SwitchByIndex switches to the panel at 1-based index (1-9).
-func (pm *PanelManager) SwitchByIndex(n int) bool {
-	pm.mu.RLock()
-	if n < 1 || n > len(pm.order) {
-		pm.mu.RUnlock()
-		return false
-	}
-	id := pm.order[n-1]
-	pm.mu.RUnlock()
-	return pm.SwitchTo(id)
-}
-
-// ActivePanel returns the currently active panel, or nil if none.
-func (pm *PanelManager) ActivePanel() Panel {
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
-	return pm.panels[pm.activeID]
-}
-
-// ActiveID returns the ID of the currently active panel.
-func (pm *PanelManager) ActiveID() string {
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
-	return pm.activeID
-}
-
-// PanelCount returns the total number of registered panels.
-func (pm *PanelManager) PanelCount() int {
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
-	return len(pm.order)
-}
-
-// HasPanel checks if a panel with the given ID is registered.
-func (pm *PanelManager) HasPanel(id string) bool {
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
-	_, ok := pm.panels[id]
-	return ok
-}
-
-// SetUnread sets the unread message count for a panel (shown as badge in tab bar).
-func (pm *PanelManager) SetUnread(id string, count int) {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-	pm.unread[id] = count
-}
-
-// SetTheme updates the theme used for rendering.
-func (pm *PanelManager) SetTheme(t *theme.Theme) {
-	pm.mu.Lock()
-	pm.current = t
-	pm.mu.Unlock()
-}
-
-// Measure returns the panel manager's desired size.
-func (pm *PanelManager) Measure(cs component.Constraints) component.Size {
-	w := cs.MaxWidth
-	h := cs.MaxHeight
-	if w <= 0 {
-		w = 80
-	}
-	if h <= 0 {
-		h = 24
-	}
-	return component.Size{W: w, H: h}
-}
-
-// SetBounds sets the panel manager's bounds and propagates to the active panel.
-func (pm *PanelManager) SetBounds(r component.Rect) {
-	pm.BaseComponent.SetBounds(r)
-	pm.mu.RLock()
-	active := pm.panels[pm.activeID]
-	pm.mu.RUnlock()
-	if active != nil {
-		// Content area excludes the tab bar at the bottom (1 line)
-		content := component.Rect{X: r.X, Y: r.Y, W: r.W, H: r.H - 1}
-		if content.H < 0 {
-			content.H = 0
-		}
-		active.SetBounds(content)
-	}
-}
-
-// Paint renders the active panel content and the tab bar.
-func (pm *PanelManager) Paint(buf *buffer.Buffer) {
-	pm.mu.RLock()
-	active := pm.panels[pm.activeID]
-	bounds := pm.BaseComponent.Bounds()
-	t := pm.current
-	pm.mu.RUnlock()
-
-	// Paint active panel
-	if active != nil {
-		active.Paint(buf)
+	// Esc closes the topmost panel (if not root)
+	if canPop && ev.Key == term.KeyEscape {
+		pm.Pop()
+		return true
 	}
 
-	// Paint tab bar at the bottom
-	tabY := bounds.Y + bounds.H - 1
-	if tabY < 0 || tabY >= buf.Height {
-		return
-	}
-
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
-
-	// Determine colors
-	var activeFg, activeBg, inactiveFg, inactiveBg buffer.Color
-	if t != nil {
-		activeFg = t.Fg
-		activeBg = t.Accent
-		inactiveFg = t.Muted
-		inactiveBg = t.Bg
-	} else {
-		activeFg = buffer.RGB(255, 255, 255)
-		activeBg = buffer.RGB(98, 114, 164) // dracula comment
-		inactiveFg = buffer.RGB(139, 143, 159)
-		inactiveBg = buffer.RGB(40, 42, 54)
-	}
-
-	x := bounds.X
-	maxX := bounds.X + bounds.W
-
-	for i, id := range pm.order {
-		p := pm.panels[id]
-		if p == nil {
-			continue
-		}
-
-		// Build label: "[N] Icon Title"
-		label := "[" + itoa(i+1) + "]"
-		icon := p.Icon()
-		if icon != "" {
-			label += " " + icon
-		}
-		label += " " + p.Title()
-
-		// Add unread badge
-		unread := pm.unread[id]
-		if unread > 0 {
-			label += "(" + itoa(unread) + ")"
-		}
-
-		// Check if it fits
-		labelLen := visibleLen(label)
-		if x+labelLen > maxX {
-			// Draw "›" overflow indicator
-			if x < maxX {
-				buf.SetCell(x, tabY, buffer.Cell{Rune: ' ', Width: 1})
-			}
-			break
-		}
-
-		// Determine colors
-		isActive := id == pm.activeID
-		fg, bg := inactiveFg, inactiveBg
-		if isActive {
-			fg, bg = activeFg, activeBg
-		}
-
-		// Draw label
-		for _, r := range label {
-			if x >= maxX {
-				break
-			}
-			buf.SetCell(x, tabY, buffer.Cell{Rune: r, Width: 1, Fg: fg, Bg: bg})
-			x++
-		}
-		// Separator space
-		if x < maxX {
-			buf.SetCell(x, tabY, buffer.Cell{Rune: ' ', Width: 1, Bg: inactiveBg})
-			x++
-		}
-	}
-}
-
-// HandleKey processes panel switching keys first, then forwards to the active panel.
-func (pm *PanelManager) HandleKey(k *term.KeyEvent) bool {
-	// Alt+1..9 → switch panel
-	if k.Modifiers&term.ModAlt != 0 {
-		if n := keyToDigit(k); n > 0 {
-			if pm.SwitchByIndex(n) {
-				return true
-			}
-		}
-	}
-
-	// Ctrl+Tab → next, Ctrl+Shift+Tab → prev
-	if k.Key == term.KeyTab {
-		if k.Modifiers&term.ModCtrl != 0 {
-			if k.Modifiers&term.ModShift != 0 {
-				pm.Prev()
-			} else {
-				pm.Next()
-			}
-			return true
-		}
-	}
-
-	// Forward to active panel
-	pm.mu.RLock()
-	active := pm.panels[pm.activeID]
-	pm.mu.RUnlock()
-
-	if active != nil {
-		type keyHandler interface {
-			HandleKey(*term.KeyEvent) bool
-		}
-		if kh, ok := active.(keyHandler); ok {
-			return kh.HandleKey(k)
-		}
-	}
 	return false
 }
 
-// --- helpers ---
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	var buf [20]byte
-	i := len(buf)
-	for n > 0 {
-		i--
-		buf[i] = byte('0' + n%10)
-		n /= 10
-	}
-	if neg {
-		i--
-		buf[i] = '-'
-	}
-	return string(buf[i:])
+// HandleMouse routes a mouse event to the active panel.
+func (pm *PanelManager) HandleMouse(x, y int, action string) bool {
+	pm.mu.RLock()
+	active := pm.panels[len(pm.panels)-1]
+	pm.mu.RUnlock()
+	return active.HandleMouse(x, y, action)
 }
 
-func keyToDigit(k *term.KeyEvent) int {
-	if k.Rune >= '1' && k.Rune <= '9' {
-		return int(k.Rune - '0')
-	}
-	return 0
+// Paint renders the active panel into the buffer.
+func (pm *PanelManager) Paint(buf *buffer.Buffer, w, h int) {
+	pm.mu.RLock()
+	active := pm.panels[len(pm.panels)-1]
+	pm.mu.RUnlock()
+	active.Paint(buf, w, h)
 }
 
-func visibleLen(s string) int {
-	count := 0
-	for range s {
-		count++
+// CloseAll pops all panels except the root.
+func (pm *PanelManager) CloseAll() {
+	pm.mu.Lock()
+	if len(pm.panels) <= 1 {
+		pm.mu.Unlock()
+		return
 	}
-	return count
+	// Notify all non-root panels
+	for i := len(pm.panels) - 1; i >= 1; i-- {
+		pm.panels[i].OnHide()
+	}
+	pm.panels = pm.panels[:1]
+	pm.mu.Unlock()
+
+	pm.root.OnShow()
+	pm.notifyChange()
+}
+
+// Panels returns a copy of the panel stack (bottom-to-top).
+func (pm *PanelManager) Panels() []Panel {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+	result := make([]Panel, len(pm.panels))
+	copy(result, pm.panels)
+	return result
 }
