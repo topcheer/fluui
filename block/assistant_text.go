@@ -116,6 +116,7 @@ func (b *AssistantTextBlock) AppendDelta(delta string) {
 var cacheFillMu sync.Mutex
 
 func (b *AssistantTextBlock) getCachedBlocks(text string, width int) []*markdown.Block {
+	b.ensureRenderer(width)
 	// Fast path: cache hit
 	if b.cachedText == text && b.cachedW == width && b.cachedBlocks != nil {
 		return b.cachedBlocks
