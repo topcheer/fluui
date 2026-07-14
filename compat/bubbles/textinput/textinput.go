@@ -1,0 +1,151 @@
+// Package textinput provides a drop-in compatibility layer for
+// charm.land/bubbles/v2/textinput.
+//
+// It wraps fluui's component.TextInput with the bubbles textinput API.
+package textinput
+
+import (
+	"github.com/topcheer/fluui/component"
+	"github.com/topcheer/fluui/internal/buffer"
+	"github.com/topcheer/fluui/internal/term"
+)
+
+// Model wraps component.TextInput with the bubbles.textinput API.
+type Model struct {
+	*component.TextInput
+}
+
+// New creates a new textinput Model (bubbles.textinput.New).
+func New() Model {
+	return Model{component.NewTextInput()}
+}
+
+// Focus sets focus on the input.
+func (m Model) Focus() {
+	m.TextInput.Focus()
+}
+
+// Blur removes focus from the input.
+func (m Model) Blur() {
+	m.TextInput.Blur()
+}
+
+// Blink triggers a cursor blink.
+func (m Model) Blink() {
+	m.TextInput.Blink()
+}
+
+// Value returns the current text value.
+func (m Model) Value() string {
+	return m.TextInput.Value()
+}
+
+// SetValue sets the text value.
+func (m Model) SetValue(s string) {
+	m.TextInput.SetValue(s)
+}
+
+// Prompt returns the prompt string.
+func (m Model) Prompt() string {
+	return m.TextInput.Prompt()
+}
+
+// SetPrompt sets the prompt string.
+func (m Model) SetPrompt(s string) {
+	m.TextInput.SetPrompt(s)
+}
+
+// Placeholder returns the placeholder text.
+func (m Model) Placeholder() string {
+	return m.TextInput.Placeholder()
+}
+
+// SetPlaceholder sets the placeholder text.
+func (m Model) SetPlaceholder(s string) {
+	m.TextInput.SetPlaceholder(s)
+}
+
+// EchoPassword sets echo mode to password (dots).
+func (m Model) EchoPassword() {
+	m.TextInput.EchoPassword()
+}
+
+// SetEchoMode sets the echo mode.
+func (m Model) SetEchoMode(mode component.EchoMode) {
+	m.TextInput.SetEchoMode(mode)
+}
+
+// CharLimit returns the character limit.
+func (m Model) CharLimit() int {
+	return m.TextInput.CharLimit()
+}
+
+// SetCharLimit sets the character limit.
+func (m Model) SetCharLimit(n int) {
+	m.TextInput.SetCharLimit(n)
+}
+
+// Width returns the display width.
+func (m Model) Width() int {
+	return m.TextInput.Width()
+}
+
+// SetWidth sets the display width.
+func (m Model) SetWidth(w int) {
+	m.TextInput.SetWidth(w)
+}
+
+// Cursor returns the cursor position.
+func (m Model) Cursor() int {
+	return m.TextInput.Cursor()
+}
+
+// SetCursor sets the cursor position.
+func (m Model) SetCursor(pos int) {
+	m.TextInput.SetCursor(pos)
+}
+
+// CursorEnd moves cursor to end.
+func (m Model) CursorEnd() {
+	m.TextInput.CursorEnd()
+}
+
+// CursorStart moves cursor to start.
+func (m Model) CursorStart() {
+	m.TextInput.CursorStart()
+}
+
+// Position returns cursor position (alias for Cursor).
+func (m Model) Position() int {
+	return m.TextInput.Cursor()
+}
+
+// Focused returns whether the input is focused.
+func (m Model) Focused() bool {
+	return m.TextInput.Focused()
+}
+
+// Update handles a key event (bubbles.textinput.Model.Update).
+func (m Model) Update(key *term.KeyEvent) {
+	m.TextInput.HandleKey(key)
+}
+
+// Reset clears the input.
+func (m Model) Reset() {
+	m.TextInput.Clear()
+}
+
+// Empty returns true if the input has no text.
+func (m Model) Empty() bool {
+	return m.TextInput.Empty()
+}
+
+// Len returns the length of the text.
+func (m Model) Len() int {
+	return m.TextInput.Len()
+}
+
+// SetStyle sets the text style.
+func (m Model) SetStyle(style buffer.Style) {
+	m.TextInput.SetStyle(style)
+}
