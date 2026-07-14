@@ -225,7 +225,15 @@ func (s *StyleBuilder) RenderPlain(text string) string {
 }
 
 // Width returns the display width of the text (lipgloss-compatible).
-func (s *StyleBuilder) Width(text string) int {
+// Width sets the width for rendering (lipgloss-compatible, no-op chain setter).
+// In fluui, width is controlled by SetBounds, not by style.
+// Note: this takes int (not string) to match lipgloss.NewStyle().Width(20) pattern.
+func (s *StyleBuilder) Width(w int) *StyleBuilder {
+	return s
+}
+
+// MeasureWidth returns the display width of the given text (utility, not lipgloss-compatible).
+func (s *StyleBuilder) MeasureWidth(text string) int {
 	return stringWidth(text)
 }
 
@@ -456,5 +464,41 @@ func (s *StyleBuilder) UnderlineSpaces(b ...bool) *StyleBuilder {
 
 // StrikethroughSpaces enables strikethrough on spaces (lipgloss-compatible, no-op).
 func (s *StyleBuilder) StrikethroughSpaces(b ...bool) *StyleBuilder {
+	return s
+}
+
+// String returns the styled text as a string (lipgloss-compatible).
+// In fluui, this renders the builder's current style applied to an empty string,
+// which is useful for measuring SGR sequences. For actual rendering, use Render().
+func (s *StyleBuilder) String() string {
+	return s.Render("")
+}
+
+// SetWidth sets the width for rendering (lipgloss-compatible, no-op chain setter).
+// In fluui, width is controlled by SetBounds, not by style.
+func (s *StyleBuilder) SetWidth(w int) *StyleBuilder {
+	return s
+}
+
+// SetHeight sets the height for rendering (lipgloss-compatible, no-op chain setter).
+// In fluui, height is controlled by SetBounds, not by style.
+func (s *StyleBuilder) SetHeight(h int) *StyleBuilder {
+	return s
+}
+
+// Padding sets uniform padding (lipgloss-compatible, no-op chain setter).
+// In fluui, padding is handled by layout components (Padding container).
+func (s *StyleBuilder) Padding(n ...int) *StyleBuilder {
+	return s
+}
+
+// Border sets the border style (lipgloss-compatible, no-op chain setter).
+// In fluui, borders are handled by the Border component.
+func (s *StyleBuilder) Border(border interface{}) *StyleBuilder {
+	return s
+}
+
+// Height is an alias for SetHeight (lipgloss.NewStyle().Height(10) pattern).
+func (s *StyleBuilder) Height(h int) *StyleBuilder {
 	return s
 }

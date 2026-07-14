@@ -242,8 +242,8 @@ func TestP156_StyleBuilder_Inherit(t *testing.T) {
 
 func TestP156_StyleBuilder_Width(t *testing.T) {
 	s := NewStyle()
-	if s.Width("Hello") != 5 {
-		t.Errorf("expected 5, got %d", s.Width("Hello"))
+	if s.MeasureWidth("Hello") != 5 {
+		t.Errorf("expected 5, got %d", s.MeasureWidth("Hello"))
 	}
 }
 
