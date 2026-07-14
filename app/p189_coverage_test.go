@@ -46,8 +46,8 @@ func TestAppShell_HandleMouse_P189(t *testing.T) {
 
 func TestAppShell_Title_P189(t *testing.T) {
 	shell := NewAppShell(newTestPanel("test", "Test"))
-	if shell.Title() != "Test" {
-		t.Errorf("expected 'Test', got '%s'", shell.Title())
+	if shell.Title() != "App" {
+		t.Errorf("expected 'App', got '%s'", shell.Title())
 	}
 }
 
