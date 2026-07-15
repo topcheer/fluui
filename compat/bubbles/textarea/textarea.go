@@ -179,6 +179,30 @@ func (m Model) DeleteAfterCursor() {
 	m.TextArea.HandleKey(&term.KeyEvent{Key: term.KeyDelete})
 }
 
+// View renders the textarea content as a string (bubbles v2 compatible).
+func (m Model) View() string {
+	return m.TextArea.Value()
+}
+
+// InsertRune inserts a rune at the current cursor position.
+func (m Model) InsertRune(r rune) {
+	m.TextArea.InsertText(string(r))
+}
+
+// CursorEnd moves the cursor to the end of the text.
+func (m Model) CursorEnd() {
+	// Move to last line, end of content
+	val := m.TextArea.Value()
+	m.TextArea.SetValue(val) // SetValue resets cursor to end
+}
+
+// CursorStart moves the cursor to the start of the text.
+func (m Model) CursorStart() {
+	// Reset value to same content resets cursor to start in some impls.
+	// Use InsertText trick: clear and re-set
+	m.TextArea.HandleKey(&term.KeyEvent{Key: term.KeyHome})
+}
+
 // ─── Styles (bubbles.textarea compatible) ───
 
 // StateStyles holds styles for a specific state (focused or blurred).

@@ -134,6 +134,16 @@ func (m Model) CursorStart() {
 	m.TextInput.CursorStart()
 }
 
+// View renders the textinput content as a string (bubbles v2 compatible).
+func (m Model) View() string {
+	return m.TextInput.Value()
+}
+
+// InsertRune inserts a rune at the current cursor position.
+func (m Model) InsertRune(r rune) {
+	m.TextInput.InsertText(string(r))
+}
+
 // Position returns cursor position (alias for Cursor).
 func (m Model) Position() int {
 	return m.TextInput.Cursor()
