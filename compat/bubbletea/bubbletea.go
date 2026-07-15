@@ -37,12 +37,43 @@ type KeyPressMsg struct {
 	Shift bool
 }
 
-// String returns a human-readable key name.
+// String returns a human-readable key name (bubbletea v2 compatible).
+// Produces modifier+key combinations: "ctrl+c", "alt+up", "shift+tab", "esc", etc.
 func (k KeyPressMsg) String() string {
+	// Build the modifier prefix
+	var prefix string
+	if k.Ctrl {
+		prefix = "ctrl+"
+	} else if k.Alt {
+		prefix = "alt+"
+	} else if k.Shift {
+		prefix = "shift+"
+	}
+
+	// Special key codes (ignore rune for special keys)
+	name := keyName(k.Code)
+	if name != "" {
+		return prefix + name
+	}
+
+	// Rune-based key
 	if k.Rune != 0 {
+		// For ctrl/alt combos with lowercase letters, use the letter directly
+		if k.Ctrl || k.Alt {
+			return prefix + string(toLower(k.Rune))
+		}
 		return string(k.Rune)
 	}
-	return keyName(k.Code)
+
+	return ""
+}
+
+// toLower converts an ASCII uppercase rune to lowercase.
+func toLower(r rune) rune {
+	if r >= 'A' && r <= 'Z' {
+		return r + 32
+	}
+	return r
 }
 
 // PasteMsg is sent when text is pasted.
@@ -500,7 +531,7 @@ func keyName(code term.KeyCode) string {
 	case term.KeyEnter:
 		return "enter"
 	case term.KeyEscape:
-		return "escape"
+		return "esc"
 	case term.KeyBackspace:
 		return "backspace"
 	case term.KeyDelete:
@@ -514,11 +545,12 @@ func keyName(code term.KeyCode) string {
 	case term.KeyEnd:
 		return "end"
 	case term.KeyPageUp:
-		return "pageup"
+		return "pgup"
 	case term.KeyPageDown:
-		return "pagedown"
+		return "pgdown"
 	}
-	return "unknown"
+	// No special key — signal caller to use rune
+	return ""
 }
 
 // ─── ScreenSize helpers (compat) ───
