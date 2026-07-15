@@ -45,3 +45,17 @@ func TestPtrHelpers_P200(t *testing.T) {
 		t.Error("PtrUint failed")
 	}
 }
+
+func TestAddChromaStyles_Nil_P206(t *testing.T) {
+	AddChromaStyles(nil, ChromaStyleConfig{})
+}
+
+func TestAddChromaStyles_Valid_P206(t *testing.T) {
+	sc := &StyleConfig{}
+	accent := "#7aa2f7"
+	chroma := ChromaStyleConfig{
+		Text:    StyleBlock{Color: &accent},
+		Comment: StyleBlock{Color: &accent},
+	}
+	AddChromaStyles(sc, chroma)
+}
