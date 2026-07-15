@@ -47,7 +47,7 @@ func (k KeyPressMsg) String() string {
 
 // PasteMsg is sent when text is pasted.
 type PasteMsg struct {
-	Text string
+	Content string
 }
 
 // WindowSizeMsg is sent on terminal resize.
@@ -80,7 +80,7 @@ type QuitMsg struct{}
 type Model interface {
 	Init() Cmd
 	Update(msg Msg) (Model, Cmd)
-	View() string
+	View() View
 }
 
 // ─── Cmd ───
@@ -158,14 +158,17 @@ func now() Time { return time.Now() }
 
 // ─── View ───
 
-// View is a rendered string view (bubbletea v2 compat).
-type View string
+// View is a rendered view (bubbletea v2 compat).
+// In bubbletea v2, View is a struct with a Content field.
+type View struct {
+	Content string
+}
 
 // NewView creates a View from a string.
-func NewView(s string) View { return View(s) }
+func NewView(s string) View { return View{Content: s} }
 
 // String returns the view content.
-func (v View) String() string { return string(v) }
+func (v View) String() string { return v.Content }
 
 // ─── RequestWindowSize ───
 
@@ -213,6 +216,12 @@ const (
 	KeySpace     = term.KeySpace
 	KeyDelete    = term.KeyDelete
 	KeyBackspace = term.KeyBackspace
+	KeyHome      = term.KeyHome
+	KeyEnd       = term.KeyEnd
+	KeyPgUp      = term.KeyPageUp
+	KeyPgDn      = term.KeyPageDown
+	KeyPageUp    = term.KeyPageUp
+	KeyPageDown  = term.KeyPageDown
 )
 
 // ─── Modifier constants ───
@@ -376,7 +385,7 @@ func (p *Program) HandleKey(ev *term.KeyEvent) bool {
 
 // HandlePaste processes a paste event.
 func (p *Program) HandlePaste(text string) {
-	p.Send(PasteMsg{Text: text})
+	p.Send(PasteMsg{Content: text})
 }
 
 // Render returns the current view string.
@@ -384,7 +393,7 @@ func (p *Program) Render() string {
 	p.mu.Lock()
 	m := p.model
 	p.mu.Unlock()
-	return m.View()
+	return m.View().Content
 }
 
 // IsDirty returns whether the view needs re-rendering.

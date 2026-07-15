@@ -169,8 +169,8 @@ func (m *testModel) Update(msg Msg) (Model, Cmd) {
 	return m, nil
 }
 
-func (m *testModel) View() string {
-	return m.text
+func (m *testModel) View() View {
+	return NewView(m.text)
 }
 
 // Ensure package compiles with time import

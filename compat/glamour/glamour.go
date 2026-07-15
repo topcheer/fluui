@@ -6,41 +6,35 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/topcheer/fluui/compat/lipgloss"
+	"github.com/topcheer/fluui/compat/glamour/ansi"
 	"github.com/topcheer/fluui/markdown"
 )
 
 // TermRenderer renders markdown to terminal-styled text.
 type TermRenderer struct {
-	mu      sync.Mutex
+	mu       sync.Mutex
 	renderer *markdown.MarkdownRenderer
-	width   int
-	styles  StyleConfig
+	width    int
+	styles   ansi.StyleConfig
 }
 
-// StyleConfig holds rendering styles (simplified from ansi.StyleConfig).
-type StyleConfig struct {
-	Document Style
-	H1       Style
-	H2       Style
-	H3       Style
-	Code     Style
-	CodeBlock Style
-	Link     Style
-	Emph     Style
-	Strong   Style
-	List     Style
-	Quote    Style
-}
+// StyleConfig is an alias for ansi.StyleConfig (glamour v2 compatible).
+// ggcode passes ansi.StyleConfig to WithStyles.
+type StyleConfig = ansi.StyleConfig
 
-// Style wraps lipgloss.Style for convenience.
-type Style = lipgloss.Style
+// Style is a passthrough for styling (lipgloss.Style).
+type Style = struct {
+	Foreground string
+	Background string
+	Bold       bool
+	Italic     bool
+}
 
 // TermRendererOption configures a TermRenderer.
 type TermRendererOption func(*TermRenderer)
 
 // WithStyles sets the style configuration.
-func WithStyles(styles StyleConfig) TermRendererOption {
+func WithStyles(styles ansi.StyleConfig) TermRendererOption {
 	return func(r *TermRenderer) {
 		r.styles = styles
 	}
@@ -56,8 +50,7 @@ func WithWordWrap(width int) TermRendererOption {
 // NewTermRenderer creates a new markdown renderer.
 func NewTermRenderer(opts ...TermRendererOption) (*TermRenderer, error) {
 	r := &TermRenderer{
-		width:  80,
-		styles: DefaultStyleConfig(),
+		width: 80,
 	}
 	for _, opt := range opts {
 		opt(r)
@@ -86,7 +79,7 @@ func (r *TermRenderer) Render(md string) (string, error) {
 	return sb.String(), nil
 }
 
-// DefaultStyleConfig returns the default style configuration.
-func DefaultStyleConfig() StyleConfig {
-	return StyleConfig{}
+// DefaultStyleConfig returns the default (dark) style configuration.
+func DefaultStyleConfig() ansi.StyleConfig {
+	return ansi.StyleConfig{}
 }
