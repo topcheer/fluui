@@ -440,7 +440,8 @@ func (p *Program) ProcessMessages() bool {
 }
 
 // Run starts the program loop. Blocks until Quit.
-func (p *Program) Run() error {
+// Returns the final Model and an error (bubbletea v2 compatible signature).
+func (p *Program) Run() (Model, error) {
 	p.mu.Lock()
 	p.running = true
 	p.mu.Unlock()
@@ -448,10 +449,10 @@ func (p *Program) Run() error {
 	for {
 		select {
 		case <-p.quitCh:
-			return nil
+			return p.model, nil
 		case msg := <-p.sendCh:
 			if _, ok := msg.(QuitMsg); ok {
-				return nil
+				return p.model, nil
 			}
 			p.mu.Lock()
 			newModel, cmd := p.model.Update(msg)
@@ -460,6 +461,9 @@ func (p *Program) Run() error {
 			p.mu.Unlock()
 			if cmd != nil {
 				if cmdMsg := cmd(); cmdMsg != nil {
+					if _, ok := cmdMsg.(QuitMsg); ok {
+						return p.model, nil
+					}
 					p.Send(cmdMsg)
 				}
 			}

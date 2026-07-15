@@ -290,6 +290,11 @@ func (s Style) Dim(b ...bool) Style {
 	return s
 }
 
+// Faint sets faint text (alias for Dim).
+func (s Style) Faint(b ...bool) Style {
+	return s.Dim(b...)
+}
+
 // Blink sets blinking text.
 func (s Style) Blink(b ...bool) Style {
 	v := true
