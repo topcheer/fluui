@@ -2,6 +2,7 @@ package event
 
 import (
 	"io"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -72,6 +73,7 @@ func TestLoopConcurrentMarkDirtyAndSend(t *testing.T) {
 				return
 			default:
 				loop.MarkDirty()
+				runtime.Gosched()
 			}
 		}
 	}()
@@ -86,6 +88,7 @@ func TestLoopConcurrentMarkDirtyAndSend(t *testing.T) {
 				return
 			default:
 				loop.Send(Event{Type: TypeKey, Key: &term.KeyEvent{Rune: 'x'}})
+				runtime.Gosched()
 			}
 		}
 	}()
@@ -134,6 +137,7 @@ func TestLoopRunningFlagAtomicAccess(t *testing.T) {
 			default:
 				loop.running.Store(true)
 				loop.running.Store(false)
+				runtime.Gosched()
 			}
 		}
 	}()
@@ -148,6 +152,7 @@ func TestLoopRunningFlagAtomicAccess(t *testing.T) {
 				return
 			default:
 				_ = loop.running.Load()
+				runtime.Gosched()
 			}
 		}
 	}()
@@ -182,6 +187,7 @@ func TestLoopDirtyFlagAtomicAccess(t *testing.T) {
 					return
 				default:
 					loop.MarkDirty()
+					runtime.Gosched()
 				}
 			}
 		}()
@@ -200,6 +206,7 @@ func TestLoopDirtyFlagAtomicAccess(t *testing.T) {
 					if loop.dirty.Load() {
 						loop.dirty.Store(false)
 					}
+					runtime.Gosched()
 				}
 			}
 		}()
@@ -234,6 +241,7 @@ func TestLoopQuitConcurrentWithSend(t *testing.T) {
 				return
 			default:
 				loop.Send(Event{Type: TypeKey})
+				runtime.Gosched()
 			}
 		}
 	}()
@@ -245,6 +253,7 @@ func TestLoopQuitConcurrentWithSend(t *testing.T) {
 				return
 			default:
 				loop.Quit()
+				runtime.Gosched()
 			}
 		}
 	}()
