@@ -13,7 +13,10 @@
 package bubbletea
 
 import (
+	"errors"
+	"io"
 	"sync"
+	"time"
 
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/topcheer/fluui/internal/term"
@@ -145,17 +148,99 @@ func Tick(interval Duration, fn func(time Time) Msg) Cmd {
 	}
 }
 
-// Duration is a time duration (alias for time.Duration compatibility).
-type Duration = int64 // nanoseconds
+// Duration is a time duration.
+type Duration = time.Duration
 
-// Time is a time value (alias for time.Time compatibility).
-type Time struct {
-	Nanos int64
+// Time is a time value.
+type Time = time.Time
+
+func now() Time { return time.Now() }
+
+// ─── View ───
+
+// View is a rendered string view (bubbletea v2 compat).
+type View string
+
+// NewView creates a View from a string.
+func NewView(s string) View { return View(s) }
+
+// String returns the view content.
+func (v View) String() string { return string(v) }
+
+// ─── RequestWindowSize ───
+
+// RequestWindowSizeMsg is sent in response to RequestWindowSize.
+type RequestWindowSizeMsg struct {
+	Width  int
+	Height int
 }
 
-func now() Time {
-	return Time{Nanos: 0} // placeholder
+// RequestWindowSize returns a Cmd that requests the current window size.
+func RequestWindowSize() Msg {
+	w, h := ScreenSize()
+	return RequestWindowSizeMsg{Width: w, Height: h}
 }
+
+// ─── KeyboardEnhancementsMsg ───
+
+// KeyboardEnhancementsMsg is sent when keyboard enhancement capabilities change.
+type KeyboardEnhancementsMsg struct {
+	Supported bool
+}
+
+// ─── Error ───
+
+// ErrInterrupted is returned when the program is interrupted (Ctrl+C).
+var ErrInterrupted = errors.New("interrupted")
+
+// ─── Mouse mode constants ───
+
+const (
+	MouseModeCellMotion = 1002 // DECSET 1002
+)
+
+// ─── Key constants (convenience aliases for term.KeyCode) ───
+
+const (
+	KeyEnter     = term.KeyEnter
+	KeyEsc       = term.KeyEscape
+	KeyEscape    = term.KeyEscape
+	KeyUp        = term.KeyUp
+	KeyDown      = term.KeyDown
+	KeyLeft      = term.KeyLeft
+	KeyRight     = term.KeyRight
+	KeyTab       = term.KeyTab
+	KeySpace     = term.KeySpace
+	KeyDelete    = term.KeyDelete
+	KeyBackspace = term.KeyBackspace
+)
+
+// ─── Modifier constants ───
+
+const (
+	ModShift = term.ModShift
+	ModAlt   = term.ModAlt
+	ModCtrl  = term.ModCtrl
+)
+
+// ─── Msg type aliases for compat ───
+
+// KeyMsg is an alias for KeyPressMsg.
+type KeyMsg = KeyPressMsg
+
+// MouseMsg is the common mouse message interface.
+type MouseMsg = MouseClickMsg
+
+// BatchMsg is returned by Batch to signal multiple commands.
+type BatchMsg struct {
+	Cmds []Cmd
+}
+
+// ─── Lflag (line discipline flags, compat) ───
+
+const (
+	Lflag = 0 // placeholder for terminal line discipline flags
+)
 
 // ─── Program ───
 
@@ -209,6 +294,26 @@ func WithMouseCellMotion() ProgramOption {
 
 // WithFPS sets the render FPS.
 func WithFPS(fps int) ProgramOption {
+	return func(p *Program) {}
+}
+
+// WithoutSignals disables signal handling.
+func WithoutSignals() ProgramOption {
+	return func(p *Program) {}
+}
+
+// WithoutRenderer disables rendering output.
+func WithoutRenderer() ProgramOption {
+	return func(p *Program) {}
+}
+
+// WithOutput sets the output writer.
+func WithOutput(w io.Writer) ProgramOption {
+	return func(p *Program) {}
+}
+
+// WithInput sets the input reader.
+func WithInput(r io.Reader) ProgramOption {
 	return func(p *Program) {}
 }
 
