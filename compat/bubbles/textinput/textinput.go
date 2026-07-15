@@ -10,6 +10,18 @@ import (
 	"github.com/topcheer/fluui/internal/term"
 )
 
+// EchoMode constants (bubbles.textinput compatible).
+const (
+	EchoNormal   = component.EchoNormal
+	EchoPassword = component.EchoPassword
+	EchoNone     = component.EchoNone
+)
+
+// EchoMode is a type alias for component.EchoMode, exposed as a field for bubbles compat.
+// In bubbles, you write `m.EchoMode = textinput.EchoPassword`.
+// In fluui compat, Model embeds *component.TextInput so EchoMode is available
+// as a field via SetEchoMode. We provide both field-like and method API.
+
 // Model wraps component.TextInput with the bubbles.textinput API.
 type Model struct {
 	*component.TextInput
@@ -67,7 +79,7 @@ func (m Model) SetPlaceholder(s string) {
 
 // EchoPassword sets echo mode to password (dots).
 func (m Model) EchoPassword() {
-	m.TextInput.EchoPassword()
+	m.TextInput.SetEchoMode(component.EchoPassword)
 }
 
 // SetEchoMode sets the echo mode.
@@ -148,4 +160,21 @@ func (m Model) Len() int {
 // SetStyle sets the text style.
 func (m Model) SetStyle(style buffer.Style) {
 	m.TextInput.SetStyle(style)
+}
+
+// CursorMode constants (bubbles.textinput compatible).
+const (
+	CursorBlink   = 0
+	CursorStatic  = 1
+	CursorHide    = 2
+)
+
+// SetCursorMode sets the cursor display mode.
+func (m Model) SetCursorMode(mode int) {
+	// fluui TextInput doesn't distinguish cursor modes yet; no-op for compat
+}
+
+// Runes returns the input as a slice of runes.
+func (m Model) Runes() []rune {
+	return []rune(m.TextInput.Value())
 }

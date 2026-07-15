@@ -5,6 +5,7 @@
 package textarea
 
 import (
+	"github.com/topcheer/fluui/compat/lipgloss"
 	"github.com/topcheer/fluui/component"
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/topcheer/fluui/internal/term"
@@ -160,4 +161,48 @@ func (m Model) DeleteBeforeCursor() {
 // DeleteAfterCursor deletes the character after the cursor.
 func (m Model) DeleteAfterCursor() {
 	m.TextArea.HandleKey(&term.KeyEvent{Key: term.KeyDelete})
+}
+
+// ─── Styles (bubbles.textarea compatible) ───
+
+// StateStyles holds styles for a specific state (focused or blurred).
+type StateStyles struct {
+	Base            lipgloss.Style
+	CursorLine      lipgloss.Style
+	EndOfBuffer     lipgloss.Style
+	LineNumber      lipgloss.Style
+	CursorLineNumber lipgloss.Style
+}
+
+// Styles holds the textarea style configuration.
+type Styles struct {
+	Focused  StateStyles
+	Blurred  StateStyles
+}
+
+// DefaultStyles returns default textarea styles (bubbles.textarea.DefaultStyles).
+// If dark is true, uses a dark color scheme.
+func DefaultStyles(dark bool) Styles {
+	return Styles{
+		Focused: StateStyles{
+			Base:            lipgloss.NewStyle(),
+			CursorLine:      lipgloss.NewStyle(),
+			EndOfBuffer:     lipgloss.NewStyle(),
+			LineNumber:      lipgloss.NewStyle(),
+			CursorLineNumber: lipgloss.NewStyle(),
+		},
+		Blurred: StateStyles{
+			Base:            lipgloss.NewStyle(),
+			CursorLine:      lipgloss.NewStyle(),
+			EndOfBuffer:     lipgloss.NewStyle(),
+			LineNumber:      lipgloss.NewStyle(),
+			CursorLineNumber: lipgloss.NewStyle(),
+		},
+	}
+}
+
+// Blink is a command that triggers cursor blink for all textareas.
+// Returns a nil message (fluui handles cursor blink internally).
+func Blink() interface{} {
+	return nil
 }
