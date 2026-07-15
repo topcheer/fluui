@@ -2,6 +2,7 @@ package ai
 
 import (
 	"bufio"
+	"io"
 	"strings"
 	"testing"
 )
@@ -52,4 +53,21 @@ func TestLineScanner_PartialLine_P213(t *testing.T) {
 		t.Errorf("expected 'partial', got %q", s.text())
 	}
 	// scan() consumes io.EOF internally; getErr may be nil
+}
+
+func TestLineScanner_ReadError_P214(t *testing.T) {
+	// Create a reader that returns an error other than EOF
+	s := &lineScanner{reader: bufio.NewReader(&errorReader{})}
+	if s.scan() {
+		t.Error("should return false on read error")
+	}
+	if s.getErr() == nil {
+		t.Error("should have error set")
+	}
+}
+
+type errorReader struct{}
+
+func (r *errorReader) Read(p []byte) (int, error) {
+	return 0, io.ErrUnexpectedEOF
 }
