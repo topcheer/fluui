@@ -87,19 +87,95 @@ type WindowSizeMsg struct {
 	Height int
 }
 
+// MouseButton represents a mouse button action.
+type MouseButton int
+
+// Mouse button constants (bubbletea v2 compatible).
+const (
+	MouseLeft       MouseButton = 0
+	MouseRight      MouseButton = 1
+	MouseMiddle     MouseButton = 2
+	MouseWheelUp    MouseButton = 64
+	MouseWheelDown  MouseButton = 65
+	MouseWheelLeft  MouseButton = 67
+	MouseWheelRight MouseButton = 68
+	MouseRelease    MouseButton = 3
+	MouseBack       MouseButton = 8
+	MouseForward    MouseButton = 16
+)
+
+// MouseInfo holds mouse event details.
+type MouseInfo struct {
+	X      int
+	Y      int
+	Button MouseButton
+	Alt    bool
+	Ctrl   bool
+	Shift  bool
+}
+
 // MouseClickMsg is sent on mouse click.
 type MouseClickMsg struct {
-	X int
-	Y int
+	X      int
+	Y      int
+	Button MouseButton
+	Alt    bool
+}
+
+// Mouse returns mouse info for MouseClickMsg (bubbletea v2 MouseMsg interface).
+func (m MouseClickMsg) Mouse() MouseInfo {
+	return MouseInfo{
+		X:      m.X,
+		Y:      m.Y,
+		Button: m.Button,
+		Alt:    m.Alt,
+	}
+}
+
+// String returns a description of the mouse click.
+func (m MouseClickMsg) String() string {
+	return "mouse click"
 }
 
 // MouseWheelMsg is sent on mouse wheel.
 type MouseWheelMsg struct {
-	X    int
-	Y    int
-	Dy   int
-	Up   bool
-	Down bool
+	X      int
+	Y      int
+	Dy     int
+	Button MouseButton
+	Up     bool
+	Down   bool
+	Alt    bool
+}
+
+// Mouse returns mouse info for MouseWheelMsg (bubbletea v2 MouseMsg interface).
+func (m MouseWheelMsg) Mouse() MouseInfo {
+	btn := m.Button
+	if m.Up && btn == 0 {
+		btn = MouseWheelUp
+	} else if m.Down && btn == 0 {
+		btn = MouseWheelDown
+	}
+	return MouseInfo{
+		X:      m.X,
+		Y:      m.Y,
+		Button: btn,
+		Alt:    m.Alt,
+	}
+}
+
+// String returns a description of the mouse wheel event.
+func (m MouseWheelMsg) String() string {
+	if m.Up {
+		return "wheel up"
+	}
+	return "wheel down"
+}
+
+// MouseMsg is the common mouse message interface (bubbletea v2).
+// Both MouseClickMsg and MouseWheelMsg implement this.
+type MouseMsg interface {
+	Mouse() MouseInfo
 }
 
 // QuitMsg is sent to terminate the program.
@@ -268,8 +344,7 @@ const (
 // KeyMsg is an alias for KeyPressMsg.
 type KeyMsg = KeyPressMsg
 
-// MouseMsg is the common mouse message interface.
-type MouseMsg = MouseClickMsg
+// MouseMsg is now defined as an interface above (near MouseClickMsg).
 
 // BatchMsg is returned by Batch to signal multiple commands.
 type BatchMsg struct {
