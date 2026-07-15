@@ -5,6 +5,7 @@
 package textarea
 
 import (
+	tea "github.com/topcheer/fluui/compat/bubbletea"
 	"github.com/topcheer/fluui/compat/lipgloss"
 	"github.com/topcheer/fluui/component"
 	"github.com/topcheer/fluui/internal/buffer"
@@ -138,9 +139,24 @@ func (m Model) SetCharLimit(n int) {
 	m.TextArea.SetCharLimit(n)
 }
 
-// Update handles a key event (bubbles.textarea.Model.Update).
-func (m Model) Update(key *term.KeyEvent) {
-	m.TextArea.HandleKey(key)
+// Update handles a bubbletea message and returns the updated model + cmd.
+// This mirrors bubbles v2: m, cmd := m.Update(msg)
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		var key term.KeyEvent
+		if msg.Rune != 0 {
+			key.Rune = msg.Rune
+			key.Modifiers = msg.Mod
+		} else {
+			key.Key = msg.Code
+			key.Modifiers = msg.Mod
+		}
+		m.TextArea.HandleKey(&key)
+	case tea.PasteMsg:
+		m.TextArea.InsertText(msg.Content)
+	}
+	return m, nil
 }
 
 // SetStyle sets the text style.
@@ -167,11 +183,14 @@ func (m Model) DeleteAfterCursor() {
 
 // StateStyles holds styles for a specific state (focused or blurred).
 type StateStyles struct {
-	Base            lipgloss.Style
-	CursorLine      lipgloss.Style
-	EndOfBuffer     lipgloss.Style
-	LineNumber      lipgloss.Style
+	Base             lipgloss.Style
+	CursorLine       lipgloss.Style
+	EndOfBuffer      lipgloss.Style
+	LineNumber       lipgloss.Style
 	CursorLineNumber lipgloss.Style
+	Text             lipgloss.Style
+	Prompt           lipgloss.Style
+	Placeholder      lipgloss.Style
 }
 
 // Styles holds the textarea style configuration.
@@ -201,8 +220,14 @@ func DefaultStyles(dark bool) Styles {
 	}
 }
 
+// SetStyles sets the style configuration (bubbles.textarea compatible).
+func (m Model) SetStyles(s Styles) {
+	// Styles are not used by fluui's TextArea renderer, but stored for compat.
+}
+
 // Blink is a command that triggers cursor blink for all textareas.
+// ggcode uses it as: func() tea.Msg { return textarea.Blink() }
 // Returns a nil message (fluui handles cursor blink internally).
-func Blink() interface{} {
+func Blink() tea.Msg {
 	return nil
 }

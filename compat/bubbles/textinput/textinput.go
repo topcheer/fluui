@@ -5,10 +5,17 @@
 package textinput
 
 import (
+	tea "github.com/topcheer/fluui/compat/bubbletea"
 	"github.com/topcheer/fluui/component"
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/topcheer/fluui/internal/term"
 )
+
+// Blink is a command that triggers cursor blink for textinputs.
+// ggcode uses it as: return m, textinput.Blink  (function value as tea.Cmd)
+func Blink() tea.Msg {
+	return nil
+}
 
 // EchoMode constants (bubbles.textinput compatible).
 const (
@@ -137,9 +144,24 @@ func (m Model) Focused() bool {
 	return m.TextInput.Focused()
 }
 
-// Update handles a key event (bubbles.textinput.Model.Update).
-func (m Model) Update(key *term.KeyEvent) {
-	m.TextInput.HandleKey(key)
+// Update handles a bubbletea message and returns the updated model + cmd.
+// This mirrors bubbles v2: m, cmd := m.Update(msg)
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		var key term.KeyEvent
+		if msg.Rune != 0 {
+			key.Rune = msg.Rune
+			key.Modifiers = msg.Mod
+		} else {
+			key.Key = msg.Code
+			key.Modifiers = msg.Mod
+		}
+		m.TextInput.HandleKey(&key)
+	case tea.PasteMsg:
+		m.TextInput.SetValue(m.TextInput.Value() + msg.Content)
+	}
+	return m, nil
 }
 
 // Reset clears the input.
