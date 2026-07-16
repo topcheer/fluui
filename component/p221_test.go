@@ -36,9 +36,9 @@ func TestDiffPreview_PaintWithStats_P221(t *testing.T) {
 	dp := NewDiffPreview()
 	dp.SetTitle("test.go")
 	dp.SetLines([]DiffLine{
-		{Type: DiffAdd, Text: "added line"},
-		{Type: DiffDelete, Text: "removed line"},
-		{Type: DiffAdd, Text: "another add"},
+		{Type: DiffAdd, Content: "added line"},
+		{Type: DiffDel, Content: "removed line"},
+		{Type: DiffAdd, Content: "another add"},
 	})
 	dp.SetBounds(Rect{X: 0, Y: 0, W: 40, H: 10})
 	buf := buffer.NewBuffer(40, 10)
