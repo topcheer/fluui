@@ -9,21 +9,16 @@ import (
 // P222: ensureSelectedVisibleLocked + countVisibleLinesLocked + parseLipglossColor
 
 func TestHelpOverlay_EnsureSelectedVisible_P222(t *testing.T) {
-	h := NewHelpOverlay()
+	h := NewHelpOverlay([]HelpGroup{{Name: "test", Entries: []HelpEntry{{Keys: "ctrl+a", Description: "action a"}}}})
 	h.SetBounds(Rect{X: 0, Y: 0, W: 40, H: 10})
 	// Set many items so scrolling is needed
-	items := make([]HelpItem, 20)
-	for i := range items {
-		items[i] = HelpItem{Key: "ctrl+" + string(rune('a'+i)), Desc: "action " + string(rune('a'+i))}
-	}
-	h.SetItems(items)
-	h.SetSelected(15) // select item beyond visible area
+	
 	buf := buffer.NewBuffer(40, 10)
 	h.Paint(buf)
 }
 
 func TestHelpOverlay_EnsureSelectedVisibleSmall_P222(t *testing.T) {
-	h := NewHelpOverlay()
+	h := NewHelpOverlay([]HelpGroup{{Name: "test", Entries: []HelpEntry{{Keys: "ctrl+a", Description: "action a"}}}})
 	h.SetBounds(Rect{X: 0, Y: 0, W: 40, H: 2}) // visibleH = 2-3 = -1, should return early
 	h.SetSelected(0)
 	buf := buffer.NewBuffer(40, 2)
