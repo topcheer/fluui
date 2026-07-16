@@ -67,7 +67,7 @@ func TestNamedColorIndex_P206(t *testing.T) {
 }
 
 func TestColorToBuffer_P206(t *testing.T) {
-	_ = colorToBuffer(ColorNamed("red"))
+	_ = parseColor(ColorNamed("red"))
 }
 
 func TestGetForegroundUnset_P206(t *testing.T) {

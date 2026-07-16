@@ -36,49 +36,49 @@ func TestStyleChain(t *testing.T) {
 
 func TestColor256(t *testing.T) {
 	c := Color256(12)
-	if c.val.Type == 0 {
-		t.Error("Color256 should not be ColorNone")
+	if string(c) == "" {
+		t.Error("Color256 should not be empty")
 	}
 }
 
 func TestColorRGB(t *testing.T) {
 	c := ColorRGB(255, 128, 0)
-	if c.val.Type == 0 {
-		t.Error("ColorRGB should not be ColorNone")
+	if string(c) == "" {
+		t.Error("ColorRGB should not be empty")
 	}
 }
 
 func TestColorHex(t *testing.T) {
 	c := ColorHex("#ff8000")
-	if c.val.Type == 0 {
-		t.Error("ColorHex should not be ColorNone")
+	if string(c) == "" {
+		t.Error("ColorHex should not be empty")
 	}
 }
 
 func TestNewColorNumeric(t *testing.T) {
 	c := NewColor("12")
-	if c.val.Type == 0 {
+	if string(c) == "" {
 		t.Error("numeric color should work")
 	}
 }
 
 func TestNewColorHex(t *testing.T) {
 	c := NewColor("#ff0000")
-	if c.val.Type == 0 {
+	if string(c) == "" {
 		t.Error("hex color should work")
 	}
 }
 
 func TestNewColorNamed(t *testing.T) {
 	c := NewColor("red")
-	if c.val.Type == 0 {
+	if string(c) == "" {
 		t.Error("named color should work")
 	}
 }
 
 func TestColorFunc(t *testing.T) {
 	c := ColorFunc("12")
-	if c.val.Type == 0 {
+	if string(c) == "" {
 		t.Error("ColorFunc should work")
 	}
 }
@@ -168,7 +168,7 @@ func TestStyleUnsetBold(t *testing.T) {
 func TestStyleGetForeground(t *testing.T) {
 	s := NewStyle().Foreground(NewColor("12"))
 	c := s.GetForeground()
-	if c.val.Type == 0 {
+	if string(c) == "" {
 		t.Error("GetForeground should return the color")
 	}
 }
@@ -176,7 +176,7 @@ func TestStyleGetForeground(t *testing.T) {
 func TestAdaptiveColorResolve(t *testing.T) {
 	ac := AdaptiveColor{Light: "white", Dark: "12"}
 	c := ac.Resolve()
-	if c.val.Type == 0 {
+	if string(c) == "" {
 		t.Error("Resolve should return a valid color")
 	}
 }

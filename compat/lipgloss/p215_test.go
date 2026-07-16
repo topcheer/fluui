@@ -2,13 +2,13 @@ package lipgloss
 
 import "testing"
 
-// P215: cover remaining branches in colorToBuffer, namedColorIndex, JoinVertical
+// P215: cover remaining branches in parseColor, namedColorIndex, JoinVertical
 
 func TestColorToBuffer_None_P215(t *testing.T) {
-	c := Color{} // zero value = ColorNone
-	result := colorToBuffer(c)
+	c := Color("") // empty = ColorNone
+	result := parseColor(c)
 	if result.Type != 0 {
-		t.Error("ColorNone should map to buffer.ColorNone")
+		t.Error("empty color should map to buffer.ColorNone")
 	}
 }
 

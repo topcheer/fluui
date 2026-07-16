@@ -105,7 +105,7 @@ func TestStyleGetters_P199(t *testing.T) {
 
 func TestColorToBuffer_P199(t *testing.T) {
 	c := ColorNamed("red")
-	b := colorToBuffer(c)
+	b := parseColor(c)
 	_ = b
 }
 

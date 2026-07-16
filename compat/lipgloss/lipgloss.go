@@ -14,78 +14,73 @@ package lipgloss
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/topcheer/fluui/internal/buffer"
 )
 
 // ─── Color ───
-// In lipgloss v2, Color is both a type and a constructor function.
-// Go allows a func type and a function with the same name.
+// Color is a terminal color spec as a string, exactly like charm.land v2.
+// It can be an ANSI color name ("red"), an ANSI 256-color code ("12", "226"),
+// or a hex color ("#ff8800"). The string is parsed lazily to buffer.Color.
+//
+// This makes lipgloss.Color("14") work as a native type conversion,
+// matching charm.land's `type Color string` exactly.
+type Color string
 
-// Color is a terminal color. It can be an ANSI color name ("red"),
-// an ANSI 256-color code ("12", "226"), or a hex color ("#ff8800").
-type Color struct {
-	val buffer.Color
-}
-
-func makeColor(bc buffer.Color) Color {
-	return Color{val: bc}
-}
-
-func colorToBuffer(c Color) buffer.Color {
-	if c.val.Type == buffer.ColorNone {
+// parseColor converts a Color string to buffer.Color for rendering.
+func parseColor(c Color) buffer.Color {
+	s := string(c)
+	if s == "" {
 		return buffer.Color{Type: buffer.ColorNone}
 	}
-	return c.val
+	if s[0] == '#' {
+		r, g, b, ok := parseHexColor(s)
+		if !ok {
+			return buffer.Color{Type: buffer.ColorNone}
+		}
+		return buffer.RGB(uint8(r), uint8(g), uint8(b))
+	}
+	// Try numeric (256-color)
+	if n, err := strconv.Atoi(s); err == nil && n >= 0 && n <= 255 {
+		return buffer.Color256Val(uint8(n))
+	}
+	// Try named
+	n := namedColorIndex(s)
+	if n < 0 {
+		return buffer.Color{Type: buffer.ColorNone}
+	}
+	return buffer.NamedColor(n)
 }
 
 // Color256 creates a 256-color from an integer code (0-255).
 func Color256(n int) Color {
-	return makeColor(buffer.Color{Type: buffer.Color256, Val: uint32(n)})
+	return Color(strconv.Itoa(n))
 }
 
 // ColorRGB creates a true-color from r, g, b components.
 func ColorRGB(r, g, b int) Color {
-	return makeColor(buffer.RGB(uint8(r), uint8(g), uint8(b)))
+	return Color(fmt.Sprintf("#%02x%02x%02x", r, g, b))
 }
 
 // ColorHex creates a color from a hex string like "#ff8800".
 func ColorHex(hex string) Color {
-	r, g, b, ok := parseHexColor(hex)
-	if !ok {
-		return makeColor(buffer.Color{Type: buffer.ColorNone})
-	}
-	return ColorRGB(r, g, b)
+	return Color(hex)
 }
 
 // ColorNamed creates a color from an ANSI name: "black", "red", etc.
 func ColorNamed(name string) Color {
-	n := namedColorIndex(name)
-	if n < 0 {
-		return makeColor(buffer.Color{Type: buffer.ColorNone})
-	}
-	return makeColor(buffer.NamedColor(n))
+	return Color(name)
 }
 
-// NewColor creates a color from a string. Supports:
+// NewColor creates a color from a string. Since Color is now type Color string,
+// this is equivalent to a type conversion. Supports:
 //   - "12" → 256-color index 12
 //   - "#ff8800" → true-color
 //   - "red" → named ANSI color
 func NewColor(s string) Color {
-	if s == "" {
-		return makeColor(buffer.Color{Type: buffer.ColorNone})
-	}
-	if s[0] == '#' {
-		return ColorHex(s)
-	}
-	// Try numeric (256-color)
-	var n int
-	if _, err := fmt.Sscanf(s, "%d", &n); err == nil && n >= 0 && n <= 255 {
-		return makeColor(buffer.Color256Val(uint8(n)))
-	}
-	// Try named
-	return ColorNamed(s)
+	return Color(s)
 }
 
 // MakeColor is an alias for NewColor (lipgloss.MakeColor compatibility).
@@ -140,12 +135,12 @@ func namedColorIndex(name string) int {
 }
 
 func (c Color) toBuffer() buffer.Color {
-	return colorToBuffer(c)
+	return parseColor(c)
 }
 
-// String returns the ANSI escape sequence for this color.
+// String returns the color spec string.
 func (c Color) String() string {
-	return c.val.String()
+	return string(c)
 }
 
 // ─── Style ───
@@ -573,7 +568,7 @@ func (s Style) GetForeground() Color {
 	if s.fg != nil {
 		return *s.fg
 	}
-	return Color{val: buffer.Color{Type: buffer.ColorNone}}
+	return Color("")
 }
 
 // ─── Border ───

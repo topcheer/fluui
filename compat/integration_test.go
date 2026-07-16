@@ -17,7 +17,7 @@ import (
 // TestGgcodeImportPattern reproduces ggcode's exact import + usage patterns.
 // This is a COMPILE-TIME + RUNTIME verification that fluui compat is a drop-in.
 //
-// Migration note: lipgloss.Color("14") in ggcode → lipgloss.NewColor("14") in fluui
+// Migration note: lipgloss.Color now works natively (type Color string)("14") in ggcode → lipgloss.NewColor("14") in fluui
 // (In charm.land, Color is type string; in fluui it's a struct for type safety)
 func TestGgcodeImportPattern(t *testing.T) {
 	// ── bubbletea ──
@@ -40,8 +40,8 @@ func TestGgcodeImportPattern(t *testing.T) {
 
 	// ── lipgloss ── (Note: Color("14") → NewColor("14") in migration)
 	s := lg.NewStyle().
-		Foreground(lg.NewColor("14")).
-		Background(lg.NewColor("#1a1a2e")).
+		Foreground(lg.Color("14")).
+		Background(lg.Color("#1a1a2e")).
 		Bold(true).
 		Italic(true).
 		Underline(true).
