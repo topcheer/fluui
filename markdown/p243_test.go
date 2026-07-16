@@ -13,7 +13,7 @@ func TestLatexConsumeCommand_SingleChar_P243(t *testing.T) {
 		{`\,`, " "}, {`\;`, " "}, {`\:`, " "},
 		{`\%`, "%"}, {`\#`, "#"}, {`\&`, "&"},
 		{`\_`, "_"}, {`\{`, "{"}, {`\}`, "}"},
-		{`\ `, " "}, {`\x`, "x"},
+		{`\ `, " "}, {`\!`, "!"},
 	}
 	for _, tc := range cases {
 		p := &latexParser{input: tc.input}
