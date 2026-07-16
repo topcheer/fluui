@@ -9,7 +9,7 @@ import (
 func TestBadge_MeasureMaxHeightZero_P217(t *testing.T) {
 	b := NewBadge("text", BadgeInfo)
 	// MaxHeight=0 with HasHeight → h>MaxHeight(0) → h clamped to 1
-	s := b.Measure(Constraints{MaxHeight: 0, HasHeight: true})
+	s := b.Measure(Constraints{MaxHeight: 0})
 	if s.H != 1 {
 		t.Errorf("expected height 1, got %d", s.H)
 	}
@@ -27,7 +27,7 @@ func TestBadge_MeasureContentWidthOne_P217(t *testing.T) {
 func TestBadge_MeasureMaxWidthOne_P217(t *testing.T) {
 	b := NewBadge("long text", BadgeWarning)
 	// MaxWidth=1 → w should be clamped to 1
-	s := b.Measure(Constraints{MaxWidth: 1, HasWidth: true})
+	s := b.Measure(Constraints{MaxWidth: 1})
 	if s.W != 1 {
 		t.Errorf("expected width 1, got %d", s.W)
 	}
