@@ -35,10 +35,43 @@ type KeyPressMsg struct {
 	Alt   bool
 	Ctrl  bool
 	Shift bool
+	Text  string // printable text representation (e.g. "a", " ", "" for special keys)
+}
+
+// Key returns a Key value constructed from this KeyPressMsg.
+// In bubbletea v2, Key() provides access to the Key type which has
+// a Text field for the printable character(s).
+func (k KeyPressMsg) Key() Key {
+	return Key{
+		Code: k.Code,
+		Mod:  k.Mod,
+		Text: k.Text,
+	}
 }
 
 // String returns a human-readable key name (bubbletea v2 compatible).
 // Produces modifier+key combinations: "ctrl+c", "alt+up", "shift+tab", "esc", etc.
+// keyTextFor fills the Text field for a key press. For printable runes,
+// Text is the rune itself. For space, Text is " ". For special keys,
+// Text is empty (callers should check Code instead).
+func keyTextFor(code term.KeyCode, r rune, mod term.ModMask) string {
+	// Special keys have no printable text
+	switch code {
+	case term.KeyEnter, term.KeyTab, term.KeyBackspace, term.KeyDelete,
+		term.KeyUp, term.KeyDown, term.KeyLeft, term.KeyRight,
+		term.KeyHome, term.KeyEnd, term.KeyPageUp, term.KeyPageDown,
+		term.KeyEscape, term.KeyInsert:
+		return ""
+	}
+	if code == term.KeySpace {
+		return " "
+	}
+	if r != 0 {
+		return string(r)
+	}
+	return ""
+}
+
 func (k KeyPressMsg) String() string {
 	// Build the modifier prefix
 	var prefix string
@@ -339,6 +372,17 @@ const (
 	ModCtrl  = term.ModCtrl
 )
 
+// ─── Key type (bubbletea v2 compatible) ───
+
+// Key represents a keyboard key. KeyPressMsg.Key() returns this type.
+// In bubbletea v2, Key() provides access to this type which has
+// Code, Mod, and Text fields for key identification and text input.
+type Key struct {
+	Code term.KeyCode
+	Mod  term.ModMask
+	Text string
+}
+
 // ─── Msg type aliases for compat ───
 
 // KeyMsg is an alias for KeyPressMsg.
@@ -478,13 +522,14 @@ func (p *Program) HandleKey(ev *term.KeyEvent) bool {
 		return false
 	}
 	msg := KeyPressMsg{
-		Code: ev.Key,
-		Rune: ev.Rune,
-		Mod:  ev.Modifiers,
-		Alt:  ev.Modifiers&term.ModAlt != 0,
-		Ctrl: ev.Modifiers&term.ModCtrl != 0,
+		Code:  ev.Key,
+		Rune:  ev.Rune,
+		Mod:   ev.Modifiers,
+		Alt:   ev.Modifiers&term.ModAlt != 0,
+		Ctrl:  ev.Modifiers&term.ModCtrl != 0,
 		Shift: ev.Modifiers&term.ModShift != 0,
 	}
+	msg.Text = keyTextFor(msg.Code, msg.Rune, msg.Mod)
 	p.Send(msg)
 	return true
 }
