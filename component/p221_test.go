@@ -9,7 +9,7 @@ import (
 // P221: codeblock paintStreamingCursorLocked + diffpreview paintBorderLocked
 
 func TestCodeBlock_StreamingCursorEmptyLines_P221(t *testing.T) {
-	cb := NewCodeBlock("", "go", "")
+	cb := NewCodeBlock("go", "")
 	cb.SetBounds(Rect{X: 0, Y: 0, W: 40, H: 10})
 	cb.SetStreaming(true)
 	buf := buffer.NewBuffer(40, 10)
@@ -17,7 +17,7 @@ func TestCodeBlock_StreamingCursorEmptyLines_P221(t *testing.T) {
 }
 
 func TestCodeBlock_StreamingCursorWithLines_P221(t *testing.T) {
-	cb := NewCodeBlock("test", "go", "func main() {\n\tprintln(\"hello\")\n}")
+	cb := NewCodeBlock("go", "func main() {\n\tprintln(\"hello\")\n}")
 	cb.SetBounds(Rect{X: 0, Y: 0, W: 60, H: 10})
 	cb.SetStreaming(true)
 	buf := buffer.NewBuffer(60, 10)
@@ -25,7 +25,7 @@ func TestCodeBlock_StreamingCursorWithLines_P221(t *testing.T) {
 }
 
 func TestCodeBlock_StreamingCursorShowTitle_P221(t *testing.T) {
-	cb := NewCodeBlock("title", "go", "code")
+	cb := NewCodeBlock("go", "code")
 	cb.SetBounds(Rect{X: 0, Y: 0, W: 40, H: 5})
 	cb.SetStreaming(true)
 	buf := buffer.NewBuffer(40, 5)
