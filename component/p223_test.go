@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/topcheer/fluui/internal/buffer"
+	"github.com/topcheer/fluui/theme"
 )
 
 // P223: themestudio.setCursorLocked edge cases — test via HandleKey navigation
