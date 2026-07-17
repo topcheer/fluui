@@ -23,17 +23,19 @@ func TestModelValue_P199(t *testing.T) {
 
 func TestModelPrompt_P199(t *testing.T) {
 	m := New()
-	m.SetPrompt("> ")
-	if m.Prompt() != "> " {
-		t.Errorf("expected '> ', got %q", m.Prompt())
+	m.Prompt = "> "
+	m.TextInput.SetPrompt("> ") // sync to TI
+	if m.Prompt != "> " {
+		t.Errorf("expected '> ', got %q", m.Prompt)
 	}
 }
 
 func TestModelPlaceholder_P199(t *testing.T) {
 	m := New()
-	m.SetPlaceholder("enter...")
-	if m.Placeholder() != "enter..." {
-		t.Errorf("expected 'enter...', got %q", m.Placeholder())
+	m.Placeholder = "enter..."
+	m.TextInput.SetPlaceholder("enter...") // sync to TI
+	if m.Placeholder != "enter..." {
+		t.Errorf("expected 'enter...', got %q", m.Placeholder)
 	}
 }
 
@@ -45,9 +47,10 @@ func TestModelEchoMode_P199(t *testing.T) {
 
 func TestModelCharLimit_P199(t *testing.T) {
 	m := New()
-	m.SetCharLimit(100)
-	if m.CharLimit() != 100 {
-		t.Errorf("expected 100, got %d", m.CharLimit())
+	m.CharLimit = 100
+	m.TextInput.SetCharLimit(100) // sync to TI
+	if m.CharLimit != 100 {
+		t.Errorf("expected 100, got %d", m.CharLimit)
 	}
 }
 

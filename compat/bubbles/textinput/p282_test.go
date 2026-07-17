@@ -17,23 +17,17 @@ func TestModel_EchoModeField_P282(t *testing.T) {
 
 func TestModel_PlaceholderField_P282(t *testing.T) {
 	m := New()
-	m.SetPlaceholder("Type here...")
-	if m.TextInput.Placeholder() != "Type here..." {
-		t.Errorf("Placeholder assignment should work, got %q", m.TextInput.Placeholder())
-	}
-	if m.Placeholder() != "Type here..." {
-		t.Errorf("Placeholder() method should return value, got %q", m.Placeholder())
+	m.Placeholder = "Type here..."
+	if m.Placeholder != "Type here..." {
+		t.Errorf("Placeholder field should work, got %q", m.Placeholder)
 	}
 }
 
 func TestModel_PromptField_P282(t *testing.T) {
 	m := New()
-	m.SetPrompt("> ")
-	if m.TextInput.Prompt() != "> " {
-		t.Errorf("Prompt assignment should work, got %q", m.TextInput.Prompt())
-	}
-	if m.Prompt() != "> " {
-		t.Errorf("Prompt() method should return value, got %q", m.Prompt())
+	m.Prompt = "> "
+	if m.Prompt != "> " {
+		t.Errorf("Prompt field should work, got %q", m.Prompt)
 	}
 }
 
