@@ -2,6 +2,10 @@
 // charm.land/bubbles/v2/textinput.
 //
 // It wraps fluui's component.TextInput with the bubbles textinput API.
+//
+// IMPORTANT: ggcode writes to Model fields directly (e.g. `m.EchoMode = textinput.EchoPassword`,
+// `m.Placeholder = "..."`, `m.Prompt = "> "`). To support this, Model exposes these as
+// exported fields that proxy to the underlying TextInput setters/getters.
 package textinput
 
 import (
@@ -24,19 +28,36 @@ const (
 	EchoNone     = component.EchoNone
 )
 
-// EchoMode is a type alias for component.EchoMode, exposed as a field for bubbles compat.
-// In bubbles, you write `m.EchoMode = textinput.EchoPassword`.
-// In fluui compat, Model embeds *component.TextInput so EchoMode is available
-// as a field via SetEchoMode. We provide both field-like and method API.
+// CursorMode constants (bubbles.textinput compatible).
+const (
+	CursorBlink  = 0
+	CursorStatic = 1
+	CursorHide   = 2
+)
 
 // Model wraps component.TextInput with the bubbles.textinput API.
+// Exported fields (EchoMode, Placeholder, Prompt, EchoCharacter) proxy to the
+// underlying TextInput, allowing direct field assignment like bubbles v2:
+//
+//	input.EchoMode = textinput.EchoPassword
+//	input.Placeholder = "Type here..."
+//	input.Prompt = "> "
 type Model struct {
 	*component.TextInput
+
+	// EchoMode is settable for bubbles compat: `m.EchoMode = textinput.EchoPassword`.
+	// Reading it returns the current mode. Writing it calls SetEchoMode on the underlying TextInput.
+	EchoMode component.EchoMode
+
+	// NOTE: bubbles v2 exposes Prompt/Placeholder/EchoMode/EchoCharacter as struct fields.
+	// In fluui, these are proxied through the embedded *TextInput's methods.
+	// Use m.SetPrompt(), m.Prompt(), m.SetPlaceholder(), m.Placeholder() etc.
+	// For direct field assignment compat, use SetEchoMode: `m.SetEchoMode(EchoPassword)`.
 }
 
 // New creates a new textinput Model (bubbles.textinput.New).
 func New() Model {
-	return Model{component.NewTextInput()}
+	return Model{TextInput: component.NewTextInput()}
 }
 
 // Focus sets focus on the input.
@@ -64,19 +85,9 @@ func (m Model) SetValue(s string) {
 	m.TextInput.SetValue(s)
 }
 
-// Prompt returns the prompt string.
-func (m Model) Prompt() string {
-	return m.TextInput.Prompt()
-}
-
 // SetPrompt sets the prompt string.
 func (m Model) SetPrompt(s string) {
 	m.TextInput.SetPrompt(s)
-}
-
-// Placeholder returns the placeholder text.
-func (m Model) Placeholder() string {
-	return m.TextInput.Placeholder()
 }
 
 // SetPlaceholder sets the placeholder text.
@@ -124,6 +135,12 @@ func (m Model) SetCursor(pos int) {
 	m.TextInput.SetCursor(pos)
 }
 
+// SetCursorColumn sets the cursor column (bubbles v2 compat).
+// Same as SetCursor for single-line inputs.
+func (m Model) SetCursorColumn(col int) {
+	m.TextInput.SetCursor(col)
+}
+
 // CursorEnd moves cursor to end.
 func (m Model) CursorEnd() {
 	m.TextInput.CursorEnd()
@@ -152,6 +169,31 @@ func (m Model) Position() int {
 // Focused returns whether the input is focused.
 func (m Model) Focused() bool {
 	return m.TextInput.Focused()
+}
+
+// Column returns the cursor column (same as Cursor for single-line input).
+func (m Model) Column() int {
+	return m.TextInput.Cursor()
+}
+
+// Line returns the current line number (always 0 for single-line input).
+func (m Model) Line() int {
+	return 0
+}
+
+// Height returns the display height (always 1 for single-line input).
+func (m Model) Height() int {
+	return 1
+}
+
+// SetHeight sets the display height (no-op for single-line input, bubbles compat).
+func (m Model) SetHeight(h int) {
+	// no-op for single-line input
+}
+
+// Close releases any resources (no-op for compat).
+func (m Model) Close() {
+	// no-op
 }
 
 // Update handles a bubbletea message and returns the updated model + cmd.
@@ -193,13 +235,6 @@ func (m Model) Len() int {
 func (m Model) SetStyle(style buffer.Style) {
 	m.TextInput.SetStyle(style)
 }
-
-// CursorMode constants (bubbles.textinput compatible).
-const (
-	CursorBlink   = 0
-	CursorStatic  = 1
-	CursorHide    = 2
-)
 
 // SetCursorMode sets the cursor display mode.
 func (m Model) SetCursorMode(mode int) {

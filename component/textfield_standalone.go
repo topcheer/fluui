@@ -30,6 +30,7 @@ type TextInput struct {
 	prompt       string
 	placeholder  string
 	echoMode     EchoMode
+	echoChar     rune
 	focused      bool
 	blinkEnabled bool
 	blinking     bool
@@ -70,6 +71,7 @@ func NewTextInput() *TextInput {
 		prompt:       "",
 		placeholder:  "",
 		echoMode:     EchoNormal,
+		echoChar:     defaultEchoChar,
 		focused:      false,
 		blinkEnabled: true,
 		style:        buffer.Style{Fg: buffer.NamedColor(buffer.NamedWhite)},
@@ -222,6 +224,23 @@ func (t *TextInput) SetEchoMode(m EchoMode) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.echoMode = m
+}
+
+// echoChar is the character shown for password echo (default '*').
+var defaultEchoChar rune = '*'
+
+// SetEchoChar sets the character displayed in password mode.
+func (t *TextInput) SetEchoChar(r rune) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.echoChar = r
+}
+
+// EchoChar returns the character used for password echo.
+func (t *TextInput) EchoChar() rune {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.echoChar
 }
 
 // EchoPassword sets echo mode to password (shorthand).
