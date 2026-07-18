@@ -8,9 +8,9 @@
 **Fluui** (流畅 + UI) is an AI-native TUI library for Go, built 100% from scratch with zero TUI framework dependencies. It is designed specifically for AI chat interfaces with streaming-first architecture, semantic content blocks, and zero-flicker double-buffer rendering.
 
 - **Module:** `github.com/topcheer/fluui`
-- **Go version:** 1.26+
-- **Tests:** 3,328 tests, 58 benchmarks, all pass with `-race`
-- **Size:** ~328 Go files, ~100K LOC, 46 packages
+- **Go version:** 1.25.0
+- **Tests:** 9,238 test functions, 75 benchmarks, all pass with `-race`
+- **Size:** ~204K LOC, 69 packages, 232 source files + 513 test files
 
 ## Validation Commands
 
@@ -34,13 +34,16 @@ go test -bench=. -benchmem ./...
 golangci-lint run
 ```
 
-## External Dependencies (3 only)
+CI runs on push/PR via `.github/workflows/ci.yml` — build, vet, test with race detector.
+
+## External Dependencies (4 only)
 
 | Dependency | Purpose |
 |---|---|
 | `github.com/yuin/goldmark` | Markdown parsing (AST) |
 | `github.com/alecthomas/chroma` | Syntax highlighting for code blocks |
-| `golang.org/x/term` | Termios (raw mode) — the only system-level dependency |
+| `github.com/skip2/go-qrcode` | QR code rendering |
+| `golang.org/x/sys` | System calls (termios, ioctl, signals) |
 
 No TUI framework, no cgo, no protobuf. Pure Go.
 
@@ -70,7 +73,7 @@ The event loop owns all state. Mutate ChatApp state only from event callbacks (`
 | `.` (root) | `App` struct — wires terminal, renderer, event loop |
 | `app/` | `ChatApp`, `AIBridge`, `InputLine`, `SelectionManager`, `SearchMode`, `ReplaceMode`, `WindowManager` |
 | `block/` | Semantic content blocks: `ThinkingBlock`, `AssistantTextBlock`, `ToolCallBlock`, `ToolResultBlock`, `UserMessageBlock`, `BlockContainer` |
-| `component/` | 35+ components (Table, Checkbox, RadioGroup, Slider, CommandPalette, Spinner, Dialog, etc.) |
+| `component/` | 35+ components (Table, Checkbox, RadioGroup, Slider, CommandPalette, Spinner, Dialog, CodeBlock, RichLog, Viewport, Help, Badge, ThemeStudio, etc.) |
 | `component/layout/` | Flex, Stack, Center, Padding layout containers |
 | `event/` | Channel-driven event loop, Dispatcher, KeyShortcut bindings |
 | `render/` | Double-buffer diff renderer with ANSI batching |
@@ -82,6 +85,26 @@ The event loop owns all state. Mutate ChatApp state only from event callbacks (`
 | `hit/` | Region tree for O(log n) mouse hit testing |
 | `ai/` | OpenAI-compatible LLM client with tool-calling support |
 
+### Compat Packages (charm.land / charmbracelet drop-in)
+
+The `compat/` tree provides drop-in replacements for [ggcode](https://github.com/topcheer/ggcode) and other projects migrating from charm.land TUI libraries to fluui. Source files only need import path changes — no code modifications.
+
+| Package | Replaces |
+|---|---|
+| `compat/bubbletea/` | `charm.land/bubbletea/v2` |
+| `compat/lipgloss/` | `charm.land/lipgloss/v2` |
+| `compat/lipgloss/compat/` | `charm.land/lipgloss/v2/compat` |
+| `compat/lipgloss/tree/` | `charm.land/lipgloss/v2/tree` |
+| `compat/bubbles/textarea/` | `charm.land/bubbles/v2/textarea` |
+| `compat/bubbles/textinput/` | `charm.land/bubbles/v2/textinput` |
+| `compat/bubbles/viewport/` | `charm.land/bubbles/v2/viewport` |
+| `compat/glamour/` | `charm.land/glamour/v2` |
+| `compat/glamour/ansi/` | glamour ANSI render context |
+| `compat/glamour/styles/` | glamour style configs |
+| `compat/xterm/` | `github.com/charmbracelet/x/term` |
+
+**textinput.Model** supports bubbles v2 field-write semantics (`m.EchoMode = textinput.EchoPassword`, `m.Placeholder = "..."`, `m.CharLimit = 512`). The `sync()` method pushes field values to the underlying `*component.TextInput` before View/Update.
+
 ### Internal Packages
 
 | Package | Description |
@@ -91,20 +114,22 @@ The event loop owns all state. Mutate ChatApp state only from event callbacks (`
 | `internal/termcompat/` | Terminal capability detection (12+ terminals, image protocols) |
 | `internal/fuzzy/` | Subsequence fuzzy string matching with scoring |
 | `internal/hotkey/` | Global hotkey/shortcut registry |
+| `internal/hotreload/` | File-watching live reload for development |
 | `internal/integration/` | Cross-package integration test helpers |
 | `internal/mock/` | Mock terminal for testing (no /dev/tty needed) |
+| `internal/recorder/` | Session recording and replay |
+| `internal/snapshot/` | UI snapshot testing and diffing |
 
 ### Demos and Examples
 
-- `cmd/demo` through `cmd/demo14` — 15 progressive demos
+- `cmd/demo` through `cmd/demo22` — 22 progressive demos
 - `examples/` — 11 real-world examples (minimal, chat, dashboard, file-manager, todo-app, calculator, ai-agent, etc.)
 
 ## Key Types and APIs
 
-### Core Types
+### Component Interface
 
 ```go
-// Component interface (component/component.go)
 type Component interface {
     Measure(cs Constraints) Size      // Compute desired size
     SetBounds(r Rect)                 // Apply layout bounds
@@ -161,6 +186,8 @@ chat.OnPaint(func(buf *buffer.Buffer) { ... })
 - External test packages use `*_test` suffix (e.g., `component_test`)
 - Fuzz tests in `internal/term/`, `internal/buffer/`, `markdown/`
 - Test name conventions: `Test<ComponentName>_<Scenario>`, e.g., `TestCheckbox_Toggle`
+- Phase-numbered tests: `Test<Name>_P<phase>` (currently P1–P289)
+- Coverage targets: compat packages at 95%+, component/ at 90%+
 
 ### Concurrency
 
@@ -178,6 +205,7 @@ chat.OnPaint(func(buf *buffer.Buffer) { ... })
 - **Colors:** Use `buffer.RGB(r, g, b)` for true color, named constants for theme colors
 - **Component naming:** `New<Name>()` constructor, embed `BaseComponent`
 - **Key handling:** `HandleKey(k *term.KeyEvent) bool` — return true if consumed
+- **Struct literals:** Always use keyed fields (e.g., `Size{W: 10, H: 5}` not `Size{10, 5}`)
 - **No `buf.Clear()`** — use `buf.Fill(buffer.BlankCell)` instead
 - **No `term.KeyCtrlU`** — use `k.Rune == 'u' && k.Modifiers&term.ModCtrl != 0`
 - **`buffer.Cell`** has `Fg`, `Bg`, `Flags` fields (no `.Style` field)
@@ -185,17 +213,18 @@ chat.OnPaint(func(buf *buffer.Buffer) { ... })
 
 ### Git Conventions
 
-- Commit messages: `feat(P<phase>-<task>): description` or `test: description`
+- Commit messages: `feat(P<phase>): description` or `test(P<phase>): description`
 - All commits include `Co-Authored-By: ggcode <noreply@ggcode.dev>`
-- Phase numbering: work is organized in sequential phases (currently P1-P29)
+- Phase numbering: work is organized in sequential phases (currently P1–P289)
+- Push to `main` branch after each phase
 
 ### Linting (golangci-lint v2)
 
 Config in `.golangci.yml`:
-- Enabled: gocritic, misspell, unconvert, gocyclo (max 50), unparam
+- Default: standard linters
+- Enabled: misspell, unconvert, gocritic, gocyclo (max 50), unparam
 - Test files excluded from strict linters
 - Demo/example files excluded from strict linters
-- Theme definitions excluded from dupl check
 
 ## LLM Configuration
 
@@ -214,16 +243,16 @@ Never commit `.env` — it is gitignored.
 | File | Content |
 |---|---|
 | `docs/architecture.md` | 6-layer architecture overview |
-| `docs/guide.md` | Developer guide (872 lines) with component cookbook |
+| `docs/guide.md` | Developer guide with component cookbook |
 | `docs/best-practices.md` | Concurrency, performance, testing patterns |
-| `docs/api-reference.md` | Full API reference (780 lines) |
+| `docs/api-reference.md` | Full API reference |
 | `docs/performance.md` | Benchmarking, profiling, optimization strategies |
 | `docs/getting-started.md` | 5-minute quickstart |
 | `docs/tutorial.md` | Step-by-step tutorial |
 | `docs/components.md` | Component catalog |
 | `docs/widgets-guide.md` | Widget usage guide |
-| `docs/CHANGELOG.md` | Phase 1-20 changelog |
-| `DESIGN.md` | Original design document (71KB) |
+| `docs/CHANGELOG.md` | Phase changelog |
+| `DESIGN.md` | Original design document |
 | `README.md` | Project overview and feature comparison |
 
 ## API Gotchas
@@ -241,6 +270,8 @@ Never commit `.env` — it is gitignored.
 | `term.KeyCtrlU` doesn't exist | `k.Rune == 'u' && k.Modifiers&term.ModCtrl != 0` |
 | `CommandPalette.SetFilter()` | `CommandPalette.SetQuery()` |
 | `InputLine.SetInput()` | `InputLine.SetText()` |
+| Struct literal `Size{10,5}` | Always use keyed fields `Size{W:10, H:5}` |
+| Textinput `m.Prompt()` method | Use `m.Prompt` field (bubbles v2 compat) |
 
 ## Performance Notes
 
