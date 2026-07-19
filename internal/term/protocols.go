@@ -979,3 +979,156 @@ func indexOfByte(s string, b byte) int {
 	}
 	return -1
 }
+
+// ---------------------------------------------------------------------------
+// OSC 133 — Shell Integration / Prompt Marking (Semantic Prompts)
+// ---------------------------------------------------------------------------
+
+// OSC133Mark identifies the type of shell integration marker.
+type OSC133Mark uint8
+
+const (
+	OSC133Unknown OSC133Mark = iota
+	OSC133PromptStart   // A — marks the start of a prompt
+	OSC133PromptEnd     // A with optional metadata — end of prompt text
+	OSC133CommandStart  // B — marks the start of user input / command
+	OSC133OutputStart   // C — marks the start of command output
+	OSC133CommandEnd    // D — marks the end of command with exit code
+)
+
+// osc133Bel builds an OSC 133 sequence with BEL terminator.
+func osc133Bel(payload string) string {
+	return "\x1b]133;" + payload + "\x07"
+}
+
+// OSC133PromptStartSeq generates the shell integration marker for the start
+// of a prompt region. Supported by iTerm2, Kitty, WezTerm, GNOME Terminal,
+// Windows Terminal, and others.
+//
+// Format: ESC ] 133 ; A ST
+func OSC133PromptStartSeq() string {
+	return osc133Bel("A")
+}
+
+// OSC133PromptStartMeta is like OSC133PromptStartSeq but includes optional
+// metadata (e.g. claude=1, tmux=prompt). The meta string is embedded as-is.
+//
+// Format: ESC ] 133 ; A ; <meta> ST
+func OSC133PromptStartMeta(meta string) string {
+	if meta == "" {
+		return osc133Bel("A")
+	}
+	return osc133Bel("A;" + meta)
+}
+
+// OSC133CommandStartSeq generates the marker for the start of user input.
+// This marks where the command begins (after the prompt).
+//
+// Format: ESC ] 133 ; B ST
+func OSC133CommandStartSeq() string {
+	return osc133Bel("B")
+}
+
+// OSC133OutputStartSeq generates the marker for the start of command output.
+//
+// Format: ESC ] 133 ; C ST
+func OSC133OutputStartSeq() string {
+	return osc133Bel("C")
+}
+
+// OSC133CommandEndSeq generates the marker for the end of a command with
+// an exit code. The exitCode is the process return code (0 = success).
+//
+// Format: ESC ] 133 ; D ; <exit_code> ST
+func OSC133CommandEndSeq(exitCode int) string {
+	return osc133Bel("D;" + intToStr(exitCode))
+}
+
+// OSC133Result holds a parsed OSC 133 marker.
+type OSC133Result struct {
+	Mark     OSC133Mark
+	ExitCode int    // only valid when Mark == OSC133CommandEnd
+	Meta     string // optional metadata (e.g. from A;<meta>)
+}
+
+// ParseOSC133 attempts to parse an OSC 133 sequence from the given string.
+// The input should be a complete OSC 133 sequence (with BEL or ST terminator).
+// Returns the parsed result and ok=true on success.
+//
+// Accepted formats:
+//
+//	ESC ] 133 ; A ST          → PromptStart
+//	ESC ] 133 ; A ; meta ST   → PromptStart with metadata
+//	ESC ] 133 ; B ST          → CommandStart
+//	ESC ] 133 ; C ST          → OutputStart
+//	ESC ] 133 ; D ST          → CommandEnd (exit code omitted)
+//	ESC ] 133 ; D ; 0 ST      → CommandEnd with exit code
+func ParseOSC133(s string) (OSC133Result, bool) {
+	// Must start with ESC ] 133 ;
+	if len(s) < 7 || s[0] != 0x1b || s[1] != ']' {
+		return OSC133Result{}, false
+	}
+	// Check "133;" prefix
+	if s[2] != '1' || s[3] != '3' || s[4] != '3' || s[5] != ';' {
+		return OSC133Result{}, false
+	}
+
+	// Find terminator: BEL (0x07) or ST (ESC \)
+	body := s[6:]
+	stripped, hadTerminator := stripTerminatorChecked(body)
+	if !hadTerminator || len(stripped) == 0 {
+		return OSC133Result{}, false
+	}
+	body = stripped
+
+	// First char is the mark type
+	markChar := body[0]
+	result := OSC133Result{}
+
+	switch markChar {
+	case 'A':
+		result.Mark = OSC133PromptStart
+		// Check for optional metadata: A;meta
+		if len(body) > 1 && body[1] == ';' {
+			result.Meta = body[2:]
+		}
+	case 'B':
+		result.Mark = OSC133CommandStart
+	case 'C':
+		result.Mark = OSC133OutputStart
+	case 'D':
+		result.Mark = OSC133CommandEnd
+		// Check for optional exit code: D;<code>
+		if len(body) > 1 && body[1] == ';' {
+			result.ExitCode = atoiDef(body[2:])
+		} else {
+			result.ExitCode = -1 // exit code omitted
+		}
+	default:
+		return OSC133Result{}, false
+	}
+
+	return result, true
+}
+
+// stripTerminator removes a trailing BEL or ST from the OSC body.
+func stripTerminator(s string) string {
+	if len(s) >= 1 && s[len(s)-1] == 0x07 {
+		return s[:len(s)-1]
+	}
+	if len(s) >= 2 && s[len(s)-2] == 0x1b && s[len(s)-1] == '\\' {
+		return s[:len(s)-2]
+	}
+	return s
+}
+
+// stripTerminatorChecked removes a trailing BEL or ST and reports whether one was found.
+func stripTerminatorChecked(s string) (string, bool) {
+	if len(s) >= 1 && s[len(s)-1] == 0x07 {
+		return s[:len(s)-1], true
+	}
+	if len(s) >= 2 && s[len(s)-2] == 0x1b && s[len(s)-1] == '\\' {
+		return s[:len(s)-2], true
+	}
+	return s, false
+}
