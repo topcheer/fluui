@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/topcheer/fluui/theme"
@@ -303,36 +304,44 @@ func (m *MessageBubble) paintStandard(buf *buffer.Buffer, bounds Rect) {
 	}
 
 	contentW := m.contentWidthLocked(w)
-	lines := wrapLines(m.content, contentW)
 	padX := bounds.X + 2 // left padding for non-system
 
-	for i, line := range lines {
+	// Draw content using DrawTextClamped to avoid []rune allocations
+	for _, para := range strings.Split(m.content, "\n") {
 		if y >= bounds.Y+bounds.H {
-			break
+			return
 		}
-		display := line
-		// Append streaming cursor on last line
-		if m.streaming && i == len(lines)-1 {
-			if m.cursorOn {
-				display += "▊"
-			}
+		if para == "" {
+			y++
+			continue
 		}
-		lr := []rune(display)
-		if len(lr) > contentW {
-			lr = lr[:contentW]
+		// Word-wrap within the paragraph
+		words := strings.Fields(para)
+		if len(words) == 0 {
+			y++
+			continue
 		}
-
-		if m.role == RoleUser {
-			// Right-align content
-			if len(lr) < contentW {
-				spaces := contentW - len(lr)
-				buf.DrawText(padX+spaces, y, string(lr), contentStyle)
+		current := words[0]
+		curLen := utf8.RuneCountInString(current)
+		for _, wd := range words[1:] {
+			wdLen := utf8.RuneCountInString(wd)
+			if curLen+1+wdLen <= contentW {
+				current += " " + wd
+				curLen += 1 + wdLen
 			} else {
-				buf.DrawText(padX, y, string(lr), contentStyle)
+				m.drawLineLocked(buf, padX, y, contentW, current, contentStyle)
+				y++
+				if y >= bounds.Y+bounds.H {
+					return
+				}
+				current = wd
 			}
-		} else {
-			buf.DrawText(padX, y, string(lr), contentStyle)
 		}
+		// Last line of this paragraph (append cursor if streaming)
+		if m.streaming {
+			current += "▊"
+		}
+		m.drawLineLocked(buf, padX, y, contentW, current, contentStyle)
 		y++
 	}
 
@@ -369,6 +378,21 @@ func (m *MessageBubble) paintSystem(buf *buffer.Buffer, bounds Rect) {
 		buf.DrawText(bounds.X+spaces, y, string(lr), sysStyle)
 		y++
 	}
+}
+
+// drawLineLocked draws a single content line, right-aligned for user messages.
+func (m *MessageBubble) drawLineLocked(buf *buffer.Buffer, x, y, maxW int, text string, style buffer.Style) {
+	r := []rune(text)
+	if len(r) > maxW {
+		text = string(r[:maxW])
+		r = []rune(text)
+	}
+	if m.role == RoleUser {
+		if len(r) < maxW {
+			x += maxW - len(r)
+		}
+	}
+	buf.DrawText(x, y, text, style)
 }
 
 // wrapLines wraps text to fit within the given width, returning a slice of lines.
