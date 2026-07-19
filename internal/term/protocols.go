@@ -170,6 +170,91 @@ func setTitleOSC(kind, title string) string {
 }
 
 // ---------------------------------------------------------------------------
+// Cursor Save/Restore — DECSC/DECRC and ANSI.SYS
+// ---------------------------------------------------------------------------
+
+// SaveCursor saves the current cursor position and attributes (DECSC).
+const SaveCursor = "\x1b7"
+
+// RestoreCursor restores the previously saved cursor position and attributes (DECRC).
+const RestoreCursor = "\x1b8"
+
+// SaveCursorANSI is the ANSI.SYS variant of cursor save (ESC 7 is DEC, CSI s is ANSI).
+const SaveCursorANSI = "\x1b[s"
+
+// RestoreCursorANSI is the ANSI.SYS variant of cursor restore (CSI u).
+const RestoreCursorANSI = "\x1b[u"
+
+// ---------------------------------------------------------------------------
+// Scroll Region — DECSTBM
+// ---------------------------------------------------------------------------
+
+// SetScrollRegion sets the top and bottom margins for scrolling (DECSTBM).
+// top and bottom are 1-based line numbers. Pass 0,0 to reset to full screen.
+func SetScrollRegion(top, bottom int) string {
+	if top < 0 {
+		top = 0
+	}
+	if bottom < 0 {
+		bottom = 0
+	}
+	return "\x1b[" + intToStr(top) + ";" + intToStr(bottom) + "r"
+}
+
+// ResetScrollRegion resets the scroll region to the full screen.
+const ResetScrollRegion = "\x1b[r"
+
+// ---------------------------------------------------------------------------
+// Device Status Report — DSR
+// ---------------------------------------------------------------------------
+
+// QueryCursorPosition asks the terminal to report the cursor position.
+// The response is CSI row;col R (1-based).
+const QueryCursorPosition = "\x1b[6n"
+
+// QueryTerminalSize asks the terminal to report its size via DSR (CSI 14 t).
+// The response is CSI 4 ; height ; width t (pixels).
+const QueryTerminalSize = "\x1b[14t"
+
+// QueryCellSize asks the terminal to report the cell size in pixels (CSI 16 t).
+// The response is CSI 6 ; height ; width t.
+const QueryCellSize = "\x1b[16t"
+
+// ParseCursorPositionResponse parses a DSR cursor position response (CSI row;col R).
+// Returns 1-based row, col and ok=true on success.
+func ParseCursorPositionResponse(s string) (row, col int, ok bool) {
+	// Expected format: ESC [ row ; col R
+	if len(s) < 6 || s[0] != 0x1b || s[1] != '[' {
+		return 0, 0, false
+	}
+	rest := s[2:]
+	rEnd := 0
+	for rEnd < len(rest) && rest[rEnd] != ';' {
+		rEnd++
+	}
+	if rEnd == len(rest) {
+		return 0, 0, false
+	}
+	cPart := rest[rEnd+1:]
+	cEnd := 0
+	for cEnd < len(cPart) && cPart[cEnd] != 'R' {
+		cEnd++
+	}
+	if cEnd == 0 || cEnd == len(cPart) {
+		return 0, 0, false
+	}
+	row = atoiDef(rest[:rEnd])
+	if row == 0 {
+		row = 1
+	}
+	col = atoiDef(cPart[:cEnd])
+	if col == 0 {
+		col = 1
+	}
+	return row, col, true
+}
+
+// ---------------------------------------------------------------------------
 // Cursor Visibility — DECTCEM
 // ---------------------------------------------------------------------------
 
@@ -457,6 +542,21 @@ func atoiDef(s string) int {
 		n = n*10 + int(c-'0')
 	}
 	return n
+}
+
+// itoa converts a non-negative int to its ASCII string representation.
+func intToStr(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	var buf [20]byte
+	i := len(buf)
+	for n > 0 {
+		i--
+		buf[i] = byte('0' + n%10)
+		n /= 10
+	}
+	return string(buf[i:])
 }
 
 // colorItoa converts an int to its decimal string representation.
