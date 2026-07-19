@@ -755,3 +755,227 @@ func KittyDeleteAllImages() string {
 func KittyQueryCell(col, row int) string {
 	return "\x1b_Ga=q,s=" + colorItoa(col) + ",v=" + colorItoa(row) + "\x1b\\"
 }
+
+// ---------------------------------------------------------------------------
+// Terminal Capability Detection — DA1, DA2, XTVERSION, XTGETTCAP
+// ---------------------------------------------------------------------------
+
+// QueryDA1 sends the Primary Device Attributes request (CSI c).
+// The terminal responds with CSI ? ... c listing its capabilities
+// (e.g. CSI ? 62 ; 1 ; 2 ; 4 ; 6 ; 9 ; 15 ; 16 ; 29 c for VT220).
+const QueryDA1 = "\x1b[c"
+
+// QueryDA2 sends the Secondary Device Attributes request (CSI > c).
+// The terminal responds with CSI > Pn ; Pv ; Pc c where:
+//   Pn = terminal type (0=VT100, 1=VT220, 2=VT240, 18=VT330, 19=VT340, 24=VT320)
+//   Pv = firmware version (encoded)
+//   Pc = number of ROM cartridges
+const QueryDA2 = "\x1b[>c"
+
+// QueryXTVersion sends the terminal identification request (CSI > q).
+// The terminal responds with CSI > Ps ; ... q where Ps is the terminal
+// name and version, e.g. "xterm(372)" or "tmux 3.3a".
+// Uses the XTVERSION extension (xterm patch 282+, supported by many terminals).
+const QueryXTVersion = "\x1b[>q"
+
+// QueryXTGetTCAP sends a terminfo capability query (CSI + q).
+// Pass the hex-encoded capability name(s). The terminal responds with
+// CSI 1 + r Pt = Pv ST or CSI 0 + r if unsupported.
+// Multiple capabilities can be queried by separating hex names with ";".
+func QueryXTGetTCAP(hexCapNames string) string {
+	return "\x1b[+q" + hexCapNames
+}
+
+// EncodeTCapName encodes a terminfo capability name to the hex format
+// expected by XTGETTCAP. For example "TN" → "544e", "Co" → "436f".
+func EncodeTCapName(name string) string {
+	const hexChars = "0123456789abcdef"
+	var buf [256]byte
+	out := buf[:0]
+	for i := 0; i < len(name) && len(out)+2 <= cap(buf); i++ {
+		out = append(out, hexChars[name[i]>>4], hexChars[name[i]&0xf])
+	}
+	return string(out)
+}
+
+// ParseDA1Response parses a Primary Device Attributes response.
+// Expected format: ESC [ ? attr1 ; attr2 ; ... c
+// Returns the list of attribute codes and ok=true on success.
+func ParseDA1Response(s string) (attrs []int, ok bool) {
+	// Must start with ESC [ ?
+	if len(s) < 4 || s[0] != 0x1b || s[1] != '[' || s[2] != '?' {
+		return nil, false
+	}
+	// Must end with 'c'
+	if s[len(s)-1] != 'c' {
+		return nil, false
+	}
+	body := s[3 : len(s)-1]
+	if len(body) == 0 {
+		return nil, false
+	}
+	// Split by ';'
+	start := 0
+	for start <= len(body) {
+		end := start
+		for end < len(body) && body[end] != ';' {
+			end++
+		}
+		if end > start {
+			attrs = append(attrs, atoiDef(body[start:end]))
+		}
+		start = end + 1
+	}
+	if len(attrs) == 0 {
+		return nil, false
+	}
+	return attrs, true
+}
+
+// DA2Response holds the parsed result of a Secondary Device Attributes response.
+type DA2Response struct {
+	TerminalType int // Pn: terminal type code
+	Version      int // Pv: firmware version
+	ROMCartridges int // Pc: ROM cartridge count (usually 0)
+}
+
+// ParseDA2Response parses a Secondary Device Attributes response.
+// Expected format: ESC [ > Pn ; Pv ; Pc c
+func ParseDA2Response(s string) (resp DA2Response, ok bool) {
+	if len(s) < 5 || s[0] != 0x1b || s[1] != '[' || s[2] != '>' {
+		return DA2Response{}, false
+	}
+	if s[len(s)-1] != 'c' {
+		return DA2Response{}, false
+	}
+	body := s[3 : len(s)-1]
+	fields := splitSemi(body)
+	if len(fields) == 0 {
+		return DA2Response{}, false
+	}
+	resp.TerminalType = atoiDef(fields[0])
+	if len(fields) > 1 {
+		resp.Version = atoiDef(fields[1])
+	}
+	if len(fields) > 2 {
+		resp.ROMCartridges = atoiDef(fields[2])
+	}
+	return resp, true
+}
+
+// XTVersionResponse holds the parsed terminal name and version.
+type XTVersionResponse struct {
+	Name    string // e.g. "xterm", "tmux", "contour"
+	Version string // e.g. "372", "3.3a"
+}
+
+// ParseXTVersionResponse parses a terminal version response.
+// Expected format: ESC [ > name ( version ST
+// or legacy format: ESC [ > name ; version q
+// The ST terminator is ESC \ (0x1b 0x5c) or BEL (0x07).
+func ParseXTVersionResponse(s string) (resp XTVersionResponse, ok bool) {
+	// Must start with ESC [ >
+	if len(s) < 4 || s[0] != 0x1b || s[1] != '[' || s[2] != '>' {
+		return XTVersionResponse{}, false
+	}
+	rest := s[3:]
+	// Strip trailing ST (ESC \ ) or BEL
+	if len(rest) >= 2 && rest[len(rest)-2] == 0x1b && rest[len(rest)-1] == '\\' {
+		rest = rest[:len(rest)-2]
+	} else if len(rest) >= 1 && rest[len(rest)-1] == 0x07 {
+		rest = rest[:len(rest)-1]
+	} else if len(rest) >= 1 && rest[len(rest)-1] == 'q' {
+		// Legacy CSI > ... q format
+		rest = rest[:len(rest)-1]
+	} else {
+		return XTVersionResponse{}, false
+	}
+	// Split on '(' — name(version) format
+	openParen := indexOfByte(rest, '(')
+	if openParen >= 0 {
+		resp.Name = rest[:openParen]
+		closeParen := indexOfByte(rest[openParen+1:], ')')
+		if closeParen >= 0 {
+			resp.Version = rest[openParen+1 : openParen+1+closeParen]
+		} else {
+			resp.Version = rest[openParen+1:]
+		}
+		return resp, true
+	}
+	// Split on ';' — name;version format
+	semiPos := indexOfByte(rest, ';')
+	if semiPos >= 0 {
+		resp.Name = rest[:semiPos]
+		resp.Version = rest[semiPos+1:]
+	} else {
+		resp.Name = rest
+	}
+	return resp, true
+}
+
+// ParseXTGetTCapResponse parses an XTGETTCAP response.
+// Expected format for success: ESC P 1 + r hexName = hexValue ESC \
+// Expected format for failure: ESC P 0 + r ESC \
+// Returns the hex-encoded name, hex-encoded value, and ok=true on success.
+func ParseXTGetTCapResponse(s string) (hexName, hexValue string, ok bool) {
+	// Must start with ESC P (DCS)
+	if len(s) < 4 || s[0] != 0x1b || s[1] != 'P' {
+		return "", "", false
+	}
+	rest := s[2:]
+	// Strip trailing ST (ESC \ )
+	if len(rest) >= 2 && rest[len(rest)-2] == 0x1b && rest[len(rest)-1] == '\\' {
+		rest = rest[:len(rest)-2]
+	} else if len(rest) >= 1 && rest[len(rest)-1] == 0x07 {
+		rest = rest[:len(rest)-1]
+	} else {
+		return "", "", false
+	}
+	// Check for failure: starts with "0+r"
+	if len(rest) >= 3 && rest[0] == '0' && rest[1] == '+' && rest[2] == 'r' {
+		return "", "", false
+	}
+	// Check for success: starts with "1+r"
+	if len(rest) < 3 || rest[0] != '1' || rest[1] != '+' || rest[2] != 'r' {
+		return "", "", false
+	}
+	body := rest[3:]
+	// Split on '='
+	eqPos := indexOfByte(body, '=')
+	if eqPos < 0 {
+		return body, "", true
+	}
+	return body[:eqPos], body[eqPos+1:], true
+}
+
+// --- internal helpers ---
+
+// splitSemi splits a string by ';' and returns non-empty fields.
+func splitSemi(s string) []string {
+	if len(s) == 0 {
+		return nil
+	}
+	var fields []string
+	start := 0
+	for start <= len(s) {
+		end := start
+		for end < len(s) && s[end] != ';' {
+			end++
+		}
+		if end > start {
+			fields = append(fields, s[start:end])
+		}
+		start = end + 1
+	}
+	return fields
+}
+
+// indexOfByte returns the index of the first occurrence of b in s, or -1.
+func indexOfByte(s string, b byte) int {
+	for i := 0; i < len(s); i++ {
+		if s[i] == b {
+			return i
+		}
+	}
+	return -1
+}
