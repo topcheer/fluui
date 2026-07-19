@@ -46,6 +46,9 @@ type AppShell struct {
 	panels   *PanelManager
 	statusBar *component.StatusBar
 
+	// Terminal capabilities (detected at startup)
+	caps term.TerminalCapabilities
+
 	// Sidebar content
 	sections []SidebarSection
 
@@ -95,12 +98,37 @@ func NewAppShell(rootPanel Panel) *AppShell {
 	sb.SetSeparator(" │ ")
 
 	return &AppShell{
-		panels:        NewPanelManager(rootPanel),
-		statusBar:     sb,
+		panels:         NewPanelManager(rootPanel),
+		statusBar:      sb,
 		sidebarVisible: false,
-		sidebarWidth:  20,
-		style:         defaultShellStyle(),
+		sidebarWidth:   20,
+		style:          defaultShellStyle(),
+		caps:           term.DefaultCapabilities(),
 	}
+}
+
+// DetectCapabilities runs terminal capability detection using environment
+// variables and stores the result. Components can query the capabilities
+// via Capabilities() to decide which protocols to emit (e.g. OSC8 hyperlinks,
+// OSC133 shell integration, TrueColor).
+func (s *AppShell) DetectCapabilities(termEnv, termProgram, colorTerm string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.caps = term.DetectCapabilitiesFromEnv(termEnv, termProgram, colorTerm)
+}
+
+// Capabilities returns the detected terminal capabilities.
+func (s *AppShell) Capabilities() term.TerminalCapabilities {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.caps
+}
+
+// SetCapabilities allows manual override of terminal capabilities.
+func (s *AppShell) SetCapabilities(caps term.TerminalCapabilities) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.caps = caps
 }
 
 // ─── Accessors ───

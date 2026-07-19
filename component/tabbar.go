@@ -45,13 +45,14 @@ func DefaultTabBarStyle() TabBarStyle {
 // TabBar is a horizontal tab bar component supporting add/close/switch.
 type TabBar struct {
 	BaseComponent
-	mu       sync.RWMutex
-	tabs     []Tab
-	active   int
-	style    TabBarStyle
-	hoverIdx int
-	showNew  bool
-	maxTitle int
+	mu          sync.RWMutex
+	tabs        []Tab
+	active      int
+	style       TabBarStyle
+	hoverIdx    int
+	showNew     bool
+	maxTitle    int
+	onCloseTab  func(tabID string) // callback when close button clicked
 }
 
 // NewTabBar creates a TabBar with default styling.
@@ -115,22 +116,23 @@ func (tb *TabBar) RemoveTab(id string) {
 	}
 }
 
-// CloseActive closes the active tab.
+// CloseActive closes the active tab. If an OnCloseTab callback is set,
+// it is invoked with the tab's ID before removal.
 func (tb *TabBar) CloseActive() {
 	tb.mu.Lock()
-	defer tb.mu.Unlock()
 	if len(tb.tabs) == 0 {
+		tb.mu.Unlock()
 		return
 	}
 	idx := tb.active
-	tb.tabs = append(tb.tabs[:idx], tb.tabs[idx+1:]...)
-	if len(tb.tabs) == 0 {
-		tb.active = 0
-		return
+	tabID := tb.tabs[idx].ID
+	cb := tb.onCloseTab
+	tb.mu.Unlock()
+
+	if cb != nil {
+		cb(tabID)
 	}
-	if tb.active >= len(tb.tabs) {
-		tb.active = len(tb.tabs) - 1
-	}
+	tb.RemoveTab(tabID)
 }
 
 // Tabs returns a copy of the tab list.
@@ -334,7 +336,7 @@ func (tb *TabBar) Paint(buf *buffer.Buffer) {
 				x++
 			}
 			if x < b.X+b.W {
-				buf.SetCell(x, b.Y, buffer.NewCell('x', tb.style.CloseBtn))
+				buf.SetCell(x, b.Y, buffer.NewCell('✕', tb.style.CloseBtn))
 				x++
 			}
 		}
@@ -422,6 +424,61 @@ func (tb *TabBar) IsCloseButton(x, y int) (tabIdx int, ok bool) {
 		}
 	}
 	return -1, false
+}
+
+// --- Close button support ---
+
+// SetOnCloseTab sets a callback invoked when a tab's close button is
+// activated (via CloseActive or HandleCloseClick). The callback receives
+// the tab's ID.
+func (tb *TabBar) SetOnCloseTab(fn func(tabID string)) {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+	tb.onCloseTab = fn
+}
+
+// OnCloseTab returns the current close callback, or nil.
+func (tb *TabBar) OnCloseTab() func(tabID string) {
+	tb.mu.RLock()
+	defer tb.mu.RUnlock()
+	return tb.onCloseTab
+}
+
+// SetTabClosable enables or disables the close button on a specific tab.
+func (tb *TabBar) SetTabClosable(id string, closable bool) bool {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+	idx := tb.indexOfLocked(id)
+	if idx < 0 {
+		return false
+	}
+	tb.tabs[idx].Closable = closable
+	return true
+}
+
+// HandleCloseClick processes a click at the given coordinates. If the click
+// lands on a close button, the OnCloseTab callback is invoked and the tab
+// is removed. Returns true if a close button was hit.
+func (tb *TabBar) HandleCloseClick(x, y int) bool {
+	idx, ok := tb.IsCloseButton(x, y)
+	if !ok {
+		return false
+	}
+
+	tb.mu.Lock()
+	if idx < 0 || idx >= len(tb.tabs) {
+		tb.mu.Unlock()
+		return false
+	}
+	tabID := tb.tabs[idx].ID
+	cb := tb.onCloseTab
+	tb.mu.Unlock()
+
+	if cb != nil {
+		cb(tabID)
+	}
+	tb.RemoveTab(tabID)
+	return true
 }
 
 // --- Helpers ---
