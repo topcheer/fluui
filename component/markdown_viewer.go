@@ -69,6 +69,11 @@ type MarkdownViewer struct {
 	// Layout
 	contentW int
 
+	// Streaming
+	streaming  bool
+	deltaBuf   strings.Builder
+	streamDebN int // debounce counter to limit re-renders
+
 	mu sync.RWMutex
 }
 
@@ -105,6 +110,71 @@ func (v *MarkdownViewer) SetTitle(title string) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	v.title = title
+}
+
+// SetStreaming enables or disables streaming mode. When enabled,
+// AppendDelta accumulates tokens and periodically re-renders.
+func (v *MarkdownViewer) SetStreaming(b bool) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.streaming = b
+	if !b && v.deltaBuf.Len() > 0 {
+		// Final flush when streaming ends
+		v.source += v.deltaBuf.String()
+		v.deltaBuf.Reset()
+		v.renderLocked()
+	}
+}
+
+// IsStreaming returns whether streaming mode is active.
+func (v *MarkdownViewer) IsStreaming() bool {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return v.streaming
+}
+
+// AppendDelta appends streaming text. Renders are debounced: the first
+// delta triggers immediate render, subsequent deltas re-render every
+// 8th call to avoid excessive re-parsing.
+func (v *MarkdownViewer) AppendDelta(delta string) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if !v.streaming {
+		// Not in streaming mode — just append to source and render
+		v.source += delta
+		v.scrollY = 0
+		v.renderLocked()
+		return
+	}
+	v.deltaBuf.WriteString(delta)
+	v.streamDebN++
+	// Debounce: render every 8th delta, or first delta
+	if v.streamDebN == 1 || v.streamDebN%8 == 0 {
+		v.source += v.deltaBuf.String()
+		v.deltaBuf.Reset()
+		v.renderLocked()
+		// Auto-scroll to bottom during streaming
+		v.scrollY = v.maxScroll
+	}
+}
+
+// FlushStream forces a re-render of any pending buffered deltas.
+func (v *MarkdownViewer) FlushStream() {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if v.deltaBuf.Len() > 0 {
+		v.source += v.deltaBuf.String()
+		v.deltaBuf.Reset()
+		v.renderLocked()
+		v.scrollY = v.maxScroll
+	}
+}
+
+// StreamSource returns the full source including buffered deltas.
+func (v *MarkdownViewer) StreamSource() string {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return v.source + v.deltaBuf.String()
 }
 
 // SetStyle sets the visual style.

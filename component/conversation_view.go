@@ -43,7 +43,8 @@ type ConversationView struct {
 	streaming  bool // global streaming flag (auto-scroll)
 	scrollOff  int  // vertical scroll offset (0 = top)
 	contentH   int  // total computed content height
-	autoScroll bool // whether to stick to bottom
+	renderBubble *MessageBubble // reusable for zero-alloc rendering
+	autoScroll   bool           // whether to stick to bottom
 }
 
 // NewConversationView creates an empty conversation view with auto-scroll enabled.
@@ -401,16 +402,21 @@ func (cv *ConversationView) paintMessage(buf *buffer.Buffer, bounds Rect, msg Co
 		msg.Citations.Paint(buf)
 		return
 	}
-	// Standard message bubble
-	mb := NewMessageBubble(msg.Role, msg.Content)
-	if msg.ModelName != "" {
-		mb.SetModel(msg.ModelName)
+	// Standard message bubble — reuse pooled instance to avoid allocation
+	if cv.renderBubble == nil {
+		cv.renderBubble = NewMessageBubble(msg.Role, msg.Content)
+	} else {
+		cv.renderBubble.mu.Lock()
+		cv.renderBubble.role = msg.Role
+		cv.renderBubble.content = msg.Content
+		cv.renderBubble.modelName = msg.ModelName
+		cv.renderBubble.streaming = msg.Streaming
+		cv.renderBubble.hasError = msg.Error
+		cv.renderBubble.timestamp = msg.Timestamp
+		cv.renderBubble.mu.Unlock()
 	}
-	mb.SetStreaming(msg.Streaming)
-	mb.SetError(msg.Error)
-	mb.SetTimestamp(msg.Timestamp)
-	mb.SetBounds(bounds)
-	mb.Paint(buf)
+	cv.renderBubble.SetBounds(bounds)
+	cv.renderBubble.Paint(buf)
 }
 
 // countWrappedLines counts the number of rendered lines after word-wrapping
