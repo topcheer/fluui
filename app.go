@@ -2,6 +2,7 @@ package fluui
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"sync"
@@ -62,7 +63,36 @@ func New() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	return newFromTerminal(t)
+}
 
+// NewWithWriter creates an App that writes to the given io.Writer instead of
+// a real terminal. This is useful for testing, CI pipelines, and headless
+// rendering. The App will have no real input source (Terminal() returns nil).
+//
+// The colorProfile determines what color escapes are emitted. Use term.Profile256
+// or term.ProfileTrueColor for realistic output, or term.Profile16 for minimal.
+func NewWithWriter(w io.Writer, width, height int) *App {
+	tw := term.NewWriter(w, term.Profile256)
+	r := render.New(tw, width, height)
+	disp := event.NewDispatcher()
+	loop := event.NewLoop(nil, disp)
+
+	app := &App{
+		terminal:   nil,
+		writer:     tw,
+		renderer:   r,
+		loop:       loop,
+		dispatcher: disp,
+		width:      width,
+		height:     height,
+	}
+	app.setupHandlers()
+	return app
+}
+
+// newFromTerminal creates an App from an already-open Terminal.
+func newFromTerminal(t *term.Terminal) (*App, error) {
 	w, h := t.Size()
 	tw := term.NewWriter(t, t.ColorProfile())
 	r := render.New(tw, w, h)
@@ -78,10 +108,7 @@ func New() (*App, error) {
 		width:      w,
 		height:     h,
 	}
-
-	// Wire default handlers
 	app.setupHandlers()
-
 	return app, nil
 }
 
