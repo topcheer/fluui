@@ -38,5 +38,7 @@ Thumbs.db
 /*.test
 /demo*
 /ai-agent
+/ai-chat-demo
 /component.test
 /interrupt_test
+/cov.out
