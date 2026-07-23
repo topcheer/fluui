@@ -1,9 +1,9 @@
 package component
 
 import (
-	"fmt"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/topcheer/fluui/internal/term"
@@ -271,18 +271,17 @@ func (c *ChatComposer) paintActive(buf *buffer.Buffer, bounds Rect) {
 		lineIdx := scrollY + row
 		if lineIdx < len(lines) {
 			line := string(lines[lineIdx])
-			lr := []rune(line)
-			if len(lr) > contentW {
-				lr = lr[:contentW]
+			if utf8.RuneCountInString(line) > contentW {
+				line = truncateStr(line, contentW)
 			}
-			buf.DrawText(bounds.X+2, y, string(lr), buffer.Style{Fg: th.Fg})
+			buf.DrawText(bounds.X+2, y, line, buffer.Style{Fg: th.Fg})
 		} else if row == 0 && c.textarea.Text() == "" && c.placeholder != "" {
 			// Placeholder
-			pr := []rune(c.placeholder)
-			if len(pr) > contentW {
-				pr = pr[:contentW]
+			ph := c.placeholder
+			if utf8.RuneCountInString(ph) > contentW {
+				ph = truncateStr(ph, contentW)
 			}
-			buf.DrawText(bounds.X+2, y, string(pr), mutedStyle)
+			buf.DrawText(bounds.X+2, y, ph, mutedStyle)
 		}
 	}
 
@@ -296,10 +295,9 @@ func (c *ChatComposer) paintActive(buf *buffer.Buffer, bounds Rect) {
 
 	// Token count (bottom-right of input area)
 	if c.tokenIn > 0 || c.tokenOut > 0 {
-		tokenStr := fmt.Sprintf("↑%s ↓%s", formatTokenCount(c.tokenIn), formatTokenCount(c.tokenOut))
-		tr := []rune(tokenStr)
-		if len(tr) < w-2 {
-			buf.DrawText(bounds.X+w-len(tr)-1, botY, tokenStr, mutedStyle)
+		tokenStr := "↑" + formatTokenCount(c.tokenIn) + " ↓" + formatTokenCount(c.tokenOut)
+		if utf8.RuneCountInString(tokenStr) < w-2 {
+			buf.DrawText(bounds.X+w-utf8.RuneCountInString(tokenStr)-1, botY, tokenStr, mutedStyle)
 		}
 	}
 
@@ -312,11 +310,10 @@ func (c *ChatComposer) paintActive(buf *buffer.Buffer, bounds Rect) {
 	hintY := bounds.Y + bounds.H - 1
 	if hintY > botY {
 		hint := c.hint
-		hr := []rune(hint)
-		if len(hr) > w {
-			hr = hr[:w]
+		if utf8.RuneCountInString(hint) > w {
+			hint = truncateStr(hint, w)
 		}
-		buf.DrawText(bounds.X, hintY, string(hr), mutedStyle)
+		buf.DrawText(bounds.X, hintY, hint, mutedStyle)
 	}
 }
 
