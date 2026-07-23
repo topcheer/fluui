@@ -1,8 +1,9 @@
 package component
 
 import (
-	"fmt"
+	"strconv"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/topcheer/fluui/internal/term"
@@ -153,26 +154,25 @@ func (c *CitationsBlock) paintCollapsed(buf *buffer.Buffer, bounds Rect) {
 	linkStyle := buffer.Style{Fg: theme.Get().Accent}
 
 	count := len(c.citations)
-	text := fmt.Sprintf("Sources (%d):", count)
+	text := "Sources (" + strconv.Itoa(count) + "):"
 
 	// Build citation indices
 	for _, cit := range c.citations {
-		text += fmt.Sprintf(" [%d]", cit.Index)
+		text += " [" + strconv.Itoa(cit.Index) + "]"
 	}
 
-	r := []rune(text)
-	if len(r) > bounds.W {
-		r = r[:bounds.W]
+	if utf8.RuneCountInString(text) > bounds.W {
+		text = truncateStr(text, bounds.W)
 	}
 
 	x := bounds.X
-	x += buf.DrawText(x, bounds.Y, string(r), muted)
+	x += buf.DrawText(x, bounds.Y, text, muted)
 
 	// Optionally render the first URL as OSC8 hyperlink
-	if count > 0 && c.citations[0].URL != "" && bounds.W-len(r) > 10 {
-		hint := "  " + truncateStr(c.citations[0].URL, bounds.W-len(r)-2)
+	if count > 0 && c.citations[0].URL != "" && bounds.W-utf8.RuneCountInString(text) > 10 {
+		hint := "  " + truncateStr(c.citations[0].URL, bounds.W-utf8.RuneCountInString(text)-2)
 		link := term.OSC8Link(term.HyperlinkOptions{URL: c.citations[0].URL}, hint)
-		_ = link // OSC8 link string (terminal renders as clickable)
+		_ = link
 		buf.DrawText(x, bounds.Y, hint, linkStyle)
 	}
 }
@@ -188,7 +188,7 @@ func (c *CitationsBlock) paintExpanded(buf *buffer.Buffer, bounds Rect) {
 
 	// Header
 	if availH > 0 {
-		header := fmt.Sprintf("Sources (%d):", len(c.citations))
+		header := "Sources (" + strconv.Itoa(len(c.citations)) + "):"
 		buf.DrawText(bounds.X, y, header, muted)
 		y++
 		availH--
@@ -206,7 +206,7 @@ func (c *CitationsBlock) paintExpanded(buf *buffer.Buffer, bounds Rect) {
 
 		// Line 1: [N] Title
 		title := truncateStr(cit.Title, contentW)
-		buf.DrawText(bounds.X, y, fmt.Sprintf("[%d] ", cit.Index), accent)
+		buf.DrawText(bounds.X, y, "["+strconv.Itoa(cit.Index)+"] ", accent)
 		buf.DrawText(bounds.X+3, y, title, fg)
 		y++
 		availH--
@@ -222,8 +222,8 @@ func (c *CitationsBlock) paintExpanded(buf *buffer.Buffer, bounds Rect) {
 		// Line 3: Snippet
 		if availH > 0 && cit.Snippet != "" {
 			snippet := truncateStr(cit.Snippet, c.maxSnippet)
-			if len([]rune(snippet)) > contentW {
-				snippet = string([]rune(snippet)[:contentW])
+			if utf8.RuneCountInString(snippet) > contentW {
+				snippet = truncateStr(snippet, contentW)
 			}
 			buf.DrawText(bounds.X+3, y, snippet, muted)
 			y++
@@ -236,12 +236,19 @@ func (c *CitationsBlock) paintExpanded(buf *buffer.Buffer, bounds Rect) {
 
 // truncateStr truncates a string to maxRunes runes, appending "…" if truncated.
 func truncateStr(s string, maxRunes int) string {
-	r := []rune(s)
-	if len(r) <= maxRunes {
+	if utf8.RuneCountInString(s) <= maxRunes {
 		return s
 	}
 	if maxRunes <= 1 {
 		return "…"
 	}
-	return string(r[:maxRunes-1]) + "…"
+	// Count runes and find the byte offset
+	count := 0
+	for i := range s {
+		if count == maxRunes-1 {
+			return s[:i] + "…"
+		}
+		count++
+	}
+	return s
 }
