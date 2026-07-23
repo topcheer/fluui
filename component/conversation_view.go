@@ -1,8 +1,10 @@
 package component
 
 import (
+	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/topcheer/fluui/internal/term"
@@ -315,13 +317,27 @@ func (cv *ConversationView) measureMessageLocked(msg ConversationMessage, cs Con
 	if msg.Citations != nil {
 		return msg.Citations.Measure(cs).H
 	}
-	mb := NewMessageBubble(msg.Role, msg.Content)
-	if msg.ModelName != "" {
-		mb.SetModel(msg.ModelName)
+	// Compute height directly without allocating a MessageBubble
+	// Header is always 1 line, content lines depend on wrapping
+	h := 1
+	if msg.Content != "" {
+		maxW := cs.MaxWidth
+		if maxW <= 0 {
+			maxW = 80
+		}
+		contentW := maxW - 4
+		if msg.Role == RoleSystem {
+			contentW = maxW - 2
+		}
+		if contentW < 1 {
+			contentW = 1
+		}
+		h += countWrappedLines(msg.Content, contentW)
 	}
-	mb.SetStreaming(msg.Streaming)
-	mb.SetError(msg.Error)
-	return mb.Measure(cs).H
+	if msg.Error {
+		h++
+	}
+	return h
 }
 
 // renderMessages paints messages at the correct scroll offset.
@@ -395,4 +411,40 @@ func (cv *ConversationView) paintMessage(buf *buffer.Buffer, bounds Rect, msg Co
 	mb.SetTimestamp(msg.Timestamp)
 	mb.SetBounds(bounds)
 	mb.Paint(buf)
+}
+
+// countWrappedLines counts the number of rendered lines after word-wrapping
+// at the given width. Uses utf8.RuneCountInString to avoid allocations.
+func countWrappedLines(text string, width int) int {
+	if width < 1 {
+		width = 1
+	}
+	total := 0
+	for _, para := range strings.Split(text, "\n") {
+		if para == "" {
+			total++
+			continue
+		}
+		words := strings.Fields(para)
+		if len(words) == 0 {
+			total++
+			continue
+		}
+		curLen := utf8.RuneCountInString(words[0])
+		lineCount := 1
+		for _, w := range words[1:] {
+			wdLen := utf8.RuneCountInString(w)
+			if curLen+1+wdLen <= width {
+				curLen += 1 + wdLen
+			} else {
+				lineCount++
+				curLen = wdLen
+			}
+		}
+		total += lineCount
+	}
+	if total == 0 {
+		return 1
+	}
+	return total
 }
