@@ -1,7 +1,7 @@
 package component
 
 import (
-	"fmt"
+	"strconv"
 	"sync"
 	"unicode/utf8"
 
@@ -210,7 +210,7 @@ func (w *TokenUsageWidget) buildLineLocked(maxW int) string {
 	ctxBar := ""
 	if w.ctxTotal > 0 {
 		pct := w.ctxPercentLocked()
-		ctxBar = "  " + buildProgressBar(pct, 8) + fmt.Sprintf(" %.0f%%", pct)
+		ctxBar = "  " + buildProgressBar(pct, 8) + " " + strconv.FormatFloat(pct, 'f', 0, 64) + "%"
 	}
 
 	line := model + "  ↑" + inStr + " ↓" + outStr + "  " + costStr + ctxBar
@@ -226,23 +226,29 @@ func (w *TokenUsageWidget) buildLineLocked(maxW int) string {
 }
 
 // formatTokenCount formats a token count for compact display.
-// e.g. 1234 → "1.2k", 1234567 → "1.2M"
+// Uses strconv.AppendFloat to avoid fmt.Sprintf allocations.
 func formatTokenCount(n int) string {
 	if n < 1000 {
-		return fmt.Sprintf("%d", n)
+		return strconv.Itoa(n)
 	}
+	var buf [16]byte
 	if n < 1_000_000 {
-		return fmt.Sprintf("%.1fk", float64(n)/1000)
+		b := strconv.AppendFloat(buf[:0], float64(n)/1000, 'f', 1, 64)
+		return string(b) + "k"
 	}
-	return fmt.Sprintf("%.1fM", float64(n)/1_000_000)
+	b := strconv.AppendFloat(buf[:0], float64(n)/1_000_000, 'f', 1, 64)
+	return string(b) + "M"
 }
 
 // formatCost formats a USD cost for display.
 func formatCost(c float64) string {
+	var buf [32]byte
 	if c < 0.01 {
-		return fmt.Sprintf("$%.4f", c)
+		b := strconv.AppendFloat(buf[:0], c, 'f', 4, 64)
+		return "$" + string(b)
 	}
-	return fmt.Sprintf("$%.2f", c)
+	b := strconv.AppendFloat(buf[:0], c, 'f', 2, 64)
+	return "$" + string(b)
 }
 
 // buildProgressBar creates a text progress bar of given width (0-100 pct).
@@ -257,12 +263,13 @@ func buildProgressBar(pct float64, width int) string {
 	if filled < 0 {
 		filled = 0
 	}
-	bar := ""
+	var buf [64]byte
+	b := buf[:0]
 	for i := 0; i < filled; i++ {
-		bar += "▓"
+		b = append(b, "▓"...)
 	}
 	for i := filled; i < width; i++ {
-		bar += "░"
+		b = append(b, "░"...)
 	}
-	return bar
+	return string(b)
 }
