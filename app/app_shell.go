@@ -1,3 +1,5 @@
+// Package app provides the application shell with sidebar, status bar,
+// panel management, terminal capability detection, and clipboard integration.
 package app
 
 import (

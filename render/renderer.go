@@ -1,3 +1,6 @@
+// Package render implements the double-buffered terminal renderer.
+// It manages front/back buffers, computes diffs, and emits minimal ANSI
+// escape sequences for efficient screen updates with zero-copy output.
 package render
 
 import (
