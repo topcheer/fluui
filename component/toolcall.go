@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/topcheer/fluui/theme"
@@ -322,9 +323,10 @@ func (t *ToolCallView) buildHeaderLocked(maxW int) string {
 	icon := t.statusIconLocked()
 	dur := formatToolDuration(t.durationLocked())
 	header := icon + " " + t.toolName + "  " + dur
-	r := []rune(header)
-	if len(r) > maxW {
-		return string(r[:maxW-1]) + "…"
+	// Use utf8.RuneCountInString to avoid []rune allocation
+	if utf8.RuneCountInString(header) > maxW {
+		// Truncate by runes
+		return truncateRunes(header, maxW-1) + "…"
 	}
 	return header
 }
@@ -449,11 +451,11 @@ func (t *ToolCallView) drawBorderedSection(buf *buffer.Buffer, x, y, w, maxH int
 
 // drawStyledText draws text clamped to width.
 func (t *ToolCallView) drawStyledText(buf *buffer.Buffer, x, y, maxW int, text string, style buffer.Style) {
-	r := []rune(text)
-	if len(r) > maxW {
-		r = r[:maxW]
+	if utf8.RuneCountInString(text) <= maxW {
+		buf.DrawText(x, y, text, style)
+		return
 	}
-	buf.DrawText(x, y, string(r), style)
+	buf.DrawText(x, y, truncateRunes(text, maxW), style)
 }
 
 // formatToolDuration formats a duration for display (e.g. "1.2s", "234ms").

@@ -3,6 +3,7 @@ package component
 import (
 	"fmt"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/topcheer/fluui/theme"
@@ -214,11 +215,10 @@ func (w *TokenUsageWidget) buildLineLocked(maxW int) string {
 
 	line := model + "  ↑" + inStr + " ↓" + outStr + "  " + costStr + ctxBar
 
-	// Clamp to width
-	r := []rune(line)
-	if len(r) > maxW {
+	// Clamp to width using utf8.RuneCountInString (avoids []rune allocation)
+	if utf8.RuneCountInString(line) > maxW {
 		if maxW > 1 {
-			return string(r[:maxW-1]) + "…"
+			return truncateStr(line, maxW-1) + "…"
 		}
 		return "…"
 	}
