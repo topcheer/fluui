@@ -13,12 +13,12 @@ import (
 // === ToolCallView ===
 
 func BenchmarkToolCallView_Paint_Collapsed(b *testing.B) {
+	tc := NewToolCallView("read_file", `{"path":"/usr/local/go/src/runtime/proc.go","mode":"rw"}`)
+	tc.SetBounds(Rect{X: 0, Y: 0, W: 60, H: 1})
+	buf := buffer.NewBuffer(60, 1)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		tc := NewToolCallView("read_file", `{"path":"/usr/local/go/src/runtime/proc.go","mode":"rw"}`)
-		tc.SetBounds(Rect{X: 0, Y: 0, W: 60, H: 1})
-		buf := buffer.NewBuffer(60, 1)
 		tc.Paint(buf)
 	}
 }

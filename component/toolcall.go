@@ -3,6 +3,7 @@ package component
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -464,7 +465,9 @@ func formatToolDuration(d time.Duration) string {
 		return "0ms"
 	}
 	if d < time.Second {
-		return fmt.Sprintf("%dms", d.Milliseconds())
+		return strconv.FormatInt(d.Milliseconds(), 10) + "ms"
 	}
-	return fmt.Sprintf("%.1fs", d.Seconds())
+	var buf [16]byte
+	b := strconv.AppendFloat(buf[:0], d.Seconds(), 'f', 1, 64)
+	return string(b) + "s"
 }
