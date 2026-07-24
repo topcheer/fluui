@@ -325,6 +325,71 @@ const DisableKittyKeyboard = "\x1b[<u"
 const Bell = "\x07"
 
 // ---------------------------------------------------------------------------
+// Cursor Shape — DECSCUSR (CSI Ps SP q)
+// ---------------------------------------------------------------------------
+
+// CursorShape specifies the visual style of the text cursor.
+type CursorShape int
+
+const (
+	// CursorShapeDefault lets the terminal decide (typically blinking block).
+	CursorShapeDefault CursorShape = 0
+	// CursorShapeBlinkingBlock is a blinking filled rectangle (DECSCUSR 0/1).
+	CursorShapeBlinkingBlock CursorShape = 1
+	// CursorShapeSteadyBlock is a non-blinking filled rectangle (DECSCUSR 2).
+	CursorShapeSteadyBlock CursorShape = 2
+	// CursorShapeBlinkingUnderline is a blinking underline (DECSCUSR 3).
+	CursorShapeBlinkingUnderline CursorShape = 3
+	// CursorShapeSteadyUnderline is a non-blinking underline (DECSCUSR 4).
+	CursorShapeSteadyUnderline CursorShape = 4
+	// CursorShapeBlinkingBar is a blinking vertical bar (xterm DECSCUSR 5).
+	CursorShapeBlinkingBar CursorShape = 5
+	// CursorShapeSteadyBar is a non-blinking vertical bar (xterm DECSCUSR 6).
+	CursorShapeSteadyBar CursorShape = 6
+)
+
+// SetCursorShape returns the DECSCUSR escape sequence to change the cursor
+// shape. Use CursorShapeSteadyBar for text editing mode and CursorShapeSteadyBlock
+// for normal mode.
+//
+// Format: CSI Ps SP q   (where SP is a literal space 0x20)
+// Supported by: xterm, iTerm2, Kitty, WezTerm, Alacritty, GNOME, Windows Terminal.
+func SetCursorShape(shape CursorShape) string {
+	if shape < 0 || shape > 6 {
+		shape = 0
+	}
+	return "\x1b[" + string(rune('0'+shape)) + " q"
+}
+
+// ResetCursorShape restores the cursor to the terminal's default shape.
+func ResetCursorShape() string {
+	return "\x1b[0 q"
+}
+
+// ---------------------------------------------------------------------------
+// Desktop Notification — OSC 9 (iTerm2 / WezTerm)
+// ---------------------------------------------------------------------------
+
+// DesktopNotification sends a desktop notification via OSC 9.
+// iTerm2 and WezTerm display this as a system notification.
+// The message appears in the OS notification center.
+//
+// Format: ESC ] 9 ; <message> BEL
+func DesktopNotification(message string) string {
+	return "\x1b]9;" + escapeOSCString(message) + "\x07"
+}
+
+// escapeOSCString replaces BEL bytes inside OSC payloads.
+func escapeOSCString(s string) string {
+	for i := 0; i < len(s); i++ {
+		if s[i] == 0x07 {
+			return strings.ReplaceAll(s, "\x07", "\\x07")
+		}
+	}
+	return s
+}
+
+// ---------------------------------------------------------------------------
 // QueryWindowTitle — OSC 21 / report response via input stream.
 // ---------------------------------------------------------------------------
 
