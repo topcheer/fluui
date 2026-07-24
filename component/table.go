@@ -528,9 +528,9 @@ func (t *Table) Paint(buf *buffer.Buffer) {
 	}
 
 	colX := x
-	visibleCols := t.visibleColumnsLocked(w)
+	colStart, colEnd := t.visibleColumnRangeLocked(w)
 
-	for _, ci := range visibleCols {
+	for ci := colStart; ci < colEnd; ci++ {
 		col := t.columns[ci]
 		title := t.truncateToWidth(col.Title, col.Width)
 		t.drawCellLocked(buf, colX, y, title, col.Width, ci, headerStyle)
@@ -602,7 +602,7 @@ func (t *Table) Paint(buf *buffer.Buffer) {
 		isZebra := t.zebra && rowIdx%2 == 1
 
 		colX = x
-		for _, ci := range visibleCols {
+		for ci := colStart; ci < colEnd; ci++ {
 			col := t.columns[ci]
 				cellText := ""
 			if ci < len(rows[rowIdx]) {
@@ -825,33 +825,34 @@ func (t *Table) totalWidthLocked() int {
 	return w
 }
 
-// visibleColumnsLocked returns the indices of columns visible given the current scrollX and width.
-func (t *Table) visibleColumnsLocked(maxW int) []int {
+// visibleColumnRangeLocked returns the [start, end) range of visible column
+// indices given the current scrollX and width. Zero allocation.
+func (t *Table) visibleColumnRangeLocked(maxW int) (int, int) {
 	if len(t.columns) == 0 {
-		return nil
+		return 0, 0
 	}
 	start := t.scrollX
 	if start < 0 {
 		start = 0
 	}
 	if start >= len(t.columns) {
-		return nil
+		return start, start
 	}
 
-	var result []int
 	usedW := 0
+	end := start
 	for i := start; i < len(t.columns); i++ {
 		colW := int(t.columns[i].Width) + 1 // +1 for separator
-		if usedW+colW > maxW && len(result) > 0 {
+		if usedW+colW > maxW && end > start {
 			break
 		}
-		result = append(result, i)
+		end = i + 1
 		usedW += colW
 		if usedW >= maxW {
 			break
 		}
 	}
-	return result
+	return start, end
 }
 
 // drawCellLocked draws a single cell with the column's alignment.
