@@ -3,7 +3,7 @@
 > **流畅 (fluent) + UI** — An AI-native TUI library for Go, built from scratch.
 
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev)
-[![Tests](https://img.shields.io/badge/tests-2972-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-9600+-brightgreen)](#testing)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#license)
 
 Fluui is a terminal UI framework designed specifically for AI chat interfaces. Every layer — from the input parser to the render engine — is optimized for streaming content, semantic content blocks, and zero-flicker updates.
@@ -13,6 +13,14 @@ Fluui is a terminal UI framework designed specifically for AI chat interfaces. E
 | Feature | Fluui | Bubble Tea | tview |
 |---|---|---|---|
 | Streaming-first architecture | Yes | Partial | No |
+| **AI Chat Framework (6 components)** | **Yes** | **No** | **No** |
+| **Streaming Markdown Renderer** | **Yes** | **No** | **No** |
+| **Tool Call Visualization** | **Yes** | **No** | **No** |
+| **Token Usage Widget** | **Yes** | **No** | **No** |
+| **Headless/CI Mode (NewWithWriter)** | **Yes** | **No** | **No** |
+| **MockTerminal for testing** | **Yes** | **No** | **No** |
+| **OSC 133 Shell Integration** | **Yes** | **No** | **No** |
+| **21 Terminal Protocols** | **Yes** | **~5** | **~3** |
 | Semantic content blocks (Thinking, ToolCall, ToolResult) | Yes | No | No |
 | Zero-flicker double-buffer diff | Yes | Yes | Partial |
 | Mouse-native (clickable, collapsible blocks) | Yes | No | Partial |
@@ -114,6 +122,74 @@ func main() {
     chat.OnQuit(func() { base.Quit() })
     base.Run()
 }
+```
+
+## AI-Native Component Framework
+
+Fluui includes a complete AI chat framework with 6 reusable components:
+
+```go
+import "github.com/topcheer/fluui/component"
+
+// Create a conversation view (scrollable chat history)
+conv := component.NewConversationView()
+conv.AddUserMessage("List files in /tmp")
+
+// Embedded tool call visualization
+tc := component.NewToolCallView("list_files", `{"dir":"/tmp"}`)
+conv.AddToolCall(tc)
+tc.SetResult("file1.go\nfile2.go")
+tc.Complete()
+
+// Assistant response with streaming
+conv.AddAssistantMessage("Found 2 files!", "gpt-4")
+
+// Source citations
+conv.AddCitations(component.NewCitationsBlock([]component.Citation{
+    {Index: 1, Title: "Go Docs", URL: "https://go.dev/doc"},
+}))
+
+// Input composer with token tracking
+composer := component.NewChatComposer()
+composer.SetTokenCount(842, 156)
+composer.SetOnSubmit(func(text string) {
+    conv.AddUserMessage(text)
+})
+```
+
+| Component | Description | Paint Allocs |
+|-----------|-------------|:------------:|
+| ConversationView | Scrollable chat history with auto-scroll | ~15/msg |
+| MessageBubble | Role-based rendering (User/Assistant/System/Tool) | 11 |
+| ChatComposer | Input box with Enter-to-send, slash commands | **2** |
+| ToolCallView | Tool/function call with streaming results | **2** |
+| CitationsBlock | Source citations with collapsible detail | **0** (expanded) |
+| TokenUsageWidget | Token count, cost, context window bar | 5 |
+
+### Streaming Markdown
+
+```go
+md := component.NewMarkdownViewer("")
+md.SetStreaming(true)
+md.AppendDelta("# AI Response\n\n**Bold** text with `code`.")
+md.SetStreaming(false) // flushes buffer
+```
+
+### Headless / CI Usage
+
+```go
+// No /dev/tty needed — render to any io.Writer
+app := fluui.NewWithWriter(os.Stdout, 80, 24)
+app.DrawText(0, 0, "Hello", buffer.DefaultStyle)
+```
+
+### Terminal Capability Detection
+
+```go
+shell.DetectCapabilities("xterm-kitty", "kitty", "truecolor")
+caps := shell.Capabilities()
+if caps.OSC8 { /* emit clickable hyperlinks */ }
+if caps.TrueColor { /* use 24-bit colors */ }
 ```
 
 ## Architecture
