@@ -5,7 +5,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-### Performance — Zero-Allocation AI Rendering (P330-P336)
+### Components — SegmentedControl + SkeletonLoader (P339)
+- **SegmentedControl** — iOS-style segmented mode switcher (zero-alloc Paint)
+- **SkeletonLoader** — animated loading placeholder blocks for AI loading states
+- Component count: **89**
+
+### Performance — Continued Zero-Alloc Optimization (P340-P341)
+- **ChatComposer: 2→0 allocs** via stack-buffer token formatting
+- **ToolCallView expanded: 12→3 allocs** via eliminating []rune/string(r) conversions
+- **16/19 benchmarked components now zero-alloc Paint**
+
+### Coverage (P338)
+- appendTokenCount 66→100%, appendProgressBar 75→92%
 - **ConversationView: 402→0 allocs** (10 messages) — fully zero-allocation chat rendering
 - **MessageBubble: 3→0 allocs** (short) via `time.AppendFormat` on stack buffer
 - **CitationsBlock: 7→0 allocs** (collapsed) via single stack buffer formatting

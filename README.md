@@ -126,7 +126,7 @@ func main() {
 
 ## AI-Native Component Framework
 
-Fluui includes a complete AI chat framework with 7 reusable components (ConversationView, MessageBubble, ChatComposer, ToolCallView, CitationsBlock, TokenUsageWidget, ThinkingIndicator):
+Fluui includes a complete AI chat framework with 9 reusable components (ConversationView, MessageBubble, ChatComposer, ToolCallView, CitationsBlock, TokenUsageWidget, ThinkingIndicator, SegmentedControl, SkeletonLoader):
 
 ```go
 import "github.com/topcheer/fluui/component"
@@ -161,11 +161,13 @@ composer.SetOnSubmit(func(text string) {
 |-----------|-------------|:------------:|
 | ConversationView | Scrollable chat history (10 messages) | **0** |
 | MessageBubble | Role-based rendering (User/Assistant/System/Tool) | **0** |
-| ChatComposer | Input box with Enter-to-send, slash commands | **2** |
-| ToolCallView | Tool/function call with streaming results | **0** (collapsed) |
+| ChatComposer | Input box with Enter-to-send, slash commands | **0** |
+| ToolCallView | Tool/function call with streaming results | **0** (collapsed), 3 (expanded) |
 | CitationsBlock | Source citations with collapsible detail | **0** |
 | TokenUsageWidget | Token count, cost, context window bar | **1** |
 | ThinkingIndicator | Animated "AI thinking" three-dot indicator | **0** |
+| SegmentedControl | iOS-style mode switcher | **0** |
+| SkeletonLoader | Animated loading placeholders | **0** |
 
 ### Streaming Markdown
 
@@ -340,7 +342,7 @@ Full documentation is available in [`docs/`](docs/):
 - [Architecture](docs/architecture.md) — 6-layer design overview
 - [API Reference](docs/api-reference.md) — Complete public API
 - [Tutorial](docs/tutorial.md) — Step-by-step AI Agent tutorial
-- [Components](docs/components.md) — Widget system guide (87 components)
+- [Components](docs/components.md) — Widget system guide (89 components)
 - [Widgets Guide](docs/widgets-guide.md) — FilePicker/TabBar/StatusBar/DiffPreview/Dialog/Wizard/Checkbox/Slider tutorials
 - [Blocks](docs/blocks.md) — Content block types and lifecycle
 - [Themes](docs/themes.md) — Theme system and customization
