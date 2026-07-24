@@ -126,7 +126,7 @@ func main() {
 
 ## AI-Native Component Framework
 
-Fluui includes a complete AI chat framework with 6 reusable components:
+Fluui includes a complete AI chat framework with 7 reusable components (ConversationView, MessageBubble, ChatComposer, ToolCallView, CitationsBlock, TokenUsageWidget, ThinkingIndicator):
 
 ```go
 import "github.com/topcheer/fluui/component"
@@ -159,12 +159,13 @@ composer.SetOnSubmit(func(text string) {
 
 | Component | Description | Paint Allocs |
 |-----------|-------------|:------------:|
-| ConversationView | Scrollable chat history with auto-scroll | ~15/msg |
-| MessageBubble | Role-based rendering (User/Assistant/System/Tool) | 11 |
+| ConversationView | Scrollable chat history (10 messages) | **0** |
+| MessageBubble | Role-based rendering (User/Assistant/System/Tool) | **0** |
 | ChatComposer | Input box with Enter-to-send, slash commands | **2** |
-| ToolCallView | Tool/function call with streaming results | **2** |
-| CitationsBlock | Source citations with collapsible detail | **0** (expanded) |
-| TokenUsageWidget | Token count, cost, context window bar | 5 |
+| ToolCallView | Tool/function call with streaming results | **0** (collapsed) |
+| CitationsBlock | Source citations with collapsible detail | **0** |
+| TokenUsageWidget | Token count, cost, context window bar | **1** |
+| ThinkingIndicator | Animated "AI thinking" three-dot indicator | **0** |
 
 ### Streaming Markdown
 
@@ -339,7 +340,7 @@ Full documentation is available in [`docs/`](docs/):
 - [Architecture](docs/architecture.md) — 6-layer design overview
 - [API Reference](docs/api-reference.md) — Complete public API
 - [Tutorial](docs/tutorial.md) — Step-by-step AI Agent tutorial
-- [Components](docs/components.md) — Widget system guide (30+ components)
+- [Components](docs/components.md) — Widget system guide (87 components)
 - [Widgets Guide](docs/widgets-guide.md) — FilePicker/TabBar/StatusBar/DiffPreview/Dialog/Wizard/Checkbox/Slider tutorials
 - [Blocks](docs/blocks.md) — Content block types and lifecycle
 - [Themes](docs/themes.md) — Theme system and customization
