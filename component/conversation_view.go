@@ -1,7 +1,6 @@
 package component
 
 import (
-	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
@@ -420,31 +419,52 @@ func (cv *ConversationView) paintMessage(buf *buffer.Buffer, bounds Rect, msg Co
 }
 
 // countWrappedLines counts the number of rendered lines after word-wrapping
-// at the given width. Uses utf8.RuneCountInString to avoid allocations.
+// at the given width. Uses zero-copy byte-slice scanning to avoid all
+// allocations (no strings.Split, no strings.Fields).
 func countWrappedLines(text string, width int) int {
 	if width < 1 {
 		width = 1
 	}
 	total := 0
-	for _, para := range strings.Split(text, "\n") {
-		if para == "" {
+	paraStart := 0
+	n := len(text)
+	for i := 0; i <= n; i++ {
+		if i < n && text[i] != '\n' {
+			continue
+		}
+		// paragraph = text[paraStart:i], zero-copy slice
+		para := text[paraStart:i]
+		paraStart = i + 1
+
+		if len(para) == 0 {
 			total++
 			continue
 		}
-		words := strings.Fields(para)
-		if len(words) == 0 {
-			total++
-			continue
-		}
-		curLen := utf8.RuneCountInString(words[0])
+
+		// Scan words within this paragraph using byte-level scanning.
+		// A "word" is a maximal run of non-space, non-tab bytes.
 		lineCount := 1
-		for _, w := range words[1:] {
-			wdLen := utf8.RuneCountInString(w)
-			if curLen+1+wdLen <= width {
-				curLen += 1 + wdLen
-			} else {
-				lineCount++
-				curLen = wdLen
+		curLen := 0
+		wordStart := -1
+		pn := len(para)
+		for j := 0; j <= pn; j++ {
+			isEnd := j == pn
+			isSpace := !isEnd && (para[j] == ' ' || para[j] == '\t')
+			if isSpace || isEnd {
+				if wordStart >= 0 {
+					wdLen := utf8.RuneCountInString(para[wordStart:j])
+					if curLen == 0 {
+						curLen = wdLen
+					} else if curLen+1+wdLen <= width {
+						curLen += 1 + wdLen
+					} else {
+						lineCount++
+						curLen = wdLen
+					}
+					wordStart = -1
+				}
+			} else if wordStart < 0 {
+				wordStart = j
 			}
 		}
 		total += lineCount
