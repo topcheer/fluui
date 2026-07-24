@@ -5,6 +5,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Performance — Zero-Allocation AI Rendering (P330-P336)
+- **ConversationView: 402→0 allocs** (10 messages) — fully zero-allocation chat rendering
+- **MessageBubble: 3→0 allocs** (short) via `time.AppendFormat` on stack buffer
+- **CitationsBlock: 7→0 allocs** (collapsed) via single stack buffer formatting
+- **ToolCallView: 2→0 allocs** (collapsed) via direct-to-buffer piecewise drawing
+- **TokenUsageWidget: 5→1 alloc** via single [256]byte stack buffer
+- **Zero-copy `countWrappedLines`** — byte-slice word-wrap scanning replaces strings.Split/Fields
+
+### Added — Protocols & Components (P331-P332)
+- **DECSCUSR cursor shape** — 7 cursor styles (blinking/steady block/underline/bar)
+- **OSC 9 desktop notification** — system notifications for iTerm2/WezTerm
+- **ThinkingIndicator** — animated "AI thinking" three-dot indicator (component 87)
+- Protocol count: **23 classes**
+
+### Coverage (P329)
+- Root package coverage 85.9% → 93.8% (newFromTerminal + Run lifecycle tests)
+
 ### Added — AI-Native Chat Framework (P295-P300)
 - **ConversationView** — scrollable chat history with auto-scroll
 - **MessageBubble** — role-based message rendering (User/Assistant/System/Tool)
