@@ -267,23 +267,17 @@ func (m *MessageBubble) paintStandard(buf *buffer.Buffer, bounds Rect) {
 
 	// Right-align for user
 	if m.role == RoleUser {
-		hr := []rune(header)
-		if len(hr) < w {
-			spaces := w - len(hr)
+		if utf8.RuneCountInString(header) < w {
+			spaces := w - utf8.RuneCountInString(header)
 			buf.DrawText(bounds.X+spaces, y, header, headerStyle)
 		} else {
-			r := hr
-			if len(r) > w {
-				r = r[:w]
-			}
-			buf.DrawText(bounds.X, y, string(r), headerStyle)
+			buf.DrawText(bounds.X, y, truncateStr(header, w), headerStyle)
 		}
 	} else {
-		r := []rune(header)
-		if len(r) > w {
-			r = r[:w]
+		if utf8.RuneCountInString(header) > w {
+			header = truncateStr(header, w)
 		}
-		buf.DrawText(bounds.X, y, string(r), headerStyle)
+		buf.DrawText(bounds.X, y, header, headerStyle)
 	}
 	y++
 
@@ -370,26 +364,26 @@ func (m *MessageBubble) paintSystem(buf *buffer.Buffer, bounds Rect) {
 			break
 		}
 		// Center-align
-		lr := []rune(line)
-		if len(lr) > contentW {
-			lr = lr[:contentW]
+		lr := line
+		if utf8.RuneCountInString(lr) > contentW {
+			lr = truncateStr(lr, contentW)
 		}
-		spaces := (w - len(lr)) / 2
-		buf.DrawText(bounds.X+spaces, y, string(lr), sysStyle)
+		lineLen := utf8.RuneCountInString(lr)
+		spaces := (w - lineLen) / 2
+		buf.DrawText(bounds.X+spaces, y, lr, sysStyle)
 		y++
 	}
 }
 
 // drawLineLocked draws a single content line, right-aligned for user messages.
 func (m *MessageBubble) drawLineLocked(buf *buffer.Buffer, x, y, maxW int, text string, style buffer.Style) {
-	r := []rune(text)
-	if len(r) > maxW {
-		text = string(r[:maxW])
-		r = []rune(text)
+	if utf8.RuneCountInString(text) > maxW {
+		text = truncateStr(text, maxW)
 	}
 	if m.role == RoleUser {
-		if len(r) < maxW {
-			x += maxW - len(r)
+		rl := utf8.RuneCountInString(text)
+		if rl < maxW {
+			x += maxW - rl
 		}
 	}
 	buf.DrawText(x, y, text, style)
