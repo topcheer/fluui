@@ -402,8 +402,9 @@ func (t *ToolCallView) drawBorderedSection(buf *buffer.Buffer, x, y, w, maxH int
 	}
 
 	// Top border: ╭─ label ──╮
-	labelRunes := []rune(" " + label + " ")
-	labelW := len(labelRunes)
+	// Use utf8.RuneCountInString instead of []rune to avoid allocation
+	labelText := " " + label + " "
+	labelW := utf8.RuneCountInString(labelText)
 	dashesTotal := w - 2 - labelW
 	if dashesTotal < 0 {
 		dashesTotal = 0
@@ -418,10 +419,9 @@ func (t *ToolCallView) drawBorderedSection(buf *buffer.Buffer, x, y, w, maxH int
 		buf.DrawText(drawX, y, "─", borderStyle)
 		drawX++
 	}
-	for _, r := range labelRunes {
-		buf.DrawText(drawX, y, string(r), borderStyle)
-		drawX++
-	}
+	// Draw label text directly (no per-rune string conversion)
+	buf.DrawText(drawX, y, labelText, borderStyle)
+	drawX += labelW
 	for i := 0; i < rightDashes; i++ {
 		buf.DrawText(drawX, y, "─", borderStyle)
 		drawX++
@@ -441,11 +441,12 @@ func (t *ToolCallView) drawBorderedSection(buf *buffer.Buffer, x, y, w, maxH int
 			break
 		}
 		buf.DrawText(x, ly, "│", borderStyle)
-		lineRunes := []rune(line)
-		if len(lineRunes) > contentW-1 {
-			lineRunes = lineRunes[:contentW-1]
+		lineW := utf8.RuneCountInString(line)
+		if lineW > contentW-1 {
+			line = truncateRunes(line, contentW-1)
 		}
-		buf.DrawText(x+1, ly, " "+string(lineRunes), contentStyle)
+		buf.DrawText(x+1, ly, " ", contentStyle)
+		buf.DrawText(x+2, ly, line, contentStyle)
 		if x+w-1 > x {
 			buf.DrawText(x+w-1, ly, "│", borderStyle)
 		}
