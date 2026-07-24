@@ -105,3 +105,31 @@ func ExampleSkeletonLoader() {
 	fmt.Printf("Blocks: %d\n", len(sk.Blocks()))
 	// Output: Blocks: 3
 }
+
+// ExampleAccordion demonstrates expandable sections.
+func ExampleAccordion() {
+	a := component.NewAccordion([]component.AccordionItem{
+		{Title: "General", Content: "Settings"},
+		{Title: "Advanced", Content: "Advanced options"},
+	})
+	a.Expand(0)
+	fmt.Printf("Item 0 expanded: %v\n", a.IsExpanded(0))
+	// Output: Item 0 expanded: true
+}
+
+// ExampleHeatmap demonstrates a GitHub-style activity grid.
+func ExampleHeatmap() {
+	h := component.NewHeatmap(7, 24) // 7 days × 24 hours
+	h.SetCell(0, 9, 50)              // Monday 9am
+	h.SetCell(0, 14, 80)             // Monday 2pm
+	r, c := h.Dimensions()
+	fmt.Printf("Grid: %dx%d, Max: %d\n", r, c, h.MaxValue())
+	// Output: Grid: 7x24, Max: 80
+}
+
+// ExampleBreadcrumb demonstrates navigation path.
+func ExampleBreadcrumb() {
+	b := component.NewBreadcrumb([]string{"Home", "Settings", "AI"})
+	fmt.Println(b.String())
+	// Output: Home › Settings › AI
+}
