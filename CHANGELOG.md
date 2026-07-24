@@ -5,6 +5,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Performance — All Zero-Allocation Rendering (P347)
+- **Table: 1→0 allocs** via visibleColumnRangeLocked (index range, not slice)
+- **22/25 benchmarked Paint operations now zero-alloc**
+
+### Coverage (P346)
+- Heatmap Paint coverage 64→98%
+
 ### Components — SegmentedControl + SkeletonLoader (P339)
 - **SegmentedControl** — iOS-style segmented mode switcher (zero-alloc Paint)
 - **SkeletonLoader** — animated loading placeholder blocks for AI loading states
