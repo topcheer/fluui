@@ -275,8 +275,34 @@ func (t *ToolCallView) Paint(buf *buffer.Buffer) {
 	remaining := bounds.H
 
 	// --- Header line ---
-	header := t.buildHeaderLocked(bounds.W)
-	t.drawStyledText(buf, bounds.X, y, bounds.W, header, t.headerStyleLocked())
+	style := t.headerStyleLocked()
+	icon := t.statusIconLocked()
+	dur := formatToolDuration(t.durationLocked())
+
+	// Calculate total header width for truncation check
+	iconW := utf8.RuneCountInString(icon)
+	nameW := utf8.RuneCountInString(t.toolName)
+	durW := utf8.RuneCountInString(dur)
+	totalW := iconW + 1 + nameW + 2 + durW
+
+	if totalW > bounds.W {
+		// Truncation needed — build string (1 alloc) for rare case
+		header := icon + " " + t.toolName + "  " + dur
+		header = truncateRunes(header, bounds.W-1) + "…"
+		buf.DrawText(bounds.X, y, header, style)
+	} else {
+		// Zero-alloc: draw each piece directly
+		x := bounds.X
+		buf.DrawText(x, y, icon, style)
+		x += iconW
+		buf.DrawText(x, y, " ", style)
+		x += 1
+		buf.DrawText(x, y, t.toolName, style)
+		x += nameW
+		buf.DrawText(x, y, "  ", style)
+		x += 2
+		buf.DrawText(x, y, dur, style)
+	}
 	y++
 	remaining--
 	if remaining <= 0 {
@@ -464,10 +490,14 @@ func formatToolDuration(d time.Duration) string {
 	if d < time.Millisecond {
 		return "0ms"
 	}
+	var buf [24]byte
+	b := buf[:0]
 	if d < time.Second {
-		return strconv.FormatInt(d.Milliseconds(), 10) + "ms"
+		b = strconv.AppendInt(b, d.Milliseconds(), 10)
+		b = append(b, "ms"...)
+	} else {
+		b = strconv.AppendFloat(b, d.Seconds(), 'f', 1, 64)
+		b = append(b, 's')
 	}
-	var buf [16]byte
-	b := strconv.AppendFloat(buf[:0], d.Seconds(), 'f', 1, 64)
-	return string(b) + "s"
+	return string(b)
 }
