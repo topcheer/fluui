@@ -329,28 +329,45 @@ func (m *MessageBubble) paintStandard(buf *buffer.Buffer, bounds Rect) {
 			y++
 			continue
 		}
-		// Word-wrap within the paragraph
-		words := strings.Fields(para)
-		if len(words) == 0 {
+		// Word-wrap within the paragraph using zero-alloc scanner
+		curLen := 0
+		current := ""
+		firstWord := true
+		wordStart := -1
+		for i := 0; i <= len(para); i++ {
+			isEnd := i == len(para)
+			isSpace := !isEnd && (para[i] == ' ' || para[i] == '\t')
+			if isEnd || isSpace {
+				if wordStart >= 0 {
+					word := para[wordStart:i]
+					wdLen := utf8.RuneCountInString(word)
+					if firstWord {
+						current = word
+						curLen = wdLen
+						firstWord = false
+					} else if curLen+1+wdLen <= contentW {
+						current += " " + word
+						curLen += 1 + wdLen
+					} else {
+						m.drawLineLocked(buf, padX, y, contentW, current, contentStyle)
+						y++
+						if y >= bounds.Y+bounds.H {
+							return
+						}
+						current = word
+						curLen = wdLen
+					}
+					wordStart = -1
+				}
+			} else {
+				if wordStart < 0 {
+					wordStart = i
+				}
+			}
+		}
+		if firstWord {
 			y++
 			continue
-		}
-		current := words[0]
-		curLen := utf8.RuneCountInString(current)
-		for _, wd := range words[1:] {
-			wdLen := utf8.RuneCountInString(wd)
-			if curLen+1+wdLen <= contentW {
-				current += " " + wd
-				curLen += 1 + wdLen
-			} else {
-				m.drawLineLocked(buf, padX, y, contentW, current, contentStyle)
-				y++
-				if y >= bounds.Y+bounds.H {
-					return
-				}
-				current = wd
-				curLen = wdLen
-			}
 		}
 		if m.streaming && len(remaining) == 0 {
 			current += "▊"
