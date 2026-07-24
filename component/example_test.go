@@ -62,3 +62,28 @@ func ExampleCitationsBlock() {
 	fmt.Printf("Citations: %d\n", cb.Count())
 	// Output: Citations: 2
 }
+
+// ExampleThinkingIndicator demonstrates the AI "thinking" animation.
+func ExampleThinkingIndicator() {
+	ti := component.NewThinkingIndicator("Thinking")
+	ti.SetLabel("Generating response")
+
+	// Manually advance frames for deterministic output
+	for i := 0; i < 4; i++ {
+		fmt.Printf("Frame %d\n", ti.FrameIndex())
+		ti.AdvanceFrame()
+	}
+	// Output:
+	// Frame 0
+	// Frame 1
+	// Frame 2
+	// Frame 3
+}
+
+// ExampleToolCallView demonstrates AI tool call visualization.
+func ExampleToolCallView() {
+	tc := component.NewToolCallView("read_file", `{"path":"/tmp/data.json"}`)
+	tc.Complete()
+	fmt.Printf("Tool: %s\n", tc.ToolName())
+	// Output: Tool: read_file
+}
