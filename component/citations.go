@@ -6,7 +6,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/topcheer/fluui/internal/buffer"
-	"github.com/topcheer/fluui/internal/term"
 	"github.com/topcheer/fluui/theme"
 )
 
@@ -154,26 +153,36 @@ func (c *CitationsBlock) paintCollapsed(buf *buffer.Buffer, bounds Rect) {
 	linkStyle := buffer.Style{Fg: theme.Get().Accent}
 
 	count := len(c.citations)
-	text := "Sources (" + strconv.Itoa(count) + "):"
 
-	// Build citation indices
+	// Build text in a single stack buffer to minimize allocations
+	var sb [256]byte
+	b := sb[:0]
+	b = append(b, "Sources ("...)
+	b = strconv.AppendInt(b, int64(count), 10)
+	b = append(b, "):"...)
 	for _, cit := range c.citations {
-		text += " [" + strconv.Itoa(cit.Index) + "]"
+		b = append(b, " ["...)
+		b = strconv.AppendInt(b, int64(cit.Index), 10)
+		b = append(b, ']')
 	}
+	text := string(b)
 
-	if utf8.RuneCountInString(text) > bounds.W {
+	textLen := utf8.RuneCountInString(text)
+	if textLen > bounds.W {
 		text = truncateStr(text, bounds.W)
+		textLen = bounds.W
 	}
 
 	x := bounds.X
 	x += buf.DrawText(x, bounds.Y, text, muted)
 
-	// Optionally render the first URL as OSC8 hyperlink
-	if count > 0 && c.citations[0].URL != "" && bounds.W-utf8.RuneCountInString(text) > 10 {
-		hint := "  " + truncateStr(c.citations[0].URL, bounds.W-utf8.RuneCountInString(text)-2)
-		link := term.OSC8Link(term.HyperlinkOptions{URL: c.citations[0].URL}, hint)
-		_ = link
-		buf.DrawText(x, bounds.Y, hint, linkStyle)
+	// Optionally render the first URL hint
+	if count > 0 && c.citations[0].URL != "" && bounds.W-textLen > 4 {
+		avail := bounds.W - textLen - 2
+		if avail > 0 {
+			hint := "  " + truncateStr(c.citations[0].URL, avail)
+			buf.DrawText(x, bounds.Y, hint, linkStyle)
+		}
 	}
 }
 
