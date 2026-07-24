@@ -2,7 +2,6 @@ package component
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -338,24 +337,15 @@ func (t *ToolCallView) Paint(buf *buffer.Buffer) {
 		// "show more" hint
 		if !t.showFull && len(resultLines) > t.maxResultPreview && remaining > 0 {
 			more := len(resultLines) - t.maxResultPreview
-			hint := fmt.Sprintf("  ⤷ %d more lines… (toggle to expand)", more)
+			var hbuf [64]byte
+			hb := hbuf[:0]
+			hb = append(hb, "  \u2937 "...)
+			hb = strconv.AppendInt(hb, int64(more), 10)
+			hb = append(hb, " more lines\u2026 (toggle to expand)"...)
 			hintStyle := buffer.Style{Fg: theme.Get().Muted}
-			t.drawStyledText(buf, bounds.X, y, bounds.W, hint, hintStyle)
+			buf.DrawText(bounds.X, y, string(hb), hintStyle)
 		}
 	}
-}
-
-// buildHeaderLocked constructs the header text: "icon toolName  duration"
-func (t *ToolCallView) buildHeaderLocked(maxW int) string {
-	icon := t.statusIconLocked()
-	dur := formatToolDuration(t.durationLocked())
-	header := icon + " " + t.toolName + "  " + dur
-	// Use utf8.RuneCountInString to avoid []rune allocation
-	if utf8.RuneCountInString(header) > maxW {
-		// Truncate by runes
-		return truncateRunes(header, maxW-1) + "…"
-	}
-	return header
 }
 
 func (t *ToolCallView) statusIconLocked() string {
