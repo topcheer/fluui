@@ -300,12 +300,32 @@ func (m *MessageBubble) paintStandard(buf *buffer.Buffer, bounds Rect) {
 	contentW := m.contentWidthLocked(w)
 	padX := bounds.X + 2 // left padding for non-system
 
-	// Draw content using DrawTextClamped to avoid []rune allocations
-	for _, para := range strings.Split(m.content, "\n") {
+	// Draw content using inline split to avoid strings.Split allocation
+	remaining := m.content
+	for len(remaining) > 0 {
 		if y >= bounds.Y+bounds.H {
 			return
 		}
+		// Find next newline
+		nlIdx := strings.IndexByte(remaining, '\n')
+		var para string
+		if nlIdx < 0 {
+			para = remaining
+			remaining = ""
+		} else {
+			para = remaining[:nlIdx]
+			remaining = remaining[nlIdx+1:]
+		}
 		if para == "" {
+			y++
+			continue
+		}
+		// Fast path: single word or fits on one line — skip strings.Fields
+		if utf8.RuneCountInString(para) <= contentW {
+			if m.streaming && len(remaining) == 0 {
+				para += "▊"
+			}
+			m.drawLineLocked(buf, padX, y, contentW, para, contentStyle)
 			y++
 			continue
 		}
@@ -329,10 +349,10 @@ func (m *MessageBubble) paintStandard(buf *buffer.Buffer, bounds Rect) {
 					return
 				}
 				current = wd
+				curLen = wdLen
 			}
 		}
-		// Last line of this paragraph (append cursor if streaming)
-		if m.streaming {
+		if m.streaming && len(remaining) == 0 {
 			current += "▊"
 		}
 		m.drawLineLocked(buf, padX, y, contentW, current, contentStyle)
