@@ -327,6 +327,11 @@ go run ./cmd/demo13/
 
 # Phase 25: Full chat showcase (all widgets + streaming AI)
 go run ./cmd/demo14/
+
+# Phase 23: AI Chat Application (multi-component integration)
+# ConversationView + ChatComposer + ThinkingIndicator + TokenUsageWidget
+# + SegmentedControl + Breadcrumb + PieChart + StatusBar
+go run ./cmd/demo23/
 ```
 
 ## Examples
