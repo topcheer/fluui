@@ -133,3 +133,13 @@ func ExampleBreadcrumb() {
 	fmt.Println(b.String())
 	// Output: Home › Settings › AI
 }
+
+// ExamplePieChart demonstrates AI token usage visualization.
+func ExamplePieChart() {
+	p := component.NewPieChart([]component.PieSlice{
+		{Label: "Input", Value: 100},
+		{Label: "Output", Value: 50},
+	})
+	fmt.Printf("Total: %.0f\n", p.TotalValue())
+	// Output: Total: 150
+}
