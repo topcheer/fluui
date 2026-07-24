@@ -196,24 +196,42 @@ func (w *TokenUsageWidget) Paint(buf *buffer.Buffer) {
 }
 
 // buildLineLocked constructs the display string.
+// Uses a single stack buffer to minimize allocations (1 alloc for final string).
 func (w *TokenUsageWidget) buildLineLocked(maxW int) string {
 	model := w.model
 	if model == "" {
 		model = "unknown"
 	}
 
-	inStr := formatTokenCount(w.inputTok)
-	outStr := formatTokenCount(w.outputTok)
-	costStr := formatCost(w.costLocked())
+	var buf [256]byte
+	b := buf[:0]
 
-	// Context bar
-	ctxBar := ""
+	// model
+	b = append(b, model...)
+
+	// "  ↑" + input tokens
+	b = append(b, "  \u2191"...)
+	b = appendTokenCount(b, w.inputTok)
+
+	// " ↓" + output tokens
+	b = append(b, " \u2193"...)
+	b = appendTokenCount(b, w.outputTok)
+
+	// "  $" + cost
+	b = append(b, "  $"...)
+	b = appendCost(b, w.costLocked())
+
+	// Context bar (if configured)
 	if w.ctxTotal > 0 {
 		pct := w.ctxPercentLocked()
-		ctxBar = "  " + buildProgressBar(pct, 8) + " " + strconv.FormatFloat(pct, 'f', 0, 64) + "%"
+		b = append(b, "  "...)
+		b = appendProgressBar(b, pct, 8)
+		b = append(b, ' ')
+		b = strconv.AppendFloat(b, pct, 'f', 0, 64)
+		b = append(b, '%')
 	}
 
-	line := model + "  ↑" + inStr + " ↓" + outStr + "  " + costStr + ctxBar
+	line := string(b)
 
 	// Clamp to width using utf8.RuneCountInString (avoids []rune allocation)
 	if utf8.RuneCountInString(line) > maxW {
@@ -240,6 +258,21 @@ func formatTokenCount(n int) string {
 	return string(b) + "M"
 }
 
+// appendTokenCount appends a compact token count to b (e.g., "1.2k", "3M").
+func appendTokenCount(b []byte, n int) []byte {
+	if n < 1000 {
+		return strconv.AppendInt(b, int64(n), 10)
+	}
+	if n < 1_000_000 {
+		b = strconv.AppendFloat(b, float64(n)/1000, 'f', 1, 64)
+		b = append(b, 'k')
+		return b
+	}
+	b = strconv.AppendFloat(b, float64(n)/1_000_000, 'f', 1, 64)
+	b = append(b, 'M')
+	return b
+}
+
 // formatCost formats a USD cost for display.
 func formatCost(c float64) string {
 	var buf [32]byte
@@ -249,6 +282,14 @@ func formatCost(c float64) string {
 	}
 	b := strconv.AppendFloat(buf[:0], c, 'f', 2, 64)
 	return "$" + string(b)
+}
+
+// appendCost appends a USD cost to b.
+func appendCost(b []byte, c float64) []byte {
+	if c < 0.01 {
+		return strconv.AppendFloat(b, c, 'f', 4, 64)
+	}
+	return strconv.AppendFloat(b, c, 'f', 2, 64)
 }
 
 // buildProgressBar creates a text progress bar of given width (0-100 pct).
@@ -272,4 +313,25 @@ func buildProgressBar(pct float64, width int) string {
 		b = append(b, "░"...)
 	}
 	return string(b)
+}
+
+// appendProgressBar appends a text progress bar to b.
+func appendProgressBar(b []byte, pct float64, width int) []byte {
+	if width < 1 {
+		width = 1
+	}
+	filled := int(pct / 100 * float64(width))
+	if filled > width {
+		filled = width
+	}
+	if filled < 0 {
+		filled = 0
+	}
+	for i := 0; i < filled; i++ {
+		b = append(b, "\u2593"...) // ▓
+	}
+	for i := filled; i < width; i++ {
+		b = append(b, "\u2591"...) // ░
+	}
+	return b
 }
