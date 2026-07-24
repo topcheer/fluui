@@ -295,9 +295,16 @@ func (c *ChatComposer) paintActive(buf *buffer.Buffer, bounds Rect) {
 
 	// Token count (bottom-right of input area)
 	if c.tokenIn > 0 || c.tokenOut > 0 {
-		tokenStr := "↑" + formatTokenCount(c.tokenIn) + " ↓" + formatTokenCount(c.tokenOut)
-		if utf8.RuneCountInString(tokenStr) < w-2 {
-			buf.DrawText(bounds.X+w-utf8.RuneCountInString(tokenStr)-1, botY, tokenStr, mutedStyle)
+		var tb [32]byte
+		tbs := tb[:0]
+		tbs = append(tbs, "\u2191"...) // ↑
+		tbs = appendTokenCount(tbs, c.tokenIn)
+		tbs = append(tbs, " \u2193"...) // ↓
+		tbs = appendTokenCount(tbs, c.tokenOut)
+		tokenStr := string(tbs)
+		tokenW := utf8.RuneCountInString(tokenStr)
+		if tokenW < w-2 {
+			buf.DrawText(bounds.X+w-tokenW-1, botY, tokenStr, mutedStyle)
 		}
 	}
 
