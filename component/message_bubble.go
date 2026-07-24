@@ -256,14 +256,22 @@ func (m *MessageBubble) paintStandard(buf *buffer.Buffer, bounds Rect) {
 		headerStyle = buffer.Style{Fg: th.Error}
 	}
 
-	header := m.avatar + " " + m.role.String()
+	// Build header in a single stack buffer to minimize allocations
+	var hbuf [128]byte
+	hb := hbuf[:0]
+	hb = append(hb, m.avatar...)
+	hb = append(hb, ' ')
+	hb = append(hb, m.role.String()...)
 	if m.modelName != "" {
-		header += " · " + m.modelName
+		hb = append(hb, " \u00b7 "...)
+		hb = append(hb, m.modelName...)
 	}
-	header += "  " + m.timestamp.Format("15:04")
+	hb = append(hb, "  "...)
+	hb = m.timestamp.AppendFormat(hb, "15:04")
 	if m.streaming {
-		header += " …"
+		hb = append(hb, " \u2026"...)
 	}
+	header := string(hb)
 
 	// Right-align for user
 	if m.role == RoleUser {
