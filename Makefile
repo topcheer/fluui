@@ -31,6 +31,10 @@ test-race:
 bench:
 	GOCACHE=$(GOCACHE) go test $(BENCHFLAGS) ./component/ ./markdown/ ./internal/buffer/ ./render/ ./block/
 
+## bench-ai: Run AI component benchmarks only
+bench-ai:
+	GOCACHE=$(GOCACHE) go test -bench="MessageBubble|ConversationView|ChatComposer|ToolCallView|CitationsBlock|TokenUsageWidget|ThinkingIndicator|SegmentedControl|SkeletonLoader" -benchmem -benchtime=500ms -run=^$$ ./component/
+
 ## coverage: Generate coverage report
 coverage:
 	GOCACHE=$(GOCACHE) go test -short -count=1 -coverprofile=cov.out ./component/ ./block/ ./app/ ./markdown/ ./render/ ./internal/buffer/ ./internal/term/ ./theme/ ./ai/
