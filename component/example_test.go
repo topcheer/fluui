@@ -87,3 +87,21 @@ func ExampleToolCallView() {
 	fmt.Printf("Tool: %s\n", tc.ToolName())
 	// Output: Tool: read_file
 }
+
+// ExampleSegmentedControl demonstrates mode switching.
+func ExampleSegmentedControl() {
+	sc := component.NewSegmentedControl([]string{"Chat", "Code", "Settings"})
+	fmt.Printf("Active: %s\n", sc.ActiveLabel())
+	sc.SelectNext()
+	fmt.Printf("After next: %s\n", sc.ActiveLabel())
+	// Output:
+	// Active: Chat
+	// After next: Code
+}
+
+// ExampleSkeletonLoader demonstrates loading placeholder creation.
+func ExampleSkeletonLoader() {
+	sk := component.NewSkeletonText(3, 40)
+	fmt.Printf("Blocks: %d\n", len(sk.Blocks()))
+	// Output: Blocks: 3
+}
