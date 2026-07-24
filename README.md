@@ -175,6 +175,7 @@ composer.SetOnSubmit(func(text string) {
 | Heatmap | GitHub-style activity grid | **0** |
 | Breadcrumb | Navigation path | **0** |
 | NumberInput | Numeric input with +/- buttons | **0** |
+| PieChart | Pie/donut chart with labels | **0** |
 | Table | Sortable/filterable data table (50 rows) | **0** |
 
 ### Streaming Markdown
@@ -350,7 +351,7 @@ Full documentation is available in [`docs/`](docs/):
 - [Architecture](docs/architecture.md) — 6-layer design overview
 - [API Reference](docs/api-reference.md) — Complete public API
 - [Tutorial](docs/tutorial.md) — Step-by-step AI Agent tutorial
-- [Components](docs/components.md) — Widget system guide (92 components)
+- [Components](docs/components.md) — Widget system guide (94 components)
 - [Widgets Guide](docs/widgets-guide.md) — FilePicker/TabBar/StatusBar/DiffPreview/Dialog/Wizard/Checkbox/Slider tutorials
 - [Blocks](docs/blocks.md) — Content block types and lifecycle
 - [Themes](docs/themes.md) — Theme system and customization

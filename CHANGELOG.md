@@ -5,6 +5,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Components — PieChart (P348)
+- **PieChart** — ASCII pie/donut chart using half-block characters
+  - Donut mode with center total display
+  - Slice colors from theme palette, percentage labels
+  - Zero-alloc Paint
+  - Useful for AI token usage breakdown visualization
+- Component count: **94**
+
 ### Performance — All Zero-Allocation Rendering (P347)
 - **Table: 1→0 allocs** via visibleColumnRangeLocked (index range, not slice)
 - **22/25 benchmarked Paint operations now zero-alloc**
