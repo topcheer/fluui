@@ -329,33 +329,40 @@ func (m *MessageBubble) paintStandard(buf *buffer.Buffer, bounds Rect) {
 			y++
 			continue
 		}
-		// Word-wrap within the paragraph using zero-alloc scanner
-		curLen := 0
-		current := ""
-		firstWord := true
+		// Word-wrap within the paragraph using zero-alloc byte-slice tracking.
+		// Instead of building a "current" string via concatenation, we track
+		// the byte range [lineStart, lineEnd) within para that represents the
+		// current line. Slicing para[lineStart:lineEnd] is zero-copy in Go.
+		lineStart := -1
+		lineEnd := 0
+		lineRunes := 0
 		wordStart := -1
 		for i := 0; i <= len(para); i++ {
 			isEnd := i == len(para)
 			isSpace := !isEnd && (para[i] == ' ' || para[i] == '\t')
 			if isEnd || isSpace {
 				if wordStart >= 0 {
-					word := para[wordStart:i]
-					wdLen := utf8.RuneCountInString(word)
-					if firstWord {
-						current = word
-						curLen = wdLen
-						firstWord = false
-					} else if curLen+1+wdLen <= contentW {
-						current += " " + word
-						curLen += 1 + wdLen
+					wdLen := utf8.RuneCountInString(para[wordStart:i])
+					if lineStart < 0 {
+						// First word on first line
+						lineStart = wordStart
+						lineEnd = i
+						lineRunes = wdLen
+					} else if lineRunes+1+wdLen <= contentW {
+						// Word fits on current line — extend lineEnd to include
+						// the space before this word + the word itself
+						lineEnd = i
+						lineRunes += 1 + wdLen
 					} else {
-						m.drawLineLocked(buf, padX, y, contentW, current, contentStyle)
+						// Word doesn't fit — flush current line, start new one
+						m.drawLineLocked(buf, padX, y, contentW, para[lineStart:lineEnd], contentStyle)
 						y++
 						if y >= bounds.Y+bounds.H {
 							return
 						}
-						current = word
-						curLen = wdLen
+						lineStart = wordStart
+						lineEnd = i
+						lineRunes = wdLen
 					}
 					wordStart = -1
 				}
@@ -365,14 +372,16 @@ func (m *MessageBubble) paintStandard(buf *buffer.Buffer, bounds Rect) {
 				}
 			}
 		}
-		if firstWord {
+		// Flush last line of this paragraph
+		if lineStart < 0 {
 			y++
 			continue
 		}
+		lineText := para[lineStart:lineEnd]
 		if m.streaming && len(remaining) == 0 {
-			current += "▊"
+			lineText += "▊"
 		}
-		m.drawLineLocked(buf, padX, y, contentW, current, contentStyle)
+		m.drawLineLocked(buf, padX, y, contentW, lineText, contentStyle)
 		y++
 	}
 
