@@ -157,10 +157,13 @@ composer.SetOnSubmit(func(text string) {
 })
 ```
 
+> **22 of 25 benchmarked components have zero-allocation Paint.**
+> ConversationView renders 10 messages with **0 heap allocations** (down from 402).
+
 | Component | Description | Paint Allocs |
 |-----------|-------------|:------------:|
 | ConversationView | Scrollable chat history (10 messages) | **0** |
-| MessageBubble | Role-based rendering (User/Assistant/System/Tool) | **0** |
+| MessageBubble | Role-based rendering (User/Assistant/System/Tool) | **0** (short), 1 (long) |
 | ChatComposer | Input box with Enter-to-send, slash commands | **0** |
 | ToolCallView | Tool/function call with streaming results | **0** (collapsed), 3 (expanded) |
 | CitationsBlock | Source citations with collapsible detail | **0** |
@@ -168,6 +171,11 @@ composer.SetOnSubmit(func(text string) {
 | ThinkingIndicator | Animated "AI thinking" three-dot indicator | **0** |
 | SegmentedControl | iOS-style mode switcher | **0** |
 | SkeletonLoader | Animated loading placeholders | **0** |
+| Accordion | Expandable section stack | **0** |
+| Heatmap | GitHub-style activity grid | **0** |
+| Breadcrumb | Navigation path | **0** |
+| NumberInput | Numeric input with +/- buttons | **0** |
+| Table | Sortable/filterable data table (50 rows) | **0** |
 
 ### Streaming Markdown
 
