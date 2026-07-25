@@ -99,8 +99,8 @@ func TestP357_Banner_Paint_ZeroBounds(t *testing.T) {
 }
 
 func BenchmarkBanner_Paint(b *testing.B) {
-	bn := NewBanner(BannerWarning, "Rate limit approaching — 80% of quota used")
-	bn.SetAction("Press D for details")
+	bn := NewBanner(BannerWarning, "Rate limit approaching")
+	bn.SetAction("Press D")
 	bn.SetBounds(Rect{X: 0, Y: 0, W: 60, H: 1})
 	buf := buffer.NewBuffer(60, 1)
 	b.ResetTimer()

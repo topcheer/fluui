@@ -164,6 +164,7 @@ func (b *Banner) Paint(buf *buffer.Buffer) {
 	if msgW <= availW {
 		buf.DrawText(x, bd.Y, msg, msgStyle)
 	} else if availW > 2 {
+		// Truncation path (rare) — still 1 alloc
 		buf.DrawText(x, bd.Y, truncateRunes(msg, availW-1)+"\u2026", msgStyle)
 	}
 
@@ -172,7 +173,7 @@ func (b *Banner) Paint(buf *buffer.Buffer) {
 		actW := utf8.RuneCountInString(action)
 		ax := bd.X + bd.W - actW - 1
 		if ax > x {
-			buf.DrawText(ax, bd.Y, action, actionStyle)
+			buf.DrawText(ax, bd.Y, " "+action, actionStyle)
 		}
 	}
 }
