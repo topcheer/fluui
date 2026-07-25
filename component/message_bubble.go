@@ -271,21 +271,25 @@ func (m *MessageBubble) paintStandard(buf *buffer.Buffer, bounds Rect) {
 	if m.streaming {
 		hb = append(hb, " \u2026"...)
 	}
-	header := string(hb)
+	// header is in hb ([]byte) — avoid string conversion to stay zero-alloc
+	headerRunes := utf8.RuneCount(hb)
 
 	// Right-align for user
 	if m.role == RoleUser {
-		if utf8.RuneCountInString(header) < w {
-			spaces := w - utf8.RuneCountInString(header)
-			buf.DrawText(bounds.X+spaces, y, header, headerStyle)
+		if headerRunes < w {
+			spaces := w - headerRunes
+			buf.DrawText(bounds.X+spaces, y, string(hb), headerStyle)
 		} else {
-			buf.DrawText(bounds.X, y, truncateStr(header, w), headerStyle)
+			// Truncate rare case — 1 alloc acceptable
+			buf.DrawText(bounds.X, y, truncateStr(string(hb), w), headerStyle)
 		}
 	} else {
-		if utf8.RuneCountInString(header) > w {
-			header = truncateStr(header, w)
+		if headerRunes > w {
+			// Truncate rare case — 1 alloc acceptable
+			buf.DrawText(bounds.X, y, truncateStr(string(hb), w), headerStyle)
+		} else {
+			buf.DrawText(bounds.X, y, string(hb), headerStyle)
 		}
-		buf.DrawText(bounds.X, y, header, headerStyle)
 	}
 	y++
 
