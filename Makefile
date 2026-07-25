@@ -68,3 +68,16 @@ help:
 ## install: Install the fluui demo binary
 install:
 	GOCACHE=$(GOCACHE) go install ./cmd/fluui-demo 2>/dev/null || echo "no demo cmd found"
+
+## release-snapshot: Test release locally (no upload)
+release-snapshot:
+	goreleaser release --snapshot --clean
+
+## release: Full release (requires GITHUB_TOKEN and a git tag)
+release:
+	goreleaser release --clean
+
+## version: Print current version
+version:
+	@echo "Fluui $$(GOCACHE=$(GOCACHE) go run -ldflags '-X github.com/topcheer/fluui.Version=$$(git describe --tags --always --dirty 2>/dev/null || echo dev)' ./cmd/demo -- --version 2>/dev/null || echo 'dev')"
+	@echo "Components: 102+ | Protocols: 23"
