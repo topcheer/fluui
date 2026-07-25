@@ -164,3 +164,24 @@ func ExampleAvatar() {
 	// 🤖
 	// FB
 }
+
+// ExampleKBD demonstrates rendering keyboard shortcuts.
+func ExampleKBD() {
+	// Default inverse-video style
+	k1 := component.NewKBD("Ctrl+C")
+	fmt.Println(k1.Text())
+
+	// Bracket style
+	k2 := component.NewKBD("Enter")
+	k2.SetVariant(component.KBDBracket)
+	fmt.Println(k2.Variant())
+
+	// Bordered keycap style
+	k3 := component.NewKBD("⌘K")
+	k3.SetVariant(component.KBDBordered)
+	fmt.Println(k3.Variant())
+	// Output:
+	// Ctrl+C
+	// 1
+	// 2
+}
