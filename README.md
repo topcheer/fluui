@@ -356,7 +356,7 @@ Full documentation is available in [`docs/`](docs/):
 - [Architecture](docs/architecture.md) — 6-layer design overview
 - [API Reference](docs/api-reference.md) — Complete public API
 - [Tutorial](docs/tutorial.md) — Step-by-step AI Agent tutorial
-- [Components](docs/components.md) — Widget system guide (98 components)
+- [Components](docs/components.md) — Widget system guide (99 components)
 - [Widgets Guide](docs/widgets-guide.md) — FilePicker/TabBar/StatusBar/DiffPreview/Dialog/Wizard/Checkbox/Slider tutorials
 - [Blocks](docs/blocks.md) — Content block types and lifecycle
 - [Themes](docs/themes.md) — Theme system and customization
