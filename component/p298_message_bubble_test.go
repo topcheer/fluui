@@ -318,22 +318,6 @@ func TestP298_SatisfiesComponent(t *testing.T) {
 	var _ Component = (*MessageBubble)(nil)
 }
 
-// === Coverage gaps for new files ===
-
-// buildProgressBar edge: negative pct and width<1
-func TestP298_BuildProgressBar_Edges(t *testing.T) {
-	// width < 1 clamps to 1
-	got := buildProgressBar(-10, 0)
-	if got != "░" {
-		t.Errorf("buildProgressBar(-10, 0) = %q, want '░'", got)
-	}
-	// negative pct → 0 filled
-	got = buildProgressBar(-50, 4)
-	if got != "░░░░" {
-		t.Errorf("buildProgressBar(-50, 4) = %q, want '░░░░'", got)
-	}
-}
-
 // drawStyledText: truncation path
 func TestP298_DrawStyledText_Truncate(t *testing.T) {
 	tc := NewToolCallView("test", "{}")

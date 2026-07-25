@@ -3,7 +3,6 @@ package component
 import (
 	"strconv"
 	"sync"
-	"unicode/utf8"
 
 	"github.com/topcheer/fluui/internal/buffer"
 	"github.com/topcheer/fluui/theme"
@@ -274,69 +273,6 @@ func (w *TokenUsageWidget) Paint(buf *buffer.Buffer) {
 	}
 }
 
-// buildLineLocked constructs the display string.
-// Uses a single stack buffer to minimize allocations (1 alloc for final string).
-func (w *TokenUsageWidget) buildLineLocked(maxW int) string {
-	model := w.model
-	if model == "" {
-		model = "unknown"
-	}
-
-	var buf [256]byte
-	b := buf[:0]
-
-	// model
-	b = append(b, model...)
-
-	// "  ↑" + input tokens
-	b = append(b, "  \u2191"...)
-	b = appendTokenCount(b, w.inputTok)
-
-	// " ↓" + output tokens
-	b = append(b, " \u2193"...)
-	b = appendTokenCount(b, w.outputTok)
-
-	// "  $" + cost
-	b = append(b, "  $"...)
-	b = appendCost(b, w.costLocked())
-
-	// Context bar (if configured)
-	if w.ctxTotal > 0 {
-		pct := w.ctxPercentLocked()
-		b = append(b, "  "...)
-		b = appendProgressBar(b, pct, 8)
-		b = append(b, ' ')
-		b = strconv.AppendFloat(b, pct, 'f', 0, 64)
-		b = append(b, '%')
-	}
-
-	line := string(b)
-
-	// Clamp to width using utf8.RuneCountInString (avoids []rune allocation)
-	if utf8.RuneCountInString(line) > maxW {
-		if maxW > 1 {
-			return truncateStr(line, maxW-1) + "…"
-		}
-		return "…"
-	}
-	return line
-}
-
-// formatTokenCount formats a token count for compact display.
-// Uses strconv.AppendFloat to avoid fmt.Sprintf allocations.
-func formatTokenCount(n int) string {
-	if n < 1000 {
-		return strconv.Itoa(n)
-	}
-	var buf [16]byte
-	if n < 1_000_000 {
-		b := strconv.AppendFloat(buf[:0], float64(n)/1000, 'f', 1, 64)
-		return string(b) + "k"
-	}
-	b := strconv.AppendFloat(buf[:0], float64(n)/1_000_000, 'f', 1, 64)
-	return string(b) + "M"
-}
-
 // appendTokenCount appends a compact token count to b (e.g., "1.2k", "3M").
 func appendTokenCount(b []byte, n int) []byte {
 	if n < 1000 {
@@ -352,46 +288,12 @@ func appendTokenCount(b []byte, n int) []byte {
 	return b
 }
 
-// formatCost formats a USD cost for display.
-func formatCost(c float64) string {
-	var buf [32]byte
-	if c < 0.01 {
-		b := strconv.AppendFloat(buf[:0], c, 'f', 4, 64)
-		return "$" + string(b)
-	}
-	b := strconv.AppendFloat(buf[:0], c, 'f', 2, 64)
-	return "$" + string(b)
-}
-
 // appendCost appends a USD cost to b.
 func appendCost(b []byte, c float64) []byte {
 	if c < 0.01 {
 		return strconv.AppendFloat(b, c, 'f', 4, 64)
 	}
 	return strconv.AppendFloat(b, c, 'f', 2, 64)
-}
-
-// buildProgressBar creates a text progress bar of given width (0-100 pct).
-func buildProgressBar(pct float64, width int) string {
-	if width < 1 {
-		width = 1
-	}
-	filled := int(pct / 100 * float64(width))
-	if filled > width {
-		filled = width
-	}
-	if filled < 0 {
-		filled = 0
-	}
-	var buf [64]byte
-	b := buf[:0]
-	for i := 0; i < filled; i++ {
-		b = append(b, "▓"...)
-	}
-	for i := filled; i < width; i++ {
-		b = append(b, "░"...)
-	}
-	return string(b)
 }
 
 // appendProgressBar appends a text progress bar to b.

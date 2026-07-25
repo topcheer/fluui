@@ -65,6 +65,12 @@ func TestP338_AppendProgressBar(t *testing.T) {
 	if got != "\u2593\u2593\u2593" {
 		t.Errorf("over 100 pct bar = %q", got)
 	}
+
+	// Large negative pct → filled clamped to 0 (hits filled<0 branch)
+	got = string(appendProgressBar(nil, -50, 4))
+	if got != "\u2591\u2591\u2591\u2591" {
+		t.Errorf("large negative pct bar = %q", got)
+	}
 }
 
 // TestP338_AppendCost verifies all cost formatting branches.
@@ -88,39 +94,4 @@ func TestP338_AppendCost(t *testing.T) {
 	}
 }
 
-// TestP338_FormatTokenCount verifies the standalone formatTokenCount function.
-func TestP338_FormatTokenCount(t *testing.T) {
-	tests := []struct {
-		n    int
-		want string
-	}{
-		{0, "0"},
-		{500, "500"},
-		{1500, "1.5k"},
-		{2500000, "2.5M"},
-	}
-	for _, tt := range tests {
-		got := formatTokenCount(tt.n)
-		if got != tt.want {
-			t.Errorf("formatTokenCount(%d) = %q, want %q", tt.n, got, tt.want)
-		}
-	}
-}
 
-// TestP338_FormatCost verifies the standalone formatCost function.
-func TestP338_FormatCost(t *testing.T) {
-	if formatCost(0.005) != "$0.0050" {
-		t.Errorf("formatCost(0.005) = %q", formatCost(0.005))
-	}
-	if formatCost(0.05) != "$0.05" {
-		t.Errorf("formatCost(0.05) = %q", formatCost(0.05))
-	}
-}
-
-// TestP338_BuildProgressBar verifies the standalone buildProgressBar function.
-func TestP338_BuildProgressBar(t *testing.T) {
-	got := buildProgressBar(50, 4)
-	if len(got) == 0 {
-		t.Error("expected non-empty progress bar")
-	}
-}

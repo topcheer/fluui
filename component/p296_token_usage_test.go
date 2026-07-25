@@ -179,71 +179,6 @@ func TestP296_Paint_NonZeroOffset(t *testing.T) {
 	w.Paint(buf)
 }
 
-func TestP296_FormatTokenCount(t *testing.T) {
-	tests := []struct {
-		input int
-		want  string
-	}{
-		{0, "0"},
-		{42, "42"},
-		{999, "999"},
-		{1000, "1.0k"},
-		{1500, "1.5k"},
-		{12345, "12.3k"},
-		{999999, "1000.0k"},
-		{1_000_000, "1.0M"},
-		{1_500_000, "1.5M"},
-	}
-	for _, tt := range tests {
-		got := formatTokenCount(tt.input)
-		if got != tt.want {
-			t.Errorf("formatTokenCount(%d) = %q, want %q", tt.input, got, tt.want)
-		}
-	}
-}
-
-func TestP296_FormatCost(t *testing.T) {
-	tests := []struct {
-		input float64
-		want  string
-	}{
-		{0, "$0.0000"},
-		{0.001, "$0.0010"},
-		{0.009, "$0.0090"},
-		{0.01, "$0.01"},
-		{1.05, "$1.05"},
-		{99.99, "$99.99"},
-	}
-	for _, tt := range tests {
-		got := formatCost(tt.input)
-		if got != tt.want {
-			t.Errorf("formatCost(%v) = %q, want %q", tt.input, got, tt.want)
-		}
-	}
-}
-
-func TestP296_BuildProgressBar(t *testing.T) {
-	tests := []struct {
-		pct   float64
-		width int
-		want  string
-	}{
-		{0, 4, "░░░░"},
-		{25, 4, "▓░░░"},
-		{50, 4, "▓▓░░"},
-		{75, 4, "▓▓▓░"},
-		{100, 4, "▓▓▓▓"},
-		{0, 1, "░"},
-		{100, 1, "▓"},
-	}
-	for _, tt := range tests {
-		got := buildProgressBar(tt.pct, tt.width)
-		if got != tt.want {
-			t.Errorf("buildProgressBar(%.0f, %d) = %q, want %q", tt.pct, tt.width, got, tt.want)
-		}
-	}
-}
-
 func TestP296_Concurrent(t *testing.T) {
 	w := NewTokenUsageWidget("gpt-4")
 	done := make(chan struct{})
@@ -262,4 +197,53 @@ func TestP296_Concurrent(t *testing.T) {
 
 func TestP296_SatisfiesComponent(t *testing.T) {
 	var _ Component = (*TokenUsageWidget)(nil)
+}
+
+// P370: Comprehensive Paint coverage — early-return paths, context bar, edges
+
+func TestP370_Paint_EmptyModel(t *testing.T) {
+	w := NewTokenUsageWidget("")
+	w.AddTokens(100, 50)
+	w.SetBounds(Rect{X: 0, Y: 0, W: 60, H: 1})
+	buf := buffer.NewBuffer(60, 1)
+	w.Paint(buf) // should show "unknown" without panic
+}
+
+func TestP370_Paint_NarrowWidths(t *testing.T) {
+	// Test various widths to exercise all early-return paths in Paint
+	for width := 1; width <= 35; width++ {
+		w := NewTokenUsageWidget("gpt-4")
+		w.AddTokens(1500, 800)
+		w.SetContextUsage(64000, 128000)
+		w.SetBounds(Rect{X: 0, Y: 0, W: width, H: 1})
+		buf := buffer.NewBuffer(width, 1)
+		w.Paint(buf) // must not panic at any width
+	}
+}
+
+func TestP370_Paint_LargeTokens(t *testing.T) {
+	w := NewTokenUsageWidget("gpt-4")
+	w.AddTokens(2_500_000, 1_800_000) // M-range tokens
+	w.SetContextUsage(100000, 128000)
+	w.SetBounds(Rect{X: 0, Y: 0, W: 80, H: 1})
+	buf := buffer.NewBuffer(80, 1)
+	w.Paint(buf)
+}
+
+func TestP370_Paint_ContextBarFull(t *testing.T) {
+	w := NewTokenUsageWidget("claude-3")
+	w.AddTokens(500, 200)
+	w.SetContextUsage(128000, 128000) // 100%
+	w.SetBounds(Rect{X: 0, Y: 0, W: 80, H: 1})
+	buf := buffer.NewBuffer(80, 1)
+	w.Paint(buf)
+}
+
+func TestP370_ctxPercentLocked_Negative(t *testing.T) {
+	w := NewTokenUsageWidget("gpt-4")
+	// negative used → pct clamped to 0 via pct<0 branch
+	w.SetContextUsage(-1000, 10000)
+	if pct := w.ContextPercent(); pct != 0 {
+		t.Errorf("ContextPercent with negative used = %.1f, want 0", pct)
+	}
 }
