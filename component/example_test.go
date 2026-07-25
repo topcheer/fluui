@@ -143,3 +143,24 @@ func ExamplePieChart() {
 	fmt.Printf("Total: %.0f\n", p.TotalValue())
 	// Output: Total: 150
 }
+
+// ExampleAvatar demonstrates creating avatars for AI chat participants.
+func ExampleAvatar() {
+	// User avatar with auto-extracted initials
+	user := component.NewAvatar("Alice Brown")
+	fmt.Println(user.Initials())
+
+	// AI assistant with emoji icon
+	ai := component.NewAvatar("Assistant")
+	ai.SetIcon("🤖")
+	fmt.Println(ai.Icon())
+
+	// Manual initials override
+	bot := component.NewAvatar("fluui-bot")
+	bot.SetInitials("FB")
+	fmt.Println(bot.Initials())
+	// Output:
+	// AB
+	// 🤖
+	// FB
+}
