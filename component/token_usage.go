@@ -189,10 +189,89 @@ func (w *TokenUsageWidget) Paint(buf *buffer.Buffer) {
 		return
 	}
 
-	// Build: "model  ↑1.2k ↓800  $0.024  ▓▓▓░░░░ 45%"
-	text := w.buildLineLocked(bounds.W)
 	muted := buffer.Style{Fg: theme.Get().Muted}
-	buf.DrawText(bounds.X, bounds.Y, text, muted)
+
+	// Draw directly to buffer piece by piece (zero allocation)
+	model := w.model
+	if model == "" {
+		model = "unknown"
+	}
+	x := bounds.X
+	maxX := bounds.X + bounds.W
+
+	x += buf.DrawText(x, bounds.Y, model, muted)
+	if x >= maxX {
+		return
+	}
+	x += buf.DrawText(x, bounds.Y, "  \u2191", muted) // ↑
+	if x >= maxX {
+		return
+	}
+
+	// Token counts via stack buffer → string (1 alloc total, shared)
+	var tb [32]byte
+	tbs := tb[:0]
+	tbs = appendTokenCount(tbs, w.inputTok)
+	x += buf.DrawText(x, bounds.Y, string(tbs), muted)
+	if x >= maxX {
+		return
+	}
+
+	x += buf.DrawText(x, bounds.Y, " \u2193", muted) // ↓
+	if x >= maxX {
+		return
+	}
+
+	var tb2 [32]byte
+	tbs2 := tb2[:0]
+	tbs2 = appendTokenCount(tbs2, w.outputTok)
+	x += buf.DrawText(x, bounds.Y, string(tbs2), muted)
+	if x >= maxX {
+		return
+	}
+
+	x += buf.DrawText(x, bounds.Y, "  $", muted)
+	if x >= maxX {
+		return
+	}
+
+	var cb [16]byte
+	cbs := cb[:0]
+	cbs = appendCost(cbs, w.costLocked())
+	x += buf.DrawText(x, bounds.Y, string(cbs), muted)
+
+	// Context bar
+	if w.ctxTotal > 0 {
+		if x+2 < maxX {
+			x += buf.DrawText(x, bounds.Y, "  ", muted)
+		}
+		pct := w.ctxPercentLocked()
+		// Draw progress bar via direct SetCell
+		barW := 8
+		filled := int(pct / 100 * float64(barW))
+		if filled > barW {
+			filled = barW
+		}
+		for i := 0; i < barW && x < maxX; i++ {
+			if i < filled {
+				buf.DrawText(x, bounds.Y, "\u2593", muted) // ▓
+			} else {
+				buf.DrawText(x, bounds.Y, "\u2591", muted) // ░
+			}
+			x++
+		}
+		if x < maxX {
+			buf.DrawText(x, bounds.Y, " ", muted)
+			x++
+		}
+		if x < maxX {
+			var pb [8]byte
+			pbs := pb[:0]
+			pbs = strconv.AppendFloat(pbs, pct, 'f', 0, 64)
+			pbs = append(pbs, '%')
+			buf.DrawText(x, bounds.Y, string(pbs), muted)
+		}
+	}
 }
 
 // buildLineLocked constructs the display string.
