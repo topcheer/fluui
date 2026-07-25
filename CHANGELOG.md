@@ -5,13 +5,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-### Components — PieChart (P348)
-- **PieChart** — ASCII pie/donut chart using half-block characters
-  - Donut mode with center total display
-  - Slice colors from theme palette, percentage labels
-  - Zero-alloc Paint
-  - Useful for AI token usage breakdown visualization
-- Component count: **94**
+### Components — Avatar + KBD (P371, P373)
+- **Avatar** — colored initials block for AI chat UIs
+  - 3 sizes: Small (1x1), Medium (3x1), Large (3x1 bold)
+  - Auto-extract initials from names, emoji/icon override
+  - 12-color palette with inline FNV-1a hash (zero alloc)
+  - Zero-alloc Paint: 35ns/op, 0 B/op
+- **KBD** — keyboard keycap display for help screens
+  - 3 variants: Inverse (default), Bracket, Bordered (box-drawing)
+  - Zero-alloc Paint: Inverse 18ns/op, Bordered 21ns/op
+- Component count: **119**
+
+### Performance — Dead Code Removal (P370)
+- Removed 4 dead functions from token_usage.go (-98 lines)
+  - buildLineLocked, formatTokenCount, formatCost, buildProgressBar
+  - All superseded by append* variants or direct-to-buffer rendering
+
+### Coverage (P370, P372, P375, P376)
+- token_usage Paint 39.3%→52.5%, ctxPercentLocked 87.5%→100%
+- Breadcrumb.Items, FunnelChart.Slices, PieChart.Slices, RadarChart.Axes: 0%→100%
+- CodeBlock paintStreamingCursorLocked: 74.2%→100%
+- Viewport drawVScrollBar/drawHScrollBar: 73.7%→89.5%
+- Component package coverage: 94.9%→95.3%
 
 ### Performance — All Zero-Allocation Rendering (P347)
 - **Table: 1→0 allocs** via visibleColumnRangeLocked (index range, not slice)
