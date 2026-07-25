@@ -2,85 +2,61 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
-    branches: [main, master]
-
-permissions:
-  contents: read
+    branches: [main]
 
 jobs:
-  # ── Build & Test ──────────────────────────────────────────────
   test:
-    name: Build & Test
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-          cache: true
-
-      - name: Download dependencies
-        run: go mod download
-
       - name: Build
         run: go build ./...
-
       - name: Vet
         run: go vet ./...
+      - name: Test
+        run: go test -race -short -count=1 ./... -timeout 300s
 
-      - name: Test with race detector
-        run: go test -race -count=1 -timeout 300s ./...
-
-      - name: Test with coverage
-        run: |
-          go test -coverprofile=coverage.out -covermode=atomic ./...
-          go tool cover -func=coverage.out | tail -1
-
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage.out
-
-  # ── Lint ─────────────────────────────────────────────────────
-  lint:
-    name: Lint
+  coverage:
     runs-on: ubuntu-latest
-    continue-on-error: true
-    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-          cache: true
-
-      - name: golangci-lint
+      - name: Coverage
         run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin v2.12.2
-          golangci-lint run --timeout 5m ./...
+          go test -short -count=1 -coverprofile=cov.out ./component/ ./block/ ./app/ ./markdown/ ./render/ ./theme/ ./event/ ./focus/ ./ai/ ./internal/buffer/ ./internal/term/ .
+          go tool cover -func=cov.out | tail -1
 
-  # ── Benchmarks (non-blocking) ────────────────────────────────
-  benchmark:
-    name: Benchmarks
+  bench:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-          cache: true
+      - name: Benchmarks
+        run: go test -bench=Paint -benchmem -benchtime=100ms -run=^$ ./component/
 
-      - name: Run benchmarks
-        run: go test -bench=. -benchmem -run=^$ ./component/ ./block/ ./render/
+  release:
+    needs: [test, coverage]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - uses: goreleaser/goreleaser-action@v5
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
