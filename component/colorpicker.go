@@ -573,13 +573,17 @@ func (cp *ColorPicker) paintPalette(buf *buffer.Buffer, x, y, maxW int) {
 	}
 
 	// Show palette index
-	idxStr := fmt.Sprintf("Index: %d/255", cp.paletteIdx)
-	cp.drawString(buf, x+gridW+2, y, idxStr, cp.style.Label)
+	var idxBuf [24]byte
+	ib := idxBuf[:0]
+	ib = append(ib, "Index: "...)
+	ib = strconv.AppendInt(ib, int64(cp.paletteIdx), 10)
+	ib = append(ib, "/255"...)
+	cp.drawBytes(buf, x+gridW+2, y, ib, cp.style.Label)
 }
 
 func (cp *ColorPicker) paintRGB(buf *buffer.Buffer, x, y, maxW int) {
-	labels := []string{"Red  ", "Green", "Blue "}
-	values := []uint8{cp.r, cp.g, cp.b}
+	labels := [3]string{"Red  ", "Green", "Blue "}
+	values := [3]uint8{cp.r, cp.g, cp.b}
 	sliderW := maxW - 20
 	if sliderW > 30 {
 		sliderW = 30
@@ -625,7 +629,12 @@ func (cp *ColorPicker) paintRGB(buf *buffer.Buffer, x, y, maxW int) {
 		}
 
 		// Value text
-		valStr := fmt.Sprintf("%3d", values[i])
+		var valBuf [8]byte
+		vb := valBuf[:0]
+		if values[i] < 100 { vb = append(vb, ) }
+		if values[i] < 10 { vb = append(vb, ) }
+		vb = strconv.AppendInt(vb, int64(values[i]), 10)
+		valStr := string(vb)
 		valStyle := cp.style.Value
 		if i != cp.activeChannel {
 			valStyle = cp.style.Label
@@ -771,4 +780,16 @@ func ColorName(c buffer.Color) string {
 		return "#" + strings.ToUpper(fmt.Sprintf("%06x", c.Val))
 	}
 	return "Default"
+}
+
+func (cp *ColorPicker) drawBytes(buf *buffer.Buffer, x, y int, b []byte, style buffer.Style) {
+	for i := 0; i < len(b); i++ {
+		buf.SetCell(x+i, y, buffer.Cell{
+			Rune:  rune(b[i]),
+			Width: 1,
+			Fg:    style.Fg,
+			Bg:    style.Bg,
+			Flags: style.Flags,
+		})
+	}
 }

@@ -1,7 +1,7 @@
 package component
 
 import (
-	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -171,14 +171,15 @@ func (c *Calendar) Paint(buf *buffer.Buffer) {
 	}
 
 	// Header: "Month YYYY"
-	header := c.current.Format("January 2006")
-	hx := x + (w-len(header))/2
+	var headerBuf [16]byte
+	hb := appendMonthYear(headerBuf[:0], c.current)
+	hx := x + (w-len(hb))/2
 	if hx < x {
 		hx = x
 	}
-	for i, r := range header {
+	for i := 0; i < len(hb); i++ {
 		if hx+i < x+w {
-			buf.SetCell(hx+i, y, buffer.Cell{Rune: r, Width: 1, Fg: c.style.HeaderFg, Flags: buffer.Bold})
+			buf.SetCell(hx+i, y, buffer.Cell{Rune: rune(hb[i]), Width: 1, Fg: c.style.HeaderFg, Flags: buffer.Bold})
 		}
 	}
 
@@ -188,10 +189,12 @@ func (c *Calendar) Paint(buf *buffer.Buffer) {
 		buf.SetCell(x+w-1, y, buffer.Cell{Rune: '>', Width: 1, Fg: c.style.BorderFg})
 	}
 
-	// Weekday headers
-	weekdays := []string{"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"}
+	// Weekday headers (pre-allocated package vars, zero alloc)
+	var weekdays [7]string
 	if c.weekStart == time.Monday {
-		weekdays = []string{"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"}
+		weekdays = weekdaysMon
+	} else {
+		weekdays = weekdaysSun
 	}
 	colW := w / 7
 	for i, wd := range weekdays {
@@ -225,7 +228,8 @@ func (c *Calendar) Paint(buf *buffer.Buffer) {
 
 	for day <= daysInMonth {
 		cx := x + col*colW
-		dayStr := fmt.Sprintf("%2d", day)
+		var dayBuf [4]byte
+		db := appendDayNum(dayBuf[:0], day)
 
 		isToday := c.isTodayLocked(c.current.Year(), c.current.Month(), day)
 		isSelected := c.isSelectedLocked(c.current.Year(), c.current.Month(), day)
@@ -245,9 +249,9 @@ func (c *Calendar) Paint(buf *buffer.Buffer) {
 			flags = buffer.Bold
 		}
 
-		for j, r := range dayStr {
+		for j := 0; j < len(db); j++ {
 			if cx+j < x+w {
-				buf.SetCell(cx+j, y+row, buffer.Cell{Rune: r, Width: 1, Fg: fg, Bg: bg, Flags: flags})
+				buf.SetCell(cx+j, y+row, buffer.Cell{Rune: rune(db[j]), Width: 1, Fg: fg, Bg: bg, Flags: flags})
 			}
 		}
 
@@ -261,11 +265,12 @@ func (c *Calendar) Paint(buf *buffer.Buffer) {
 
 	// Footer with selected date
 	if y+row+1 < bounds.Y+bounds.H {
-		footer := c.selected.Format("2006-01-02")
-		fx := x + (w-len(footer))/2
-		for i, r := range footer {
+		var footerBuf [12]byte
+		fb := appendDateISO(footerBuf[:0], c.selected)
+		fx := x + (w-len(fb))/2
+		for i := 0; i < len(fb); i++ {
 			if fx+i < x+w {
-				buf.SetCell(fx+i, y+row+1, buffer.Cell{Rune: r, Width: 1, Fg: c.style.BorderFg})
+				buf.SetCell(fx+i, y+row+1, buffer.Cell{Rune: rune(fb[i]), Width: 1, Fg: c.style.BorderFg})
 			}
 		}
 	}
@@ -361,4 +366,47 @@ func (c *Calendar) HandleKey(k *term.KeyEvent) bool {
 // Children returns nil.
 func (c *Calendar) Children() []Component {
 	return nil
+}
+
+// Pre-allocated weekday arrays (avoid slice allocation per Paint)
+var weekdaysSun = [7]string{"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"}
+var weekdaysMon = [7]string{"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"}
+
+var monthNames = [12]string{
+	"January", "February", "March", "April", "May", "June",
+	"July", "August", "September", "October", "November", "December",
+}
+
+// appendMonthYear writes "Month YYYY" into dst without allocation.
+func appendMonthYear(dst []byte, t time.Time) []byte {
+	m := monthNames[t.Month()-1]
+	dst = append(dst, m...)
+	dst = append(dst, ' ')
+	return strconv.AppendInt(dst, int64(t.Year()), 10)
+}
+
+// appendDayNum writes a day number right-aligned to 2 chars into dst.
+func appendDayNum(dst []byte, day int) []byte {
+	if day < 10 {
+		dst = append(dst, ' ')
+		dst = append(dst, byte('0'+day))
+	} else {
+		dst = strconv.AppendInt(dst, int64(day), 10)
+	}
+	return dst
+}
+
+// appendDateISO writes "YYYY-MM-DD" into dst without allocation.
+func appendDateISO(dst []byte, t time.Time) []byte {
+	dst = strconv.AppendInt(dst, int64(t.Year()), 10)
+	dst = append(dst, '-')
+	if t.Month() < 10 {
+		dst = append(dst, '0')
+	}
+	dst = strconv.AppendInt(dst, int64(t.Month()), 10)
+	dst = append(dst, '-')
+	if t.Day() < 10 {
+		dst = append(dst, '0')
+	}
+	return strconv.AppendInt(dst, int64(t.Day()), 10)
 }
