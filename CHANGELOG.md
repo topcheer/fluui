@@ -4,6 +4,33 @@ All notable changes to Fluui are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### P398: API Stability Tiers + Terminal Compat Matrix
+- **STABILITY.md** — Stable/Beta/Experimental API tiers with deprecation policy
+- Terminal compatibility matrix: 7 terminals × 16 protocols
+- version.go updated to accurate component/protocol counts
+- v1.0.0-beta.1 git tag created and pushed
+
+### P399: Additional Examples (Direction E)
+- ExampleToast, ExampleColorSwatch, ExampleChip, ExampleStatCard added
+
+### P400: MetricBar Component (Direction B+D)
+- Labeled progress bar with value display and auto color thresholds
+- Zero-alloc Paint: 110ns/op
+
+### P401: MarkdownStream Component (Direction C)
+- AI-native streaming markdown viewer with blinking cursor
+- Append() for token-by-token rendering
+
+### P402: SearchBar Component + Coverage + Examples (Direction B+E+F)
+- SearchBar with magnifying glass icon, placeholder, focus cursor
+- drawWrappedText coverage improved
+- 4 new Examples (MarkdownStream, MetricBar, HintLabel, SearchBar)
+
+### P403: FileTree Component + Stale Constant Fixes (Direction B+E+F)
+- **FileTree** — collapsible file/directory tree with icons (📁/📂/📄)
+- ParsePathList helper for converting path lists to tree structure
+- Fixed version.go ComponentCount (126→129) and doc.go
+- Batch Measure coverage tests for 12 components
 
 ### Components — Avatar + KBD (P371, P373)
 - **Avatar** — colored initials block for AI chat UIs
