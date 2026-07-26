@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/topcheer/fluui/component"
+	"github.com/topcheer/fluui/internal/buffer"
 )
 
 // ExampleConversationView demonstrates creating a chat conversation
@@ -210,4 +211,38 @@ func ExampleConfidenceMeter() {
 	c.SetLabel("Confidence")
 	fmt.Printf("Value: %.2f\n", c.Value())
 	// Output: Value: 0.92
+}
+
+// ExampleToast demonstrates creating notification toasts.
+func ExampleToast() {
+	t := component.NewToast("Build complete", component.ToastSuccess)
+	t.SetDuration(5 * 1000000000) // 5s
+	fmt.Printf("Level: %v, Message: %s\n", t.Level(), t.Message())
+	// Output: Level: 1, Message: Build complete
+}
+
+// ExampleColorSwatch demonstrates displaying colors.
+func ExampleColorSwatch() {
+	s := component.NewColorSwatch(buffer.RGB(0xFF, 0x80, 0x00))
+	s.SetLabel("Accent Orange")
+	fmt.Printf("ShowHex: %v\n", s.ShowHex())
+	// Output: ShowHex: true
+}
+
+// ExampleChip demonstrates entity tags.
+func ExampleChip() {
+	c := component.NewChip("gpt-4")
+	c.SetIcon("🤖")
+	c.SetVariant(component.ChipFilled)
+	fmt.Printf("Text: %s\n", c.Text())
+	// Output: Text: gpt-4
+}
+
+// ExampleStatCard demonstrates metric display.
+func ExampleStatCard() {
+	sc := component.StatCardFromInt("Tokens", 42000)
+	sc.SetDelta("+15%", true)
+	delta, pos := sc.Delta()
+	fmt.Printf("Value: %s, Delta: %s, Positive: %v\n", sc.Value(), delta, pos)
+	// Output: Value: 42000, Delta: +15%, Positive: true
 }
