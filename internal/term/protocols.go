@@ -310,12 +310,8 @@ const EnableTrueColor = "\x1b[?4;1$pc"
 // disable escape sequences so callers can opt in for advanced key reporting.
 // ---------------------------------------------------------------------------
 
-// EnableKittyKeyboard enables the Kitty keyboard protocol (progressive
 // enhancement flag 1). After enabling, the Parser will receive CSI u forms.
-const EnableKittyKeyboard = "\x1b[>1u"
 
-// DisableKittyKeyboard disables the Kitty keyboard protocol.
-const DisableKittyKeyboard = "\x1b[<u"
 
 // ---------------------------------------------------------------------------
 // Notification bell —BEL byte.
@@ -1364,3 +1360,62 @@ const EnableFocusReporting = "\x1b[?1004h"
 
 // DisableFocusReporting disables focus in/out event reporting (CSI ?1004 l).
 const DisableFocusReporting = "\x1b[?1004l"
+
+// ─── OSC 633: VSCode Shell Integration ───
+//
+// OSC 633 is used by VSCode's integrated terminal for shell integration.
+// It marks command boundaries for prompt detection and command output tracking.
+
+// VSCodePromptStart marks the start of a command prompt via OSC 633.
+const VSCodePromptStart = "\x1b]633;A\x07"
+
+// VSCodeCommandStart marks the start of a command after the prompt via OSC 633.
+const VSCodeCommandStart = "\x1b]633;C\x07"
+
+// VSCodeCommandEnd marks the end of a command's output via OSC 633.
+const VSCodeCommandEnd = "\x1b]633;D\x07"
+
+// VSCodePromptEnd marks the end of a prompt (before command) via OSC 633.
+const VSCodePromptEnd = "\x1b]633;B\x07"
+
+// VSCodeCwd reports the current working directory to VSCode via OSC 633.
+func VSCodeCwd(path string) string {
+	return "\x1b]633;P=Cwd=" + escapeOSCString(path) + "\x07"
+}
+
+// ─── OSC 99: Kitty Desktop Notification ───
+//
+// OSC 99 is Kitty's enhanced notification system with rich formatting
+// (icons, urgency levels, actions). More capable than OSC 777 or OSC 9.
+
+// KittyNotification sends a desktop notification via OSC 99.
+// Supports title, body, and optional icon.
+func KittyNotification(title, body string) string {
+	return "\x1b]99;i=1:d=0;" + escapeOSCString(title) + "\x1b\\" +
+		"\x1b]99;i=1:d=1;" + escapeOSCString(body) + "\x1b\\"
+}
+
+// ─── OSC 8 with explicit ID ───
+//
+// Allows multiple distinct hyperlinks by assigning IDs.
+
+// OSC8LinkWithID creates a hyperlink with an explicit ID for tracking.
+func OSC8LinkWithID(id, text string, opts HyperlinkOptions) string {
+	if id != "" {
+		opts.ID = id
+	}
+	return OSC8Link(opts, text)
+}
+
+// EnableKittyKeyboard enables the Kitty keyboard enhancement protocol (CSI > 1 u).
+const EnableKittyKeyboard = "\x1b[>1u"
+
+// DisableKittyKeyboard disables the Kitty keyboard enhancement protocol.
+const DisableKittyKeyboard = "\x1b[<u"
+
+// ─── Kitty Keyboard Enhancement Protocol ───
+//
+// CSI > 1 u enables Kitty keyboard protocol for enhanced key reporting.
+// CSI < u disables it.
+
+
