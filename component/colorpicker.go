@@ -648,8 +648,8 @@ func (cp *ColorPicker) paintRGB(buf *buffer.Buffer, x, y, maxW int) {
 		// Value text
 		var valBuf [8]byte
 		vb := valBuf[:0]
-		if values[i] < 100 { vb = append(vb, ) }
-		if values[i] < 10 { vb = append(vb, ) }
+		if values[i] < 100 { vb = append(vb, ' ') }
+		if values[i] < 10 { vb = append(vb, ' ') }
 		vb = strconv.AppendInt(vb, int64(values[i]), 10)
 		valStyle := cp.style.Value
 		if i != cp.activeChannel {
