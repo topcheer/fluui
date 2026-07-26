@@ -23,8 +23,12 @@ type MarkdownStream struct {
 	cursorOn   bool
 	cursorChar rune
 
-	// Renderer
-	renderer markdown.MarkdownRenderer
+	// Renderer (cached)
+	renderer       *markdown.MarkdownRenderer
+	lastWidth      int
+	lastBlocks     []*markdown.Block
+	lastErr        error
+	renderedSource string
 }
 
 // NewMarkdownStream creates a streaming markdown viewer.
@@ -143,15 +147,22 @@ func (m *MarkdownStream) Paint(buf *buffer.Buffer) {
 	src := m.source
 	tt := theme.Get()
 
-	// Render markdown via existing MarkdownViewer approach
+	// Render markdown via cached renderer
 	contentW := bounds.W
-	r := markdown.NewMarkdownRenderer(markdown.DefaultTheme(), contentW)
-	blocks, err := r.Render(src)
-	if err != nil || len(blocks) == 0 {
+	if m.renderer == nil || m.lastWidth != contentW || m.renderedSource != src {
+		if m.renderer == nil || m.lastWidth != contentW {
+			m.renderer = markdown.NewMarkdownRenderer(markdown.DefaultTheme(), contentW)
+			m.lastWidth = contentW
+		}
+		m.lastBlocks, m.lastErr = m.renderer.Render(src)
+		m.renderedSource = src
+	}
+
+	if m.lastErr != nil || len(m.lastBlocks) == 0 {
 		drawWrappedText(buf, bounds, src, buffer.Style{Fg: tt.Fg})
 	} else {
 		row := 0
-		for _, block := range blocks {
+		for _, block := range m.lastBlocks {
 			for _, line := range block.Cells {
 				if row >= bounds.H { break }
 				for col, cell := range line {
