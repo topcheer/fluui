@@ -314,8 +314,7 @@ func (t *ToolCallView) Paint(buf *buffer.Buffer) {
 		if argText == "" {
 			argText = t.args
 		}
-		argLines := strings.Split(argText, "\n")
-		used := t.drawBorderedSection(buf, bounds.X, y, bounds.W, remaining, "args", argLines, t.argLineStyle())
+		used := t.drawBorderedText(buf, bounds.X, y, bounds.W, remaining, "args", argText, 0, t.argLineStyle())
 		y += used
 		remaining -= used
 		if remaining <= 0 {
@@ -325,25 +324,27 @@ func (t *ToolCallView) Paint(buf *buffer.Buffer) {
 
 	// --- Result section ---
 	if t.result != "" && remaining > 1 {
-		resultLines := strings.Split(t.result, "\n")
-		previewLines := resultLines
-		if !t.showFull && len(resultLines) > t.maxResultPreview {
-			previewLines = resultLines[:t.maxResultPreview]
+		maxLines := 0 // 0 = show all
+		if !t.showFull {
+			maxLines = t.maxResultPreview
 		}
-		used := t.drawBorderedSection(buf, bounds.X, y, bounds.W, remaining, "result", previewLines, t.resultLineStyle())
+		used := t.drawBorderedText(buf, bounds.X, y, bounds.W, remaining, "result", t.result, maxLines, t.resultLineStyle())
 		y += used
 		remaining -= used
 
 		// "show more" hint
-		if !t.showFull && len(resultLines) > t.maxResultPreview && remaining > 0 {
-			more := len(resultLines) - t.maxResultPreview
-			var hbuf [64]byte
-			hb := hbuf[:0]
-			hb = append(hb, "  \u2937 "...)
-			hb = strconv.AppendInt(hb, int64(more), 10)
-			hb = append(hb, " more lines\u2026 (toggle to expand)"...)
-			hintStyle := buffer.Style{Fg: theme.Get().Muted}
-			buf.DrawText(bounds.X, y, string(hb), hintStyle)
+		if !t.showFull {
+			totalLines := countLines(t.result)
+			if totalLines > t.maxResultPreview && remaining > 0 {
+				more := totalLines - t.maxResultPreview
+				var hbuf [64]byte
+				hb := hbuf[:0]
+				hb = append(hb, "  \u2937 "...)
+				hb = strconv.AppendInt(hb, int64(more), 10)
+				hb = append(hb, " more lines\u2026 (toggle to expand)"...)
+				hintStyle := buffer.Style{Fg: theme.Get().Muted}
+				buf.DrawBytes(bounds.X, y, hb, hintStyle)
+			}
 		}
 	}
 }
@@ -382,27 +383,41 @@ func (t *ToolCallView) resultLineStyle() buffer.Style {
 
 // drawBorderedSection draws a ╭─ label ─╮ ... ╰─╯ box with content lines.
 // Returns the number of rows used.
-func (t *ToolCallView) drawBorderedSection(buf *buffer.Buffer, x, y, w, maxH int, label string, lines []string, contentStyle buffer.Style) int {
+// drawBorderedText draws a bordered section with text content.
+// Splits text on newlines internally (zero-alloc, no strings.Split).
+// maxLines <= 0 means show all lines.
+func (t *ToolCallView) drawBorderedText(buf *buffer.Buffer, x, y, w, maxH int, label string, text string, maxLines int, contentStyle buffer.Style) int {
 	borderStyle := buffer.Style{Fg: theme.Get().Border}
 
-	// Available height: 1 (top border) + len(lines) + 1 (bottom border)
-	// But cap to maxH
-	contentMax := maxH - 2 // minus two borders
+	contentMax := maxH - 2
 	if contentMax < 1 {
 		contentMax = 1
 	}
-	linesToShow := lines
-	if len(linesToShow) > contentMax {
-		linesToShow = linesToShow[:contentMax]
+	lineLimit := contentMax
+	if maxLines > 0 && maxLines < lineLimit {
+		lineLimit = maxLines
 	}
 
-	totalH := 2 + len(linesToShow)
+	// Count actual lines we'll draw by scanning text
+	linesDrawn := 0
+	pos := 0
+	for pos <= len(text) && linesDrawn < lineLimit {
+		nlIdx := strings.IndexByte(text[pos:], '\n')
+		if nlIdx < 0 {
+			linesDrawn++
+			pos = len(text) + 1
+		} else {
+			linesDrawn++
+			pos += nlIdx + 1
+		}
+	}
+
+	totalH := 2 + linesDrawn
 	if totalH > maxH {
 		totalH = maxH
 	}
 
 	// Top border: ╭─ label ──╮
-	// Use utf8.RuneCountInString instead of []rune to avoid allocation
 	labelText := " " + label + " "
 	labelW := utf8.RuneCountInString(labelText)
 	dashesTotal := w - 2 - labelW
@@ -413,34 +428,48 @@ func (t *ToolCallView) drawBorderedSection(buf *buffer.Buffer, x, y, w, maxH int
 	rightDashes := dashesTotal - leftDashes
 
 	drawX := x
-	buf.DrawText(drawX, y, "╭", borderStyle)
+	buf.DrawText(drawX, y, "\u256d", borderStyle) // ╭
 	drawX++
 	for i := 0; i < leftDashes; i++ {
-		buf.DrawText(drawX, y, "─", borderStyle)
+		buf.DrawText(drawX, y, "\u2500", borderStyle) // ─
 		drawX++
 	}
-	// Draw label text directly (no per-rune string conversion)
 	buf.DrawText(drawX, y, labelText, borderStyle)
 	drawX += labelW
 	for i := 0; i < rightDashes; i++ {
-		buf.DrawText(drawX, y, "─", borderStyle)
+		buf.DrawText(drawX, y, "\u2500", borderStyle)
 		drawX++
 	}
 	if drawX < x+w {
-		buf.DrawText(drawX, y, "╮", borderStyle)
+		buf.DrawText(drawX, y, "\u256e", borderStyle) // ╮
 	}
 
-	// Content lines
-	contentW := w - 2 // space inside │ borders
+	// Content lines — iterate over text without strings.Split
+	contentW := w - 2
 	if contentW < 1 {
 		contentW = 1
 	}
-	for i, line := range linesToShow {
-		ly := y + 1 + i
+	lineIdx := 0
+	pos = 0
+	for pos <= len(text) && lineIdx < lineLimit {
+		if lineIdx >= contentMax {
+			break
+		}
+		var line string
+		nlIdx := strings.IndexByte(text[pos:], '\n')
+		if nlIdx < 0 {
+			line = text[pos:]
+			pos = len(text) + 1
+		} else {
+			line = text[pos : pos+nlIdx]
+			pos += nlIdx + 1
+		}
+
+		ly := y + 1 + lineIdx
 		if ly >= y+maxH-1 {
 			break
 		}
-		buf.DrawText(x, ly, "│", borderStyle)
+		buf.DrawText(x, ly, "\u2502", borderStyle) // │
 		lineW := utf8.RuneCountInString(line)
 		if lineW > contentW-1 {
 			line = truncateRunes(line, contentW-1)
@@ -448,23 +477,38 @@ func (t *ToolCallView) drawBorderedSection(buf *buffer.Buffer, x, y, w, maxH int
 		buf.DrawText(x+1, ly, " ", contentStyle)
 		buf.DrawText(x+2, ly, line, contentStyle)
 		if x+w-1 > x {
-			buf.DrawText(x+w-1, ly, "│", borderStyle)
+			buf.DrawText(x+w-1, ly, "\u2502", borderStyle)
 		}
+		lineIdx++
 	}
 
 	// Bottom border: ╰──╯
-	botY := y + 1 + len(linesToShow)
+	botY := y + 1 + lineIdx
 	if botY < y+maxH {
-		buf.DrawText(x, botY, "╰", borderStyle)
+		buf.DrawText(x, botY, "\u2570", borderStyle) // ╰
 		for i := 1; i < w-1; i++ {
-			buf.DrawText(x+i, botY, "─", borderStyle)
+			buf.DrawText(x+i, botY, "\u2500", borderStyle)
 		}
 		if w > 1 {
-			buf.DrawText(x+w-1, botY, "╯", borderStyle)
+			buf.DrawText(x+w-1, botY, "\u256f", borderStyle) // ╯
 		}
 	}
 
 	return totalH
+}
+
+// countLines returns the number of newline-separated lines in text (zero alloc).
+func countLines(text string) int {
+	if text == "" {
+		return 0
+	}
+	count := 1
+	for i := 0; i < len(text); i++ {
+		if text[i] == '\n' {
+			count++
+		}
+	}
+	return count
 }
 
 // drawStyledText draws text clamped to width.
