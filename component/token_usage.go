@@ -198,11 +198,11 @@ func (w *TokenUsageWidget) Paint(buf *buffer.Buffer) {
 	x := bounds.X
 	maxX := bounds.X + bounds.W
 
-	x += buf.DrawText(x, bounds.Y, model, muted)
+	x = buf.DrawText(x, bounds.Y, model, muted)
 	if x >= maxX {
 		return
 	}
-	x += buf.DrawText(x, bounds.Y, "  \u2191", muted) // ↑
+	x = buf.DrawText(x, bounds.Y, "  \u2191", muted) // ↑
 	if x >= maxX {
 		return
 	}
@@ -211,12 +211,12 @@ func (w *TokenUsageWidget) Paint(buf *buffer.Buffer) {
 	var tb [32]byte
 	tbs := tb[:0]
 	tbs = appendTokenCount(tbs, w.inputTok)
-	x += buf.DrawText(x, bounds.Y, string(tbs), muted)
+	x = buf.DrawText(x, bounds.Y, string(tbs), muted)
 	if x >= maxX {
 		return
 	}
 
-	x += buf.DrawText(x, bounds.Y, " \u2193", muted) // ↓
+	x = buf.DrawText(x, bounds.Y, " \u2193", muted) // ↓
 	if x >= maxX {
 		return
 	}
@@ -224,12 +224,12 @@ func (w *TokenUsageWidget) Paint(buf *buffer.Buffer) {
 	var tb2 [32]byte
 	tbs2 := tb2[:0]
 	tbs2 = appendTokenCount(tbs2, w.outputTok)
-	x += buf.DrawText(x, bounds.Y, string(tbs2), muted)
+	x = buf.DrawText(x, bounds.Y, string(tbs2), muted)
 	if x >= maxX {
 		return
 	}
 
-	x += buf.DrawText(x, bounds.Y, "  $", muted)
+	x = buf.DrawText(x, bounds.Y, "  $", muted)
 	if x >= maxX {
 		return
 	}
@@ -237,12 +237,12 @@ func (w *TokenUsageWidget) Paint(buf *buffer.Buffer) {
 	var cb [16]byte
 	cbs := cb[:0]
 	cbs = appendCost(cbs, w.costLocked())
-	x += buf.DrawText(x, bounds.Y, string(cbs), muted)
+	x = buf.DrawText(x, bounds.Y, string(cbs), muted)
 
 	// Context bar
 	if w.ctxTotal > 0 {
 		if x+2 < maxX {
-			x += buf.DrawText(x, bounds.Y, "  ", muted)
+			x = buf.DrawText(x, bounds.Y, "  ", muted)
 		}
 		pct := w.ctxPercentLocked()
 		// Draw progress bar via direct SetCell
