@@ -203,3 +203,11 @@ func ExampleDiffStatBar() {
 	// Additions: 120, Deletions: 35
 	// Files: 3
 }
+
+// ExampleConfidenceMeter demonstrates displaying AI model confidence.
+func ExampleConfidenceMeter() {
+	c := component.NewConfidenceMeter(0.92)
+	c.SetLabel("Confidence")
+	fmt.Printf("Value: %.2f\n", c.Value())
+	// Output: Value: 0.92
+}
