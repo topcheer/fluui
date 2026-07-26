@@ -702,3 +702,127 @@ func ExampleSliderRange() {
 	// Output: Range: 25 - 75
 }
 
+// ─── P425: 15 new Examples (Direction E) ───
+
+func ExampleTree() {
+	root := component.NewTreeNode("root", "Project")
+	src := component.NewTreeNode("src", "src")
+	src.AddChild(component.NewTreeNode("main", "main.go"))
+	src.AddChild(component.NewTreeNode("util", "util.go"))
+	root.AddChild(src)
+	root.AddChild(component.NewTreeNode("test", "test"))
+
+	tree := component.NewTree()
+	tree.SetRoot(root)
+	fmt.Printf("Has root: %v\n", tree.Root() != nil)
+	// Output: Has root: true
+}
+
+func ExampleTextInput() {
+	ti := component.NewTextInput()
+	ti.SetValue("hello world")
+	ti.SetPlaceholder("Type here...")
+	fmt.Println(ti.Value())
+	// Output: hello world
+}
+
+func ExampleTabbedContent() {
+	tc := component.NewTabbedContent()
+	tc.AddTab("home", "Home", component.NewText("Welcome"))
+	tc.AddTab("settings", "Settings", component.NewText("Settings page"))
+	tc.AddTab("about", "About", component.NewText("About page"))
+	fmt.Printf("Tabs: %d, active: %s\n", tc.TabCount(), tc.ActiveTab())
+	// Output: Tabs: 3, active: home
+}
+
+func ExampleTagInput() {
+	ti := component.NewTagInput("Add tag...")
+	fmt.Printf("Placeholder set: %v\n", ti != nil)
+	// Output: Placeholder set: true
+}
+
+func ExampleSelect() {
+	sel := component.NewSelect([]component.SelectOption{
+		{Label: "Red", Value: "red"},
+		{Label: "Green", Value: "green"},
+		{Label: "Blue", Value: "blue"},
+	})
+	fmt.Printf("Options: %d\n", len(sel.Options()))
+	// Output: Options: 3
+}
+
+func ExampleQRCode() {
+	qr := component.NewQRCode("https://github.com/topcheer/fluui")
+	fmt.Printf("Has data: %v\n", qr != nil)
+	// Output: Has data: true
+}
+
+func ExampleSparkline() {
+	sp := component.NewSparkline()
+	sp.SetData([]float64{1, 3, 2, 5, 4, 6, 3, 7, 5, 8})
+	sp.SetLabel("CPU %")
+	fmt.Printf("Points: %d\n", sp.Count())
+	// Output: Points: 10
+}
+
+func ExampleScrollView() {
+	child := component.NewText("A very long text that needs scrolling...")
+	sv := component.NewScrollView(child)
+	fmt.Printf("Has child: %v\n", sv != nil)
+	// Output: Has child: true
+}
+
+func ExampleSplitPane() {
+	left := component.NewText("Left pane")
+	right := component.NewText("Right pane")
+	sp := component.NewSplitPane(left, right)
+	fmt.Printf("Has panes: %v\n", sp != nil)
+	// Output: Has panes: true
+}
+
+func ExampleViewport() {
+	content := component.NewText("Scrollable content")
+	vp := component.NewViewport(content)
+	fmt.Printf("Has content: %v\n", vp != nil)
+	// Output: Has content: true
+}
+
+func ExampleSelectionList() {
+	sl := component.NewSelectionList([]string{"Apple", "Banana", "Cherry"})
+	sl.Toggle(1) // select Banana
+	selected := sl.SelectedItems()
+	fmt.Println(selected)
+	// Output: [1]
+}
+
+func ExampleNumberInput() {
+	ni := component.NewNumberInput(5, 0, 100)
+	fmt.Println(ni.Value())
+	// Output: 5
+}
+
+func ExampleOTPInput() {
+	otp := component.NewOTPInput(6)
+	otp.SetValue("123456")
+	fmt.Printf("Length: %d, Value: %s\n", otp.Length(), otp.Value())
+	// Output: Length: 6, Value: 123456
+}
+
+func ExampleLineGauge() {
+	lg := component.NewLineGauge()
+	lg.SetPercent(0.75)
+	lg.SetLabel("Progress")
+	fmt.Printf("%.0f%%\n", lg.Percent()*100)
+	// Output: 75%
+}
+
+func ExampleRichLog() {
+	rl := component.NewRichLog()
+	rl.SetMaxSize(100)
+	rl.Info("Server started")
+	rl.Warn("High memory usage")
+	rl.Error("Connection refused")
+	fmt.Printf("Entries: %d\n", rl.EntryCount())
+	// Output: Entries: 3
+}
+
