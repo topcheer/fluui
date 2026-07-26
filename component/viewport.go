@@ -40,6 +40,11 @@ type Viewport struct {
 	draggingV bool
 	draggingH bool
 
+	// Cached child buffer (reused across Paint calls to avoid allocation)
+	childBuf    *buffer.Buffer
+	childBufW   int
+	childBufH   int
+
 	// Style
 	vBarStyle ScrollBarStyle
 	hBarStyle ScrollBarStyle
@@ -353,10 +358,15 @@ func (v *Viewport) Paint(buf *buffer.Buffer) {
 		return
 	}
 
-	// Paint the child into a temporary buffer
-	childBuf := buffer.NewBuffer(v.contentW, v.contentH)
-	childBuf.Fill(buffer.BlankCell)
-	v.content.Paint(childBuf)
+	// Paint the child into a cached buffer (reused across calls)
+	cw, ch := v.contentW, v.contentH
+	if v.childBuf == nil || v.childBufW != cw || v.childBufH != ch {
+		v.childBuf = buffer.NewBuffer(cw, ch)
+		v.childBufW = cw
+		v.childBufH = ch
+	}
+	v.childBuf.Fill(buffer.BlankCell)
+	v.content.Paint(v.childBuf)
 
 	// Blit the visible portion to the main buffer
 	for row := 0; row < contentH; row++ {
@@ -369,7 +379,7 @@ func (v *Viewport) Paint(buf *buffer.Buffer) {
 			if srcX >= v.contentW {
 				break
 			}
-			cell := childBuf.GetCell(srcX, srcY)
+			cell := v.childBuf.GetCell(srcX, srcY)
 			if cell.Width == 0 {
 				continue // skip padding cells
 			}
