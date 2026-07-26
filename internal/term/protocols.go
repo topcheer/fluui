@@ -1271,3 +1271,96 @@ func SetPaletteColor(index int, r, g, b uint8) string {
 	return "\x1b]4;" + intToStr(index) + ";rgb:" +
 		colorItoa(int(r)) + "/" + colorItoa(int(g)) + "/" + colorItoa(int(b)) + "\x07"
 }
+
+// ─── OSC 7: Current Working Directory ───
+//
+// OSC 7 tells the terminal the current working directory, enabling:
+// - Cmd+Click on paths in iTerm2/WezTerm to open them
+// - New tabs/windows inherit the CWD
+// - Terminal remembers CWD per-pane
+
+// ReportWorkingDir reports the current directory to the terminal via OSC 7.
+// The path should be an absolute filesystem path (e.g., "/home/user/project").
+func ReportWorkingDir(path string) string {
+	return "\x1b]7;file://" + escapeOSCString(path) + "\x07"
+}
+
+// ReportWorkingDirHost reports the current directory with an explicit hostname.
+// This is the full OSC 7 format used by shells: file://hostname/path
+func ReportWorkingDirHost(host, path string) string {
+	return "\x1b]7;file://" + escapeOSCString(host) + escapeOSCString(path) + "\x07"
+}
+
+// ─── OSC 777: URxvt-style Notification ───
+//
+// OSC 777 is supported by rxvt-unicode and some derived terminals.
+// It displays a desktop notification with a title and message.
+// Simpler than OSC 9 — doesn't support HTML or images.
+
+// URxvtNotification sends a desktop notification via OSC 777.
+// Format: ESC ] 777 ; notify ; TITLE ; MESSAGE BEL
+func URxvtNotification(title, message string) string {
+	return "\x1b]777;notify;" + escapeOSCString(title) + ";" + escapeOSCString(message) + "\x07"
+}
+
+// ─── OSC 9;4: iTerm2 Progress Bar ───
+//
+// OSC 9;4 controls the progress bar displayed in the terminal tab/dock icon
+// on macOS (iTerm2, WezTerm). Useful for AI streaming progress indicators.
+
+// ProgressBarStyle controls how the progress bar appears.
+type ProgressBarStyle int
+
+const (
+	// ProgressBarSet sets the progress percentage (0-100).
+	ProgressBarSet ProgressBarStyle = iota
+	// ProgressBarError sets the progress bar to error state.
+	ProgressBarError
+	// ProgressBarWarning sets the progress bar to warning state.
+	ProgressBarWarning
+	// ProgressBarIndeterminate shows an indeterminate (spinning) state.
+	ProgressBarIndeterminate
+	// ProgressBarClear removes the progress bar.
+	ProgressBarClear
+)
+
+// SetTabProgressBar sets the terminal tab progress bar via OSC 9;4.
+// pct should be 0-100. style controls the bar appearance.
+func SetTabProgressBar(pct int, style ProgressBarStyle) string {
+	var state string
+	switch style {
+	case ProgressBarError:
+		state = "2"
+	case ProgressBarWarning:
+		state = "3"
+	case ProgressBarIndeterminate:
+		state = "4"
+	case ProgressBarClear:
+		state = "1"
+	default:
+		state = ""
+	}
+	if pct < 0 {
+		pct = 0
+	}
+	if pct > 100 {
+		pct = 100
+	}
+	return "\x1b]9;4;" + state + ";" + intToStr(pct) + "\x07"
+}
+
+// ClearTabProgressBar removes the tab progress bar.
+func ClearTabProgressBar() string {
+	return "\x1b]9;4;0;\x07"
+}
+
+// ─── Focus Reporting (CSI ?1004) ───
+//
+// When enabled, the terminal sends FocusIn/FocusOut events to the application.
+// This is already partially supported; these provide the enable/disable helpers.
+
+// EnableFocusReporting enables focus in/out event reporting (CSI ?1004 h).
+const EnableFocusReporting = "\x1b[?1004h"
+
+// DisableFocusReporting disables focus in/out event reporting (CSI ?1004 l).
+const DisableFocusReporting = "\x1b[?1004l"
