@@ -344,8 +344,8 @@ func (v *Viewport) Children() []Component {
 
 // Paint renders the visible portion of the child content plus scrollbars.
 func (v *Viewport) Paint(buf *buffer.Buffer) {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+	v.mu.Lock()
+	defer v.mu.Unlock()
 
 	if v.content == nil || v.bounds.W <= 0 || v.bounds.H <= 0 {
 		return
