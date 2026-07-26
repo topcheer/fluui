@@ -246,3 +246,35 @@ func ExampleStatCard() {
 	fmt.Printf("Value: %s, Delta: %s, Positive: %v\n", sc.Value(), delta, pos)
 	// Output: Value: 42000, Delta: +15%, Positive: true
 }
+
+// ExampleMarkdownStream demonstrates streaming markdown rendering.
+func ExampleMarkdownStream() {
+	m := component.NewMarkdownStream()
+	m.Append("# Hello")
+	m.Append("\n\nWorld")
+	fmt.Printf("Source length: %d\n", len(m.Source()))
+	// Output: Source length: 14
+}
+
+// ExampleMetricBar demonstrates displaying a metric with range.
+func ExampleMetricBar() {
+	mb := component.NewMetricBar("CPU", 75.5, 0, 100)
+	mb.SetUnit("%")
+	fmt.Printf("Value: %.1f, Max: %.0f\n", mb.Value(), mb.Max())
+	// Output: Value: 75.5, Max: 100
+}
+
+// ExampleHintLabel demonstrates creating help text.
+func ExampleHintLabel() {
+	h := component.NewHintLabel("Press ? for help")
+	fmt.Printf("Text: %s\n", h.Text())
+	// Output: Text: Press ? for help
+}
+
+// ExampleSearchBar demonstrates creating a search input.
+func ExampleSearchBar() {
+	s := component.NewSearchBar("Search files...")
+	s.SetQuery("main.go")
+	fmt.Printf("Query: %s\n", s.Query())
+	// Output: Query: main.go
+}
