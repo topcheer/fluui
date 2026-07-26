@@ -826,3 +826,83 @@ func ExampleRichLog() {
 	// Output: Entries: 3
 }
 
+// ─── P427: 10 more Examples (Direction E) ───
+
+func ExampleTabBar() {
+	tb := component.NewTabBar()
+	tb.AddTab("tab1", "Files")
+	tb.AddTab("tab2", "Edit")
+	tb.AddTab("tab3", "View")
+	fmt.Printf("Tabs: %d\n", tb.TabCount())
+	// Output: Tabs: 3
+}
+
+func ExampleVirtualScroller() {
+	vs := component.NewVirtualScroller()
+	vs.AddItem(component.VirtualItem{ID: "1", Text: "Item 1"})
+	vs.AddItem(component.VirtualItem{ID: "2", Text: "Item 2"})
+	vs.AddItem(component.VirtualItem{ID: "3", Text: "Item 3"})
+	fmt.Printf("Items: %d\n", vs.ItemCount())
+	// Output: Items: 3
+}
+
+func ExampleStatusIndicator() {
+	si := component.NewStatusIndicator()
+	si.SetMessage("Connecting...")
+	si.Start()
+	fmt.Printf("Running: %v\n", si.IsRunning())
+	// Output: Running: true
+}
+
+func ExampleBadgeGroup() {
+	bg := component.NewBadgeGroup()
+	bg.Add(component.NewNeutralBadge("v1.0"))
+	bg.Add(component.NewSuccessBadge("stable"))
+	bg.Add(component.NewWarningBadge("beta"))
+	fmt.Printf("Badges: %d\n", bg.Count())
+	// Output: Badges: 3
+}
+
+func ExampleStyleSheet() {
+	ss := component.NewStyleSheet()
+	bold := true
+	ss.Add("primary", component.StyleDecl{Bold: &bold})
+	fmt.Printf("Classes: %d\n", ss.Count())
+	// Output: Classes: 1
+}
+
+func ExamplePages() {
+	p := component.NewPages()
+	p.AddPage("home", component.NewText("Home"))
+	p.AddPage("settings", component.NewText("Settings"))
+	p.SwitchTo("settings")
+	fmt.Printf("Current: %s\n", p.CurrentPage())
+	// Output: Current: settings
+}
+
+func ExampleStreamingText() {
+	st := component.NewStreamingText()
+	st.SetText("Hello, world!")
+	st.Skip() // reveal all text instantly
+	fmt.Printf("Completed: %v\n", st.Completed())
+	// Output: Completed: true
+}
+
+func ExampleTerminalProfile() {
+	tp := component.NewTerminalProfile()
+	fmt.Printf("Has profile: %v\n", tp != nil)
+	// Output: Has profile: true
+}
+
+func ExampleDebugInspector() {
+	di := component.NewDebugInspector()
+	fmt.Printf("Has inspector: %v\n", di != nil)
+	// Output: Has inspector: true
+}
+
+func ExampleNewSeparator() {
+	sep := component.NewSeparator()
+	fmt.Printf("Is separator: %v\n", sep != nil)
+	// Output: Is separator: true
+}
+
