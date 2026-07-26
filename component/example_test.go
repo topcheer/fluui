@@ -906,3 +906,10 @@ func ExampleNewSeparator() {
 	// Output: Is separator: true
 }
 
+func ExampleModelBadge() {
+	mb := component.NewModelBadge("claude-sonnet-4-20250514")
+	mb.SetContextWindow(200000)
+	fmt.Printf("%s: %s (%s)\n", mb.ProviderName(), mb.DisplayName(), mb.ModelID())
+	// Output: Anthropic: Claude (claude-sonnet-4-20250514)
+}
+
