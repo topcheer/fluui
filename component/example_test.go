@@ -298,3 +298,11 @@ func ExampleDivider() {
 	fmt.Printf("Label: %s\n", d.Label())
 	// Output: Label: Settings
 }
+
+// ExampleRating demonstrates a star rating display.
+func ExampleRating() {
+	r := component.NewRating(4.5, 5)
+	r.SetShowNumber(true)
+	fmt.Printf("Value: %.1f/%d\n", r.Value(), r.Max())
+	// Output: Value: 4.5/5
+}
