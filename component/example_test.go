@@ -506,3 +506,73 @@ func ExampleStatusBar() {
 	fmt.Printf("Has statusbar: %v\n", sb != nil)
 	// Output: Has statusbar: true
 }
+
+// ExampleTooltip demonstrates a help tooltip.
+func ExampleTooltip() {
+	tt := component.NewTooltip("Press Ctrl+S to save")
+	fmt.Printf("Has tooltip: %v\n", tt != nil)
+	// Output: Has tooltip: true
+}
+
+// ExampleDiffViewer demonstrates a diff display.
+func ExampleDiffViewer() {
+	dv := component.NewDiffViewer()
+	fmt.Printf("Has diff: %v\n", dv != nil)
+	// Output: Has diff: true
+}
+
+// ExamplePagination demonstrates page navigation.
+func ExamplePagination() {
+	p := component.NewPagination()
+	fmt.Printf("Has pagination: %v\n", p != nil)
+	// Output: Has pagination: true
+}
+
+// ExampleStepper demonstrates a multi-step wizard flow.
+func ExampleStepper() {
+	s := component.NewStepper([]component.StepperStep{{Title: "Step 1"}})
+	fmt.Printf("Steps: %d\n", s.StepCount())
+	// Output: Steps: 1
+}
+
+// ExampleTextArea demonstrates a multi-line text input.
+func ExampleTextArea() {
+	ta := component.NewTextArea()
+	fmt.Printf("Has textarea: %v\n", ta != nil)
+	// Output: Has textarea: true
+}
+
+// ExampleTimeline demonstrates an event timeline.
+func ExampleTimeline() {
+	tl := component.NewTimeline([]component.TimelineEvent{{Title: "Created"}})
+	fmt.Printf("Has timeline: %v\n", tl != nil)
+	// Output: Has timeline: true
+}
+
+// ExamplePlaceholder demonstrates a loading placeholder.
+func ExamplePlaceholder() {
+	p := component.NewPlaceholder("Loading...")
+	fmt.Printf("Label: %s\n", p.Label())
+	// Output: Label: Loading...
+}
+
+// ExampleFill demonstrates a fill character component.
+func ExampleFill() {
+	f := component.NewFill('-', buffer.Style{})
+	fmt.Printf("Has fill: %v\n", f != nil)
+	// Output: Has fill: true
+}
+
+// ExampleDigits demonstrates a numeric display.
+func ExampleDigits() {
+	d := component.NewDigits("42")
+	fmt.Printf("Has digits: %v\n", d != nil)
+	// Output: Has digits: true
+}
+
+// ExampleWizard demonstrates a step-by-step wizard.
+func ExampleWizard() {
+	w := component.NewWizard(nil)
+	fmt.Printf("Has wizard: %v\n", w != nil)
+	// Output: Has wizard: true
+}
