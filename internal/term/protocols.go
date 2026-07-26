@@ -1197,3 +1197,77 @@ func stripTerminatorChecked(s string) (string, bool) {
 	}
 	return s, false
 }
+
+// ─── OSC 133: Shell Integration (Semantic Prompt Marking) ───
+//
+// OSC 133 is supported by iTerm2, WezTerm, Kitty, GNOME Terminal, and others.
+// It marks command boundaries so terminals can identify prompts, commands,
+// and their output — essential for AI terminal assistants to parse sessions.
+
+// ShellPromptStart marks the beginning of a shell prompt (OSC 133;A).
+func ShellPromptStart() string {
+	return "\x1b]133;A\x07"
+}
+
+// ShellCommandStart marks the end of the prompt / start of the command (OSC 133;B).
+func ShellCommandStart() string {
+	return "\x1b]133;B\x07"
+}
+
+// ShellOutputStart marks the start of command output (OSC 133;C).
+func ShellOutputStart() string {
+	return "\x1b]133;C\x07"
+}
+
+// ShellOutputEnd marks the end of command output with an optional exit code (OSC 133;D).
+// If exitCode is -1, no exit code is included.
+func ShellOutputEnd(exitCode int) string {
+	if exitCode < 0 {
+		return "\x1b]133;D\x07"
+	}
+	return "\x1b]133;D;" + intToStr(exitCode) + "\x07"
+}
+
+// ShellIntegration wraps a command execution with all four OSC 133 markers:
+// prompt start, command start, output start, and output end.
+// Usage: fmt.Print(ShellIntegration(0)) at the end of a command.
+// The caller is responsible for emitting each marker at the right point.
+// This helper emits a complete set for testing/demonstration.
+func ShellIntegration(exitCode int) string {
+	return ShellPromptStart() + ShellCommandStart() + ShellOutputStart() + ShellOutputEnd(exitCode)
+}
+
+// ─── Bracketed Paste Mode (DECSET/DECRST 2004) ───
+//
+// When enabled, pasted text is wrapped in ESC[200~ ... ESC[201~.
+// This allows TUI apps to distinguish paste from typed input.
+// Enable/Disable constants are already defined above.
+
+// IsBracketedPaste checks if data is a bracketed paste sequence.
+// Returns the unwrapped content and true if it is, or data and false otherwise.
+func IsBracketedPaste(data string) (string, bool) {
+	const prefix = "\x1b[200~"
+	const suffix = "\x1b[201~"
+	if len(data) >= len(prefix)+len(suffix) &&
+		data[:len(prefix)] == prefix &&
+		data[len(data)-len(suffix):] == suffix {
+		return data[len(prefix) : len(data)-len(suffix)], true
+	}
+	return data, false
+}
+
+// ─── OSC 4: Query/Set Palette Color ───
+//
+// OSC 4;n;? BEL queries the color of palette index n.
+// OSC 4;n;spec BEL sets the color of palette index n.
+
+// QueryPaletteColorIndex queries a specific palette color index via OSC 4.
+func QueryPaletteColorIndex(index int) string {
+	return "\x1b]4;" + intToStr(index) + ";?\x07"
+}
+
+// SetPaletteColor sets a palette color index to an RGB value via OSC 4.
+func SetPaletteColor(index int, r, g, b uint8) string {
+	return "\x1b]4;" + intToStr(index) + ";rgb:" +
+		colorItoa(int(r)) + "/" + colorItoa(int(g)) + "/" + colorItoa(int(b)) + "\x07"
+}
