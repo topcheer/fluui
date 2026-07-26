@@ -576,3 +576,119 @@ func ExampleWizard() {
 	fmt.Printf("Has wizard: %v\n", w != nil)
 	// Output: Has wizard: true
 }
+
+func ExampleAIProgress() {
+	a := component.NewAIProgress()
+	a.SetPhase(component.AIPhaseGenerating)
+	fmt.Printf("Phase: %s\n", a.PhaseLabel())
+	// Output: Phase: Generating...
+}
+
+func ExampleApprovalDialog() {
+	d := component.NewApprovalDialog("Deploy?", "Push to production?")
+	fmt.Printf("Title: %s\n", d.Title())
+	// Output: Title: Deploy?
+}
+
+func ExampleBarChart() {
+	bc := component.NewBarChart()
+	fmt.Printf("Has chart: %v\n", bc != nil)
+	// Output: Has chart: true
+}
+
+func ExampleCallout() {
+	c := component.NewCallout(component.CalloutInfo, "System update available")
+	fmt.Printf("Has callout: %v\n", c != nil)
+	// Output: Has callout: true
+}
+
+func ExampleCanvas() {
+	c := component.NewCanvas()
+	fmt.Printf("Has canvas: %v\n", c != nil)
+	// Output: Has canvas: true
+}
+
+func ExampleContentSwitcher() {
+	cs := component.NewContentSwitcher()
+	fmt.Printf("Has switcher: %v\n", cs != nil)
+	// Output: Has switcher: true
+}
+
+func ExampleDialog() {
+	d := component.NewDialog(component.DialogInfo, "Notice", "File saved")
+	fmt.Printf("Has dialog: %v\n", d != nil)
+	// Output: Has dialog: true
+}
+
+func ExampleDiffPreview() {
+	dp := component.NewDiffPreview()
+	fmt.Printf("Has diff: %v\n", dp != nil)
+	// Output: Has diff: true
+}
+
+func ExampleEmptyState() {
+	es := component.NewEmptyState("No results", "Try a different search")
+	fmt.Printf("Has empty state: %v\n", es != nil)
+	// Output: Has empty state: true
+}
+
+func ExampleFilteredList() {
+	fl := component.NewFilteredList([]string{"apple", "banana"})
+	fmt.Printf("Items: %d\n", len(fl.Items()))
+	// Output: Items: 2
+}
+
+func ExampleGrid() {
+	g := component.NewGrid()
+	fmt.Printf("Has grid: %v\n", g != nil)
+	// Output: Has grid: true
+}
+
+func ExampleInfoCard() {
+	c := component.NewInfoCard("ℹ", "Status", "All good")
+	fmt.Printf("Title: %s\n", c.Title())
+	// Output: Title: Status
+}
+
+func ExampleLineChart() {
+	lc := component.NewLineChart()
+	fmt.Printf("Has chart: %v\n", lc != nil)
+	// Output: Has chart: true
+}
+
+func ExampleListView() {
+	lv := component.NewListView([]string{"Item A", "Item B"})
+	fmt.Printf("Has list: %v\n", lv != nil)
+	// Output: Has list: true
+}
+
+func ExampleMaskedInput() {
+	mi := component.NewMaskedInput("###-####")
+	fmt.Printf("Has input: %v\n", mi != nil)
+	// Output: Has input: true
+}
+
+func ExampleDropdown() {
+	d := component.NewDropdown([]component.DropdownItem{{Label: "A"}})
+	fmt.Printf("Items: %d\n", len(d.Items()))
+	// Output: Items: 1
+}
+
+func ExampleComboBox() {
+	cb := component.NewComboBox([]string{"a", "b"})
+	fmt.Printf("Items: %d\n", len(cb.Items()))
+	// Output: Items: 2
+}
+
+func ExampleFunnelChart() {
+	fc := component.NewFunnelChart(nil)
+	fmt.Printf("Has funnel: %v\n", fc != nil)
+	// Output: Has funnel: true
+}
+
+func ExampleDataGrid() {
+	dg := component.NewDataGrid(nil)
+	fmt.Printf("Has grid: %v\n", dg != nil)
+	// Output: Has grid: true
+}
+
