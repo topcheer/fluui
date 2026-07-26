@@ -71,30 +71,7 @@ func (s *ColorSwatch) SetShowHex(b bool) {
 	s.showHex = b
 }
 
-// hexStringLocked returns the hex representation of the color (zero alloc via stack buffer).
-func (s *ColorSwatch) hexStringLocked() string {
-	c := s.color
-	switch c.Type {
-	case buffer.ColorTrue:
-		r := uint8(c.Val >> 16)
-		g := uint8(c.Val >> 8)
-		b := uint8(c.Val)
-		var buf [7]byte
-		out := buf[:0]
-		out = append(out, '#')
-		const hexChars = "0123456789abcdef"
-		out = append(out, hexChars[r>>4], hexChars[r&0xf])
-		out = append(out, hexChars[g>>4], hexChars[g&0xf])
-		out = append(out, hexChars[b>>4], hexChars[b&0xf])
-		return string(out)
-	case buffer.Color256:
-		return "c" + strconv.Itoa(int(c.Val))
-	case buffer.ColorNamed:
-		return "n" + strconv.Itoa(int(c.Val))
-	default:
-		return "none"
-	}
-}
+// hexStringLocked removed — superseded by drawHexLocked (zero-alloc direct-to-buffer).
 
 // Measure returns the preferred size: swatch(2) + space + label width.
 func (s *ColorSwatch) Measure(cs Constraints) Size {
