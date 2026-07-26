@@ -692,3 +692,13 @@ func ExampleDataGrid() {
 	// Output: Has grid: true
 }
 
+func ExampleSliderRange() {
+	sr := component.NewSliderRange().
+		SetLow(25).
+		SetHigh(75).
+		SetStep(5).
+		SetLabel("Price Range")
+	fmt.Printf("Range: %.0f - %.0f\n", sr.Low(), sr.High())
+	// Output: Range: 25 - 75
+}
+
