@@ -206,12 +206,21 @@ func detectLinksInto(text string, lineIdx, yOffset int, dst []LinkRange) []LinkR
 //
 // This implementation uses a hand-rolled byte scanner instead of regexp,
 // delivering 3-5x better performance with identical results.
+// DetectLinks scans text for URLs and returns the results.
+// This is a convenience wrapper that allocates a result slice.
+// For zero-allocation hot paths, use DetectLinksInto instead.
 func DetectLinks(text string, lineIdx, yOffset int) []LinkRange {
 	result := detectLinksInto(text, lineIdx, yOffset, make([]LinkRange, 0, 4))
 	if len(result) == 0 {
 		return nil
 	}
 	return result
+}
+
+// DetectLinksInto scans text for URLs, appending results to dst.
+// Returns the updated slice. Zero allocation when dst has capacity.
+func DetectLinksInto(text string, lineIdx, yOffset int, dst []LinkRange) []LinkRange {
+	return detectLinksInto(text, lineIdx, yOffset, dst)
 }
 
 // ScanText scans multiple lines of text for URLs and stores the results.

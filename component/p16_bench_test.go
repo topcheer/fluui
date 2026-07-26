@@ -436,3 +436,18 @@ func BenchmarkP12Baseline_ProgressBarPaint(b *testing.B) {
 		pb.Paint(buf)
 	}
 }
+
+func BenchmarkDetectLinksInto_10(b *testing.B) {
+	text := "Check https://example.com and http://test.io/path?q=1 also www.foo.bar"
+	var dst []LinkRange
+	// Pre-allocate once
+	dst = make([]LinkRange, 0, 16)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		dst = dst[:0]
+		dst = DetectLinksInto(text, 0, 0, dst)
+	}
+	_ = dst
+}
