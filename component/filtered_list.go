@@ -58,6 +58,7 @@ func (f *FilteredList) Selected() int { f.mu.RLock(); defer f.mu.RUnlock(); retu
 func (f *FilteredList) SetSelected(i int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.selected = i
 	f.clampSelectedLocked()
 }
 
