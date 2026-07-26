@@ -432,3 +432,77 @@ func ExampleCommandPalette() {
 	fmt.Printf("Query: %q\n", cp.Query())
 	// Output: Query: ""
 }
+
+// ExampleBorder demonstrates wrapping a component with a border.
+func ExampleBorder() {
+	b := component.NewBorder(component.NewText("content"))
+	fmt.Printf("Has child: %v\n", b != nil)
+	// Output: Has child: true
+}
+
+// ExampleCalendar demonstrates a date picker calendar.
+func ExampleCalendar() {
+	c := component.NewCalendar()
+	fmt.Printf("Has calendar: %v\n", c != nil)
+	// Output: Has calendar: true
+}
+
+// ExampleContextMenu demonstrates a right-click context menu.
+func ExampleContextMenu() {
+	cm := component.NewContextMenu()
+	fmt.Printf("Has menu: %v\n", cm != nil)
+	// Output: Has menu: true
+}
+
+// ExampleDrawer demonstrates a slide-out drawer panel.
+func ExampleDrawer() {
+	d := component.NewDrawer(component.DrawerLeft, "Filters")
+	fmt.Printf("Title: %s\n", d.Title())
+	// Output: Title: Filters
+}
+
+// ExampleFooter demonstrates a bottom status footer.
+func ExampleFooter() {
+	f := component.NewFooter()
+	fmt.Printf("Has footer: %v\n", f != nil)
+	// Output: Has footer: true
+}
+
+// ExampleForm demonstrates creating a form.
+func ExampleForm() {
+	f := component.NewForm()
+	fmt.Printf("Has form: %v\n", f != nil)
+	// Output: Has form: true
+}
+
+// ExampleGauge demonstrates a gauge indicator.
+func ExampleGauge() {
+	g := component.NewGauge()
+	g.SetRange(0, 100)
+	g.SetValue(72)
+	g.SetLabel("CPU")
+	fmt.Printf("Value: %.0f\n", g.Value())
+	// Output: Value: 72
+}
+
+// ExampleHeader demonstrates a top header bar.
+func ExampleHeader() {
+	h := component.NewHeader("MyApp")
+	fmt.Printf("Has header: %v\n", h != nil)
+	// Output: Has header: true
+}
+
+// ExamplePopover demonstrates a floating popover.
+func ExamplePopover() {
+	p := component.NewPopover(component.Rect{X: 0, Y: 0, W: 10, H: 5}, "Title", "Body text")
+	fmt.Printf("Has popover: %v\n", p != nil)
+	// Output: Has popover: true
+}
+
+// ExampleStatusBar demonstrates creating a status bar.
+func ExampleStatusBar() {
+	sb := component.NewStatusBar()
+	sb.AddLeft("model", "GPT-4")
+	fmt.Printf("Has statusbar: %v\n", sb != nil)
+	// Output: Has statusbar: true
+}
