@@ -522,9 +522,26 @@ func (cp *ColorPicker) Paint(buf *buffer.Buffer) {
 
 	// Bottom: current value
 	valY := bounds.Y + bounds.H - 2
-	valStr := cp.color.String()
 	cp.drawString(buf, bounds.X, valY, "Selected: ", cp.style.Label)
-	cp.drawString(buf, bounds.X+10, valY, valStr, cp.style.Value)
+	// Draw color value zero-alloc via stack buffer
+	var cb [24]byte
+	cbs := cb[:0]
+	switch cp.color.Type {
+	case buffer.ColorNone:
+		cbs = append(cbs, "default"...)
+	case buffer.ColorNamed:
+		cbs = append(cbs, "named("...)
+		cbs = strconv.AppendInt(cbs, int64(cp.color.Val), 10)
+		cbs = append(cbs, ')')
+	case buffer.Color256:
+		cbs = append(cbs, "256("...)
+		cbs = strconv.AppendInt(cbs, int64(cp.color.Val), 10)
+		cbs = append(cbs, ')')
+	case buffer.ColorTrue:
+		cbs = append(cbs, '#')
+		cbs = strconv.AppendUint(cbs, uint64(cp.color.Val), 16)
+	}
+	cp.drawBytes(buf, bounds.X+10, valY, cbs, cp.style.Value)
 
 	// Help line
 	helpY := bounds.Y + bounds.H - 1
@@ -634,12 +651,11 @@ func (cp *ColorPicker) paintRGB(buf *buffer.Buffer, x, y, maxW int) {
 		if values[i] < 100 { vb = append(vb, ) }
 		if values[i] < 10 { vb = append(vb, ) }
 		vb = strconv.AppendInt(vb, int64(values[i]), 10)
-		valStr := string(vb)
 		valStyle := cp.style.Value
 		if i != cp.activeChannel {
 			valStyle = cp.style.Label
 		}
-		cp.drawString(buf, sliderX+sliderW+2, rowY, valStr, valStyle)
+		cp.drawBytes(buf, sliderX+sliderW+2, rowY, vb, valStyle)
 	}
 
 	// Active channel hint
@@ -722,8 +738,7 @@ func (cp *ColorPicker) drawSwatch(buf *buffer.Buffer, x, y, w, h int) {
 }
 
 func (cp *ColorPicker) drawString(buf *buffer.Buffer, x, y int, s string, style buffer.Style) {
-	cols := []rune(s)
-	for i, r := range cols {
+	for i, r := range s {
 		buf.SetCell(x+i, y, buffer.Cell{
 			Rune:  r,
 			Width: 1,
