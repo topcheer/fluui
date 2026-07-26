@@ -278,3 +278,23 @@ func ExampleSearchBar() {
 	fmt.Printf("Query: %s\n", s.Query())
 	// Output: Query: main.go
 }
+
+// ExampleFileTree demonstrates building a file tree.
+func ExampleFileTree() {
+	ft := component.NewFileTree("myapp", []component.FileNode{
+		{Name: "main.go"},
+		{Name: "src", IsDir: true, Expanded: true, Children: []component.FileNode{
+			{Name: "handler.go"},
+		}},
+	})
+	fmt.Printf("Root: %s\n", ft.Root())
+	// Output: Root: myapp
+}
+
+// ExampleDivider demonstrates a section separator.
+func ExampleDivider() {
+	d := component.NewDivider("Settings")
+	d.SetChar('═')
+	fmt.Printf("Label: %s\n", d.Label())
+	// Output: Label: Settings
+}
