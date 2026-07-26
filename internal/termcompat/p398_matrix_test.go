@@ -3,8 +3,8 @@ package termcompat
 import "testing"
 
 func TestP398_Matrix(t *testing.T) {
-	if len(Matrix) != 7 {
-		t.Errorf("Matrix has %d terminals, want 7", len(Matrix))
+	if len(CompatibilityMatrix) != 7 {
+		t.Errorf("Matrix has %d terminals, want 7", len(CompatibilityMatrix))
 	}
 	for _, term := range CompatibilityMatrix {
 		if term.Name == "" {

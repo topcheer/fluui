@@ -25,7 +25,7 @@ const (
 
 // Matrix is the current compatibility matrix.
 var CompatibilityMatrix = []TerminalSupport{
-	{Term: "xterm-256color", Protocols: map[string]Support{
+	{Name: "iTerm2 (3.5+)", Term: "xterm-256color", Protocols: map[string]Support{
 		"OSC8": SupportYes, "OSC52": SupportYes, "OSC7": SupportYes,
 		"OSC9;4": SupportYes, "OSC133": SupportPartial, "OSC777": SupportNo,
 		"Sync": SupportYes, "DECSCUSR": SupportYes, "Images": SupportYes,
