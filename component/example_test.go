@@ -329,3 +329,106 @@ func ExampleSkeleton() {
 	fmt.Printf("Width: %d, Animate: %v\n", s.Width(), s.Animate())
 	// Output: Width: 20, Animate: true
 }
+
+func ExampleButton() {
+	b := component.NewButton("Save")
+	fmt.Printf("Label: %s\n", b.Label())
+	// Output: Label: Save
+}
+
+func ExampleBadge() {
+	b := component.NewBadge("NEW", component.BadgeInfo)
+	fmt.Printf("Text: %s\n", b.Text())
+	// Output: Text: NEW
+}
+
+func ExampleBanner() {
+	b := component.NewBanner(component.BannerInfo, "Update available")
+	fmt.Printf("Message: %s\n", b.Message())
+	// Output: Message: Update available
+}
+
+func ExampleCheckbox() {
+	c := component.NewCheckbox([]string{"Enable notifications"})
+	fmt.Printf("Items: %d\n", len(c.Items()))
+	// Output: Items: 1
+}
+
+func ExampleCodeBlock() {
+	cb := component.NewCodeBlock("go", `fmt.Println("Hello")`)
+	fmt.Printf("Language: %s\n", cb.Language())
+	// Output: Language: go
+}
+
+func ExampleSpinner() {
+	s := component.NewSpinner("Loading...")
+	fmt.Printf("Label: %s\n", s.Label())
+	// Output: Label: Loading...
+}
+
+func ExampleSlider() {
+	s := component.NewSlider()
+	s.SetRange(0, 100)
+	s.SetValue(42)
+	fmt.Printf("Value: %.0f\n", s.Value())
+	// Output: Value: 42
+}
+
+func ExampleSwitch() {
+	sw := component.NewSwitch("Toggle")
+	sw.SetOn(true)
+	fmt.Printf("On: %v\n", sw.IsOn())
+	// Output: On: true
+}
+
+func ExampleProgressBar() {
+	p := component.NewProgressBar()
+	p.SetProgress(0.65)
+	fmt.Printf("Progress: %.0f%%\n", p.Progress()*100)
+	// Output: Progress: 65%
+}
+
+func ExampleCollapsible() {
+	c := component.NewCollapsible("Details", component.NewText("content"))
+	c.SetExpanded(true)
+	fmt.Printf("Expanded: %v\n", c.Expanded())
+	// Output: Expanded: true
+}
+
+func ExampleRadioGroup() {
+	rg := component.NewRadioGroup([]string{"Option A", "Option B"})
+	rg.SetSelected(1)
+	fmt.Printf("Selected: %s\n", rg.SelectedLabel())
+	// Output: Selected: Option B
+}
+
+func ExampleAutoComplete() {
+	ac := component.NewAutoComplete()
+	ac.SetItems([]component.CompletionItem{
+		{Label: "fmt", Description: "format package"},
+	})
+	ac.SetQuery("f")
+	fmt.Printf("Query: %s\n", ac.Query())
+	// Output: Query: f
+}
+
+func ExampleTable() {
+	tbl := component.NewTable([]string{"Name", "Score"}, []string{"Alice", "95"})
+	fmt.Printf("Columns: %d\n", len(tbl.Headers()))
+	// Output: Columns: 2
+}
+
+func ExampleColorPicker() {
+	cp := component.NewColorPicker()
+	fmt.Printf("Mode: %d\n", cp.Mode())
+	// Output: Mode: 0
+}
+
+func ExampleCommandPalette() {
+	cp := component.NewCommandPalette()
+	cp.SetCommands([]component.Command{
+		{Label: "Save file"},
+	})
+	fmt.Printf("Query: %q\n", cp.Query())
+	// Output: Query: ""
+}
