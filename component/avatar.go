@@ -214,7 +214,7 @@ func (a *Avatar) Paint(buf *buffer.Buffer) {
 	// Draw content character(s)
 	if a.icon != "" {
 		// Draw icon centered
-		x += buf.DrawText(x, y, a.icon, style)
+		x = buf.DrawText(x, y, a.icon, style)
 		// Fill remaining width with bg
 		for x < maxX {
 			buf.SetCell(x, y, buffer.Cell{Rune: ' ', Width: 1, Fg: fg, Bg: bg, Flags: flags})

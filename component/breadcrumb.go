@@ -161,7 +161,7 @@ func (b *Breadcrumb) Paint(buf *buffer.Buffer) {
 				}
 				break
 			}
-			x += buf.DrawText(x, bounds.Y, delim, delimStyle)
+			x = buf.DrawText(x, bounds.Y, delim, delimStyle)
 		}
 
 		// Draw item text
@@ -177,7 +177,7 @@ func (b *Breadcrumb) Paint(buf *buffer.Buffer) {
 			}
 			break
 		}
-		x += buf.DrawText(x, bounds.Y, item, style)
+		x = buf.DrawText(x, bounds.Y, item, style)
 	}
 }
 

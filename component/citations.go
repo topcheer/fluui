@@ -174,7 +174,7 @@ func (c *CitationsBlock) paintCollapsed(buf *buffer.Buffer, bounds Rect) {
 	}
 
 	x := bounds.X
-	x += buf.DrawText(x, bounds.Y, text, muted)
+	x = buf.DrawText(x, bounds.Y, text, muted)
 
 	// Optionally render the first URL hint
 	if count > 0 && c.citations[0].URL != "" && bounds.W-textLen > 4 {

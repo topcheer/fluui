@@ -212,7 +212,7 @@ func (s *Stepper) paintHorizontal(buf *buffer.Buffer, b Rect, steps []StepperSte
 		if titleW > availW && availW > 2 {
 			title = truncateRunes(title, availW-1) + "\u2026"
 		}
-		x += buf.DrawText(x, y, title, style)
+		x = buf.DrawText(x, y, title, style)
 
 		if i < len(steps)-1 {
 			x += 1

@@ -153,7 +153,7 @@ func (b *Banner) Paint(buf *buffer.Buffer) {
 	actionStyle := buffer.Style{Fg: fg, Bg: bg}
 
 	// Icon
-	x += buf.DrawText(x, bd.Y, " "+icon+" ", iconStyle)
+	x = buf.DrawText(x, bd.Y, " "+icon+" ", iconStyle)
 
 	// Message — draw directly if it fits, truncate only if needed
 	msgW := utf8.RuneCountInString(msg)

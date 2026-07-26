@@ -209,16 +209,16 @@ func (n *NumberInput) Paint(buf *buffer.Buffer) {
 	x++
 
 	if prefix != "" {
-		x += buf.DrawText(x, y, prefix, valueStyle)
+		x = buf.DrawText(x, y, prefix, valueStyle)
 	}
 
 	// Format value with zero allocation
 	var vbuf [16]byte
 	vb := intToBuf(vbuf[:0], value)
-	x += buf.DrawText(x, y, string(vb), valueStyle)
+	x = buf.DrawText(x, y, string(vb), valueStyle)
 
 	if suffix != "" {
-		x += buf.DrawText(x, y, " "+suffix, valueStyle)
+		x = buf.DrawText(x, y, " "+suffix, valueStyle)
 	}
 
 	// Padding to fill width

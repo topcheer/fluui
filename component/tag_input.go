@@ -184,12 +184,12 @@ func (t *TagInput) Paint(buf *buffer.Buffer) {
 			})
 		}
 		// Draw tag text on top
-		x += buf.DrawText(x, y, tagText, tagStyle)
+		x = buf.DrawText(x, y, tagText, tagStyle)
 	}
 
 	// Draw input or placeholder
 	if input != "" {
-		x += buf.DrawText(x, y, input, inputStyle)
+		x = buf.DrawText(x, y, input, inputStyle)
 	} else if len(tags) == 0 && placeholder != "" {
 		buf.DrawText(x, y, placeholder, mutedStyle)
 	}

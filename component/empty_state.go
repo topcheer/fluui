@@ -299,7 +299,7 @@ func (c *Callout) Paint(buf *buffer.Buffer) {
 
 	// Title line with icon
 	if title != "" {
-		x += buf.DrawText(x, y, icon+" ", iconStyle)
+		x = buf.DrawText(x, y, icon+" ", iconStyle)
 		buf.DrawText(x, y, title, titleStyle)
 		if b.H > 1 {
 			y++
@@ -307,7 +307,7 @@ func (c *Callout) Paint(buf *buffer.Buffer) {
 		}
 	} else {
 		// No title — icon + message on same line
-		x += buf.DrawText(x, y, icon+" ", iconStyle)
+		x = buf.DrawText(x, y, icon+" ", iconStyle)
 	}
 
 	// Message

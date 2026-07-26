@@ -182,7 +182,7 @@ func (t *ThinkingIndicator) Paint(buf *buffer.Buffer) {
 
 	// Draw label
 	if label != "" {
-		x += buf.DrawText(x, y, label+" ", cellStyle)
+		x = buf.DrawText(x, y, label+" ", cellStyle)
 	}
 
 	// Draw three dots: first N are filled, rest are empty
