@@ -196,8 +196,7 @@ func (m *MessageBubble) Measure(cs Constraints) Size {
 	h := 1
 	if m.content != "" {
 		contentW := m.contentWidthLocked(maxW)
-		lines := wrapLines(m.content, contentW)
-		h += len(lines)
+		h += countWrapLines(m.content, contentW)
 	}
 	if m.streaming {
 		// cursor takes part of the last content line, no extra line
@@ -271,24 +270,29 @@ func (m *MessageBubble) paintStandard(buf *buffer.Buffer, bounds Rect) {
 	if m.streaming {
 		hb = append(hb, " \u2026"...)
 	}
-	// header is in hb ([]byte) — avoid string conversion to stay zero-alloc
-	headerRunes := utf8.RuneCount(hb)
+	// Count runes by counting UTF-8 leading bytes (zero alloc)
+	headerRunes := 0
+	for _, c := range hb {
+		if c < 0x80 || c >= 0xC0 {
+			headerRunes++
+		}
+	}
 
 	// Right-align for user
 	if m.role == RoleUser {
 		if headerRunes < w {
 			spaces := w - headerRunes
-			buf.DrawText(bounds.X+spaces, y, string(hb), headerStyle)
+			buf.DrawBytes(bounds.X+spaces, y, hb, headerStyle)
 		} else {
-			// Truncate rare case — 1 alloc acceptable
+			// Truncate rare case
 			buf.DrawText(bounds.X, y, truncateStr(string(hb), w), headerStyle)
 		}
 	} else {
 		if headerRunes > w {
-			// Truncate rare case — 1 alloc acceptable
+			// Truncate rare case
 			buf.DrawText(bounds.X, y, truncateStr(string(hb), w), headerStyle)
 		} else {
-			buf.DrawText(bounds.X, y, string(hb), headerStyle)
+			buf.DrawBytes(bounds.X, y, hb, headerStyle)
 		}
 	}
 	y++
@@ -416,12 +420,11 @@ func (m *MessageBubble) paintSystem(buf *buffer.Buffer, bounds Rect) {
 		contentW = 1
 	}
 
-	lines := wrapLines(m.content, contentW)
-	for _, line := range lines {
+	// Word-wrap system messages using zero-alloc byte-slice tracking
+	forEachWrapLine(m.content, contentW, func(line string) {
 		if y >= bounds.Y+bounds.H {
-			break
+			return
 		}
-		// Center-align
 		lr := line
 		if utf8.RuneCountInString(lr) > contentW {
 			lr = truncateStr(lr, contentW)
@@ -430,7 +433,7 @@ func (m *MessageBubble) paintSystem(buf *buffer.Buffer, bounds Rect) {
 		spaces := (w - lineLen) / 2
 		buf.DrawText(bounds.X+spaces, y, lr, sysStyle)
 		y++
-	}
+	})
 }
 
 // drawLineLocked draws a single content line, right-aligned for user messages.
@@ -447,37 +450,91 @@ func (m *MessageBubble) drawLineLocked(buf *buffer.Buffer, x, y, maxW int, text 
 	buf.DrawText(x, y, text, style)
 }
 
-// wrapLines wraps text to fit within the given width, returning a slice of lines.
-func wrapLines(text string, width int) []string {
+// countWrapLines returns the number of display lines after word-wrapping text
+// to the given width. Zero allocation — scans text byte by byte.
+func countWrapLines(text string, width int) int {
 	if width < 1 {
 		width = 1
 	}
-	var result []string
-	for _, para := range strings.Split(text, "\n") {
+	if text == "" {
+		return 1
+	}
+	count := 0
+	forEachWrapLine(text, width, func(string) {
+		count++
+	})
+	if count == 0 {
+		count = 1
+	}
+	return count
+}
+
+// forEachWrapLine calls cb for each word-wrapped line of text.
+// Each line is a substring of the original text (zero-copy slice).
+// Handles paragraph splitting on \n and greedy word-wrapping on width.
+func forEachWrapLine(text string, width int, cb func(line string)) {
+	if width < 1 {
+		width = 1
+	}
+	pos := 0
+	for pos <= len(text) {
+		// Find paragraph boundary (next \n)
+		nlIdx := strings.IndexByte(text[pos:], '\n')
+		var para string
+		if nlIdx < 0 {
+			para = text[pos:]
+			pos = len(text) + 1 // signal done
+		} else {
+			para = text[pos : pos+nlIdx]
+			pos += nlIdx + 1
+		}
 		if para == "" {
-			result = append(result, "")
+			cb("")
 			continue
 		}
-		words := strings.Fields(para)
-		if len(words) == 0 {
-			result = append(result, "")
+		// Fast path: paragraph fits on one line
+		if utf8.RuneCountInString(para) <= width {
+			cb(para)
 			continue
 		}
-		current := words[0]
-		for _, w := range words[1:] {
-			if len([]rune(current))+1+len([]rune(w)) <= width {
-				current += " " + w
+		// Word-wrap within paragraph using zero-alloc byte tracking
+		lineStart := -1
+		lineEnd := 0
+		lineRunes := 0
+		wordStart := -1
+		for i := 0; i <= len(para); i++ {
+			isEnd := i == len(para)
+			isSpace := !isEnd && (para[i] == ' ' || para[i] == '\t')
+			if isEnd || isSpace {
+				if wordStart >= 0 {
+					wdLen := utf8.RuneCountInString(para[wordStart:i])
+					if lineStart < 0 {
+						lineStart = wordStart
+						lineEnd = i
+						lineRunes = wdLen
+					} else if lineRunes+1+wdLen <= width {
+						lineEnd = i
+						lineRunes += 1 + wdLen
+					} else {
+						cb(para[lineStart:lineEnd])
+						lineStart = wordStart
+						lineEnd = i
+						lineRunes = wdLen
+					}
+					wordStart = -1
+				}
 			} else {
-				result = append(result, current)
-				current = w
+				if wordStart < 0 {
+					wordStart = i
+				}
 			}
 		}
-		result = append(result, current)
+		if lineStart >= 0 {
+			cb(para[lineStart:lineEnd])
+		} else {
+			cb("")
+		}
 	}
-	if len(result) == 0 {
-		result = []string{""}
-	}
-	return result
 }
 
 // MessageRoleFromString parses a role name string into a MessageRole.

@@ -278,23 +278,23 @@ func TestP298_String(t *testing.T) {
 }
 
 func TestP298_WrapLines(t *testing.T) {
-	lines := wrapLines("hello world foo bar", 10)
-	if len(lines) < 2 {
-		t.Errorf("expected wrapping, got %d lines", len(lines))
+	count := countWrapLines("hello world foo bar", 10)
+	if count < 2 {
+		t.Errorf("expected wrapping, got %d lines", count)
 	}
 }
 
 func TestP298_WrapLines_Newlines(t *testing.T) {
-	lines := wrapLines("line1\nline2\nline3", 80)
-	if len(lines) != 3 {
-		t.Errorf("expected 3 lines, got %d", len(lines))
+	count := countWrapLines("line1\nline2\nline3", 80)
+	if count != 3 {
+		t.Errorf("expected 3 lines, got %d", count)
 	}
 }
 
 func TestP298_WrapLines_Empty(t *testing.T) {
-	lines := wrapLines("", 80)
-	if len(lines) != 1 {
-		t.Errorf("expected 1 line for empty, got %d", len(lines))
+	count := countWrapLines("", 80)
+	if count != 1 {
+		t.Errorf("expected 1 line for empty, got %d", count)
 	}
 }
 

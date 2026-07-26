@@ -114,6 +114,57 @@ func (b *Buffer) DrawText(x, y int, text string, style Style) int {
 	return x
 }
 
+// DrawBytes writes a byte slice starting at (x, y) with the given style.
+// Identical to DrawText but takes []byte to avoid string conversion allocation.
+// Returns the x coordinate after the last character.
+func (b *Buffer) DrawBytes(x, y int, data []byte, style Style) int {
+	// ASCII fast path: for pure ASCII data, every byte is one cell of width 1.
+	if y >= 0 && y < b.Height && x < b.Width {
+		allASCII := true
+		for i := 0; i < len(data); i++ {
+			if data[i] >= 0x80 {
+				allASCII = false
+				break
+			}
+		}
+		if allASCII {
+			rowBase := y * b.Width
+			maxX := b.Width
+			c := Cell{Width: 1, Fg: style.Fg, Bg: style.Bg, Flags: style.Flags}
+			for i := 0; i < len(data); i++ {
+				if x >= maxX {
+					break
+				}
+				c.Rune = rune(data[i])
+				b.Cells[rowBase+x] = c
+				x++
+			}
+			return x
+		}
+	}
+	// Multi-byte path: decode runes from []byte directly (no string alloc)
+	for i := 0; i < len(data); {
+		if x >= b.Width {
+			break
+		}
+		r, size := decodeRuneFromBytes(data[i:])
+		i += size
+		w := RuneWidth(r)
+		b.SetCell(x, y, Cell{
+			Rune:  r,
+			Width: uint8(w),
+			Fg:    style.Fg,
+			Bg:    style.Bg,
+			Flags: style.Flags,
+		})
+		if w == 2 && x+1 < b.Width {
+			b.SetCell(x+1, y, Cell{Rune: 0, Width: 0, Bg: style.Bg})
+		}
+		x += w
+	}
+	return x
+}
+
 // DrawTextClamped writes a string starting at (x, y), clamping to the buffer width.
 func (b *Buffer) DrawTextClamped(x, y int, text string, style Style) int {
 	maxW := b.Width - x

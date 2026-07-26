@@ -182,3 +182,42 @@ func contains(s, sub string) bool {
 	}
 	return false
 }
+
+func TestBufferDrawBytes(t *testing.T) {
+	b := NewBuffer(10, 1)
+	x := b.DrawBytes(0, 0, []byte("hello"), DefaultStyle)
+	if x != 5 {
+		t.Errorf("DrawBytes ASCII x = %d, want 5", x)
+	}
+	for i := 0; i < 5; i++ {
+		c := b.GetCell(i, 0)
+		if c.Rune != rune("hello"[i]) {
+			t.Errorf("cell[%d] = %q, want %q", i, string(c.Rune), string("hello"[i]))
+		}
+	}
+}
+
+func TestBufferDrawBytes_MultiByte(t *testing.T) {
+	b := NewBuffer(10, 1)
+	// "·" is U+00B7 (2 bytes in UTF-8: 0xC2 0xB7)
+	x := b.DrawBytes(0, 0, []byte("a·b"), DefaultStyle)
+	if x != 3 { // a=1, ·=1, b=1
+		t.Errorf("DrawBytes multi-byte x = %d, want 3", x)
+	}
+	c := b.GetCell(1, 0)
+	if c.Rune != '·' {
+		t.Errorf("cell[1] = %q, want '·'", string(c.Rune))
+	}
+}
+
+func TestBufferDrawBytes_ZeroAlloc(t *testing.T) {
+	b := NewBuffer(10, 1)
+	data := []byte("test")
+	// Verify DrawBytes doesn't allocate
+	allocs := testing.AllocsPerRun(100, func() {
+		b.DrawBytes(0, 0, data, DefaultStyle)
+	})
+	if allocs != 0 {
+		t.Errorf("DrawBytes allocs = %v, want 0", allocs)
+	}
+}
