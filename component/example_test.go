@@ -306,3 +306,26 @@ func ExampleRating() {
 	fmt.Printf("Value: %.1f/%d\n", r.Value(), r.Max())
 	// Output: Value: 4.5/5
 }
+
+// ExampleCircularProgress demonstrates a ring progress indicator.
+func ExampleCircularProgress() {
+	c := component.NewCircularProgress(0.75)
+	c.SetLabel("Loading")
+	fmt.Printf("Value: %.0f%%\n", c.Value()*100)
+	// Output: Value: 75%
+}
+
+// ExampleTogglePill demonstrates an on/off toggle.
+func ExampleTogglePill() {
+	tp := component.NewTogglePill(true)
+	tp.SetLabel("Auto-save")
+	fmt.Printf("On: %v\n", tp.IsOn())
+	// Output: On: true
+}
+
+// ExampleSkeleton demonstrates a loading placeholder.
+func ExampleSkeleton() {
+	s := component.NewSkeleton(20, 1)
+	fmt.Printf("Width: %d, Animate: %v\n", s.Width(), s.Animate())
+	// Output: Width: 20, Animate: true
+}

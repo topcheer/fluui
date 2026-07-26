@@ -34,7 +34,7 @@ func (v VersionInfo) IsDev() bool {
 }
 
 // ComponentCount returns the total number of components in the library.
-const ComponentCount = 132
+const ComponentCount = 135
 
 // ProtocolCount returns the total number of terminal protocol functions supported.
 const ProtocolCount = 64
