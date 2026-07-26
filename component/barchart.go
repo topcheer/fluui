@@ -3,6 +3,7 @@ package component
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -382,7 +383,7 @@ func (bc *BarChart) paintVertical(buf *buffer.Buffer, bounds Rect, maxVal float6
 	if bc.showLegend && numSeries > 1 {
 		x := bounds.X
 		for _, s := range bc.series {
-			entry := fmt.Sprintf("█ %s", s.Name)
+			entry := "█ " + s.Name
 			if x+len(entry) > bounds.X+bounds.W {
 				break
 			}
@@ -662,7 +663,7 @@ func (bc *BarChart) paintHorizontal(buf *buffer.Buffer, bounds Rect, maxVal floa
 	if bc.showLegend && numSeries > 1 {
 		x := bounds.X
 		for _, s := range bc.series {
-			entry := fmt.Sprintf("█ %s", s.Name)
+			entry := "█ " + s.Name
 			if x+len(entry) > bounds.X+bounds.W {
 				break
 			}
@@ -847,28 +848,32 @@ func (bc *BarChart) Children() []Component { return nil }
 
 // --- Helpers ---
 
-// formatBarVal formats a numeric value for axis/label display.
+// formatBarVal formats a numeric value for axis/label display (zero-alloc).
 func formatBarVal(v float64) string {
 	if v == 0 {
 		return "0"
 	}
 	abs := math.Abs(v)
-	if abs >= 1e9 {
-		return fmt.Sprintf("%.1fB", v/1e9)
+	var suffix string
+	var scaled float64
+	switch {
+	case abs >= 1e9:
+		suffix = "B"
+		scaled = v / 1e9
+	case abs >= 1e6:
+		suffix = "M"
+		scaled = v / 1e6
+	case abs >= 1e3:
+		suffix = "K"
+		scaled = v / 1e3
+	case abs >= 100:
+		return strconv.FormatFloat(v, 'f', 0, 64)
+	case abs >= 10:
+		return strconv.FormatFloat(v, 'f', 1, 64)
+	default:
+		return strconv.FormatFloat(v, 'f', 2, 64)
 	}
-	if abs >= 1e6 {
-		return fmt.Sprintf("%.1fM", v/1e6)
-	}
-	if abs >= 1e3 {
-		return fmt.Sprintf("%.1fK", v/1e3)
-	}
-	if abs >= 100 {
-		return fmt.Sprintf("%.0f", v)
-	}
-	if abs >= 10 {
-		return fmt.Sprintf("%.1f", v)
-	}
-	return fmt.Sprintf("%.2f", v)
+	return strconv.FormatFloat(scaled, 'f', 1, 64) + suffix
 }
 
 // barAutoColors returns a palette of distinct colors for auto-coloring series.
