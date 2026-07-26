@@ -185,3 +185,21 @@ func ExampleKBD() {
 	// 1
 	// 2
 }
+
+// ExampleDiffStatBar demonstrates rendering diff statistics for code review.
+func ExampleDiffStatBar() {
+	// Create a diff stat bar with additions and deletions
+	d := component.NewDiffStatBar(120, 35)
+	d.SetStats(120, 35, 3)
+
+	// Text-only style: compact "+120 -35"
+	d.SetStyle(component.DiffStatStyleText)
+	fmt.Printf("Additions: %d, Deletions: %d\n", d.Additions(), d.Deletions())
+
+	// Full style with file count
+	d.SetStyle(component.DiffStatStyleFull)
+	fmt.Printf("Files: %d\n", d.Files())
+	// Output:
+	// Additions: 120, Deletions: 35
+	// Files: 3
+}

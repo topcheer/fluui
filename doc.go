@@ -1,7 +1,7 @@
 // Package fluui is an AI-native TUI library for Go, built from scratch.
 //
-// Fluui provides a complete terminal UI framework with 119 components, 23 terminal
-// protocols, 100% zero-allocation rendering (all 41 Paint benchmarks), and first-class
+// Fluui provides a complete terminal UI framework with 120 components, 25 terminal
+// protocols, 100% zero-allocation rendering (all 42 Paint benchmarks), and first-class
 // AI chat support.
 //
 // # Quick Start
