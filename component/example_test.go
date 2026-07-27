@@ -1107,3 +1107,20 @@ func ExampleStreamingMarkdownDiff() {
 	// Output: +1 -1
 }
 
+func ExampleProgressTimeline() {
+	pt := component.NewProgressTimeline()
+	pt.AddMilestone(component.TimelineMilestone{Label: "Design", Status: component.MilestoneDone})
+	pt.AddMilestone(component.TimelineMilestone{Label: "Build", Status: component.MilestoneActive})
+	pt.AddMilestone(component.TimelineMilestone{Label: "Ship", Status: component.MilestonePending})
+	fmt.Printf("Progress: %.0f%%\n", pt.Progress()*100)
+	// Output: Progress: 33%
+}
+
+func ExampleOrgChart() {
+	oc := component.NewOrgChart()
+	oc.SetRoot(component.OrgNode{ID: "ceo", Label: "CEO"})
+	oc.AddChild("ceo", component.OrgNode{ID: "cto", Label: "CTO"})
+	fmt.Printf("Nodes: %d\n", oc.NodeCount())
+	// Output: Nodes: 2
+}
+
