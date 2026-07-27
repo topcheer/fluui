@@ -980,3 +980,70 @@ func ExampleLinkManager() {
 	// Output: Has links: true
 }
 
+// ─── P437: 10 more Examples (Direction E) ───
+
+func ExamplePopup() {
+	p := component.NewPopup(component.NewText("Popup content"))
+	fmt.Printf("Has popup: %v\n", p != nil)
+	// Output: Has popup: true
+}
+
+func ExampleKeybindingManager() {
+	km := component.NewKeybindingManager()
+	fmt.Printf("Has keybindings: %v\n", km != nil)
+	// Output: Has keybindings: true
+}
+
+func ExampleHelpOverlay() {
+	groups := []component.HelpGroup{
+		{Name: "Navigation", Entries: []component.HelpEntry{{Keys: "j/k", Description: "Move up/down"}}},
+	}
+	ho := component.NewHelpOverlay(groups)
+	fmt.Printf("Has help: %v\n", ho != nil)
+	// Output: Has help: true
+}
+
+func ExampleSessionSidebar() {
+	sb := component.NewSessionSidebar()
+	fmt.Printf("Has sidebar: %v\n", sb != nil)
+	// Output: Has sidebar: true
+}
+
+func ExampleWindowManager() {
+	wm := component.NewWindowManager(component.NewText("Main panel"))
+	fmt.Printf("Panes: %d\n", wm.PaneCount())
+	// Output: Panes: 1
+}
+
+func ExampleRadarChart() {
+	rc := component.NewRadarChart([]component.RadarAxis{
+		{Label: "Speed", Max: 100},
+		{Label: "Power", Max: 100},
+		{Label: "Range", Max: 100},
+		{Label: "Quality", Max: 100},
+	})
+	fmt.Printf("Has chart: %v\n", rc != nil)
+	// Output: Has chart: true
+}
+
+func ExampleNewQuestionnaireDialog() {
+	d := component.NewQuestionnaireDialog("Survey", []component.Question{
+		{ID: "q1", Text: "How satisfied are you?", Required: true},
+	})
+	fmt.Println(d.Title())
+	// Output: Survey
+}
+
+func ExampleNewPrettyString() {
+	ps := component.NewPrettyString("hello world")
+	fmt.Printf("Has string: %v\n", ps != nil)
+	// Output: Has string: true
+}
+
+func ExampleSentimentBar() {
+	sb := component.NewSentimentBar(0.72)
+	sb.SetConfidence(0.85)
+	fmt.Println(sb.Label())
+	// Output: positive
+}
+
