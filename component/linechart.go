@@ -3,6 +3,7 @@ package component
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -88,6 +89,9 @@ type LineChart struct {
 	titleStyle buffer.Style
 
 	currentTheme *theme.Theme
+
+	// Cached point mapping buffer (reused across Paint calls)
+	cachedPts [][2]int
 }
 
 // NewLineChart creates a LineChart with sensible defaults.
@@ -293,8 +297,8 @@ func (lc *LineChart) Measure(cs Constraints) Size {
 
 // Paint renders the chart into the buffer.
 func (lc *LineChart) Paint(buf *buffer.Buffer) {
-	lc.mu.RLock()
-	defer lc.mu.RUnlock()
+	lc.mu.Lock()
+	defer lc.mu.Unlock()
 
 	bounds := lc.bounds
 	if bounds.W < 5 || bounds.H < 3 {
@@ -325,7 +329,7 @@ func (lc *LineChart) Paint(buf *buffer.Buffer) {
 		x := bounds.X
 		for _, s := range lc.series {
 			marker := seriesMarkerRune(s.Marker)
-			entry := fmt.Sprintf("%c %s", marker, s.Name)
+			entry := string(marker) + " " + s.Name
 			if x+len(entry) > bounds.X+bounds.W {
 				break
 			}
@@ -496,8 +500,13 @@ func (lc *LineChart) drawSeries(buf *buffer.Buffer, s ChartSeries, cx, cy, cw, c
 		return
 	}
 
-	// Map data points to screen coordinates
-	pts := make([][2]int, len(s.Data))
+	// Map data points to screen coordinates (reuse cached slice)
+	if cap(lc.cachedPts) < len(s.Data) {
+		lc.cachedPts = make([][2]int, len(s.Data))
+	} else {
+		lc.cachedPts = lc.cachedPts[:len(s.Data)]
+	}
+	pts := lc.cachedPts
 	for i, p := range s.Data {
 		pts[i] = lc.dataToScreen(p.X, p.Y, cx, cy, cw, ch, xMin, xMax, yMin, yMax)
 	}
@@ -658,16 +667,16 @@ func formatAxisVal(f float64) string {
 	}
 	// Integer values
 	if f == math.Floor(f) && math.Abs(f) < 1e6 {
-		return fmt.Sprintf("%d", int64(f))
+		return strconv.FormatInt(int64(f), 10)
 	}
 	// Small decimals
 	if math.Abs(f) >= 100 {
-		return fmt.Sprintf("%.0f", f)
+		return strconv.FormatFloat(f, 'f', 0, 64)
 	}
 	if math.Abs(f) >= 10 {
-		return fmt.Sprintf("%.1f", f)
+		return strconv.FormatFloat(f, 'f', 1, 64)
 	}
-	return fmt.Sprintf("%.2f", f)
+	return strconv.FormatFloat(f, 'f', 2, 64)
 }
 
 // --- Math helpers ---
