@@ -1048,3 +1048,62 @@ func ExampleSentimentBar() {
 	// Output: positive
 }
 
+// ─── P447: Chart component examples ───
+
+func ExampleGanttChart() {
+	gc := component.NewGanttChart()
+	gc.AddTask(component.GanttTask{Label: "Design", Start: 0, End: 14})
+	gc.AddTask(component.GanttTask{Label: "Build", Start: 10, End: 40})
+	fmt.Printf("Tasks: %d\n", gc.TaskCount())
+	// Output: Tasks: 2
+}
+
+func ExampleWaterfallChart() {
+	wc := component.NewWaterfallChart()
+	wc.AddBar(component.WaterfallBar{Label: "Start", Value: 100, Type: component.WaterfallStart})
+	wc.AddBar(component.WaterfallBar{Label: "Rev", Value: 40, Type: component.WaterfallPositive})
+	fmt.Printf("Bars: %d\n", wc.BarCount())
+	// Output: Bars: 2
+}
+
+func ExampleSunburstChart() {
+	sc := component.NewSunburstChart()
+	sc.AddSegment(component.SunburstSegment{Label: "A", Value: 40})
+	sc.AddSegment(component.SunburstSegment{Label: "B", Value: 60})
+	fmt.Printf("Total: %.0f\n", sc.TotalValue())
+	// Output: Total: 100
+}
+
+func ExampleCandlestickChart() {
+	cc := component.NewCandlestickChart()
+	cc.AddCandle(component.Candle{Open: 100, High: 105, Low: 98, Close: 103})
+	fmt.Printf("Candles: %d\n", cc.CandleCount())
+	// Output: Candles: 1
+}
+
+func ExampleNetworkGraph() {
+	ng := component.NewNetworkGraph()
+	ng.AddNode(component.GraphNode{ID: "srv", Label: "Server"})
+	ng.AddNode(component.GraphNode{ID: "db", Label: "DB"})
+	ng.AddEdge(component.GraphEdge{From: "srv", To: "db"})
+	fmt.Printf("Nodes: %d Edges: %d\n", ng.NodeCount(), ng.EdgeCount())
+	// Output: Nodes: 2 Edges: 1
+}
+
+func ExampleBubbleChart() {
+	bc := component.NewBubbleChart()
+	bc.AddBubble(component.BubbleData{X: 10, Y: 20, Size: 5, Label: "A"})
+	bc.AddBubble(component.BubbleData{X: 30, Y: 50, Size: 10, Label: "B"})
+	fmt.Printf("Bubbles: %d\n", bc.BubbleCount())
+	// Output: Bubbles: 2
+}
+
+func ExampleStreamingMarkdownDiff() {
+	d := component.NewStreamingMarkdownDiff()
+	d.SetOld("hello\nworld")
+	d.SetNew("hello\nGo")
+	added, removed, _ := d.Stats()
+	fmt.Printf("+%d -%d\n", added, removed)
+	// Output: +1 -1
+}
+
