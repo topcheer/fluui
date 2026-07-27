@@ -1124,3 +1124,18 @@ func ExampleOrgChart() {
 	// Output: Nodes: 2
 }
 
+func ExampleStockTicker() {
+	st := component.NewStockTicker("AAPL", 189.50, 1.25)
+	fmt.Printf("%s: %.2f (%+.2f)\n", st.Symbol(), st.Price(), st.Change())
+	// Output: AAPL: 189.50 (+1.25)
+}
+
+func ExampleAIStreamRenderer() {
+	r := component.NewAIStreamRenderer()
+	r.StartWithModel("gpt-4o")
+	r.Append("Hello world")
+	r.SetTokens(10, 25.0)
+	fmt.Printf("Status: %d Tokens: %d\n", r.Status(), r.TokenCount())
+	// Output: Status: 2 Tokens: 10
+}
+
