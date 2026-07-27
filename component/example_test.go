@@ -913,3 +913,70 @@ func ExampleModelBadge() {
 	// Output: Anthropic: Claude (claude-sonnet-4-20250514)
 }
 
+// ─── P434: 10 more Examples (Direction E) ───
+
+func ExampleNewConfirmDialog() {
+	d := component.NewConfirmDialog("Delete File", "Are you sure you want to delete this file?")
+	fmt.Println(d.Title())
+	// Output: Delete File
+}
+
+func ExampleNewInfoDialog() {
+	d := component.NewInfoDialog("About", "Fluui v1.0.0-beta.1")
+	fmt.Println(d.Title())
+	// Output: About
+}
+
+func ExampleNewPromptDialog() {
+	d := component.NewPromptDialog("Rename", "Enter new name:", "untitled.txt")
+	fmt.Println(d.Message())
+	// Output: Enter new name:
+}
+
+func ExampleLoadingIndicator() {
+	li := component.NewLoadingIndicator("Loading data...")
+	li.Start()
+	fmt.Println(li.Text())
+	// Output: Loading data...
+}
+
+func ExampleParagraph() {
+	p := component.NewParagraph("This is a paragraph of text that wraps automatically.")
+	fmt.Printf("Has content: %v\n", p != nil)
+	// Output: Has content: true
+}
+
+func ExampleReactiveInt() {
+	ri := component.NewReactiveInt(42)
+	fmt.Println(ri.Get())
+	// Output: 42
+}
+
+func ExampleReactiveString() {
+	rs := component.NewReactiveString("hello")
+	fmt.Println(rs.Get())
+	// Output: hello
+}
+
+func ExampleReactiveBool() {
+	rb := component.NewReactiveBool(true)
+	fmt.Println(rb.Get())
+	// Output: true
+}
+
+func ExampleMenuBar() {
+	mb := component.NewMenuBar([]component.Menu{
+		{ID: "file", Title: "File"},
+		{ID: "edit", Title: "Edit"},
+		{ID: "view", Title: "View"},
+	})
+	fmt.Printf("Menus: %d\n", len(mb.Menus()))
+	// Output: Menus: 3
+}
+
+func ExampleLinkManager() {
+	lm := component.NewLinkManager()
+	fmt.Printf("Has links: %v\n", lm != nil)
+	// Output: Has links: true
+}
+
