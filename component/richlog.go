@@ -120,6 +120,18 @@ type RichLog struct {
 
 	// filter
 	minLevel LogLevel // entries below this level are hidden
+
+	// Cached wrapped lines (reused across Paint calls to avoid allocation)
+	cachedDisp  []richDispLine
+	cachedW     int
+	cachedCount int
+}
+
+// richDispLine is a flat display line for rendering (cached).
+type richDispLine struct {
+	text  string
+	level LogLevel
+	ts    time.Time
 }
 
 // NewRichLog creates a RichLog with sensible defaults:
@@ -449,28 +461,30 @@ func (r *RichLog) Paint(buf *buffer.Buffer) {
 		contentW = 1
 	}
 
-	// Build flat list of display lines for visible entries
-	type dispLine struct {
-		text   string
-		level  LogLevel
-		ts     time.Time
-	}
-	var allLines []dispLine
-	for _, e := range r.entries {
-		if e.Level < r.minLevel {
-			continue
+	// Build/rebuild cached display lines only when content width changes
+	// or entry count changes
+	needRebuild := contentW != r.cachedW || len(r.entries) != r.cachedCount
+	if needRebuild {
+		disp := r.cachedDisp[:0]
+		for _, e := range r.entries {
+			if e.Level < r.minLevel {
+				continue
+			}
+			wrapped := wrapText(e.Text, contentW)
+			for _, wl := range wrapped {
+				disp = append(disp, richDispLine{
+					text:  wl,
+					level: e.Level,
+					ts:    e.Timestamp,
+				})
+			}
 		}
-		wrapped := wrapText(e.Text, contentW)
-		for _, wl := range wrapped {
-			allLines = append(allLines, dispLine{
-				text:  wl,
-				level: e.Level,
-				ts:    e.Timestamp,
-			})
-		}
+		r.cachedDisp = disp
+		r.cachedW = contentW
+		r.cachedCount = len(r.entries)
 	}
 
-	// Apply scroll
+	allLines := r.cachedDisp
 	totalLines := len(allLines)
 	startIdx := totalLines - h - r.scrollY
 	if startIdx < 0 {
@@ -512,7 +526,6 @@ func (r *RichLog) Paint(buf *buffer.Buffer) {
 			if textStyle.Fg.Type == 0 && textStyle.Flags == 0 {
 				textStyle = r.style.TextStyle
 			}
-			// Truncate to fit
 			text := dl.text
 			availW := x0 + w - x
 			if availW < 0 {
@@ -527,7 +540,6 @@ func (r *RichLog) Paint(buf *buffer.Buffer) {
 		row++
 	}
 
-	// Auto-scroll: if following, ensure we're at the bottom
 	if r.autoScroll && r.following {
 		r.scrollY = 0
 	}
