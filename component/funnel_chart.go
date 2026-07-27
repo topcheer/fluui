@@ -2,141 +2,239 @@ package component
 
 import (
 	"sync"
-	"unicode/utf8"
 
 	"github.com/topcheer/fluui/internal/buffer"
-	"github.com/topcheer/fluui/theme"
 )
 
-// FunnelSlice represents one stage of a funnel.
-type FunnelSlice struct {
+// ─── FunnelChart: Conversion / Sales Funnel ───
+//
+// FunnelChart renders a series of decreasing horizontal sections resembling
+// a funnel. Each section's width is proportional to its value. Common in
+// sales pipelines, conversion analytics, and user journey tracking.
+//
+// Usage:
+//
+//	fc := NewFunnelChart()
+//	fc.AddStage(FunnelStage{Label: "Visitors", Value: 10000})
+//	fc.AddStage(FunnelStage{Label: "Signups", Value: 3000})
+//	fc.AddStage(FunnelStage{Label: "Purchased", Value: 800})
+//	fc.SetBounds(Rect{X:0, Y:0, W:50, H:12})
+//	fc.Paint(buf)
+
+// FunnelStage represents one level of the funnel.
+type FunnelStage struct {
 	Label string
 	Value float64
+	Color buffer.Color
 }
 
-// FunnelChart renders a horizontal funnel (trapezoid stack) showing
-// decreasing values through stages. Useful for conversion funnels,
-// token usage breakdown, or pipeline throughput visualization.
-//
-// Thread-safe.
+// FunnelChartStyle holds visual styles.
+type FunnelChartStyle struct {
+	Stage    buffer.Style
+	Label    buffer.Style
+	Value    buffer.Style
+	Connector buffer.Style
+}
+
+// DefaultFunnelChartStyle returns sensible defaults.
+func DefaultFunnelChartStyle() FunnelChartStyle {
+	return FunnelChartStyle{
+		Stage:     buffer.Style{Fg: buffer.RGB(100, 149, 237)},
+		Label:     buffer.Style{Fg: buffer.White, Flags: buffer.Bold},
+		Value:     buffer.Style{Fg: buffer.RGB(200, 200, 200)},
+		Connector: buffer.Style{Fg: buffer.RGB(60, 60, 60)},
+	}
+}
+
+var funnelPalette = [...]buffer.Color{
+	buffer.RGB(100, 149, 237),
+	buffer.RGB(64, 200, 200),
+	buffer.RGB(16, 163, 127),
+	buffer.RGB(255, 175, 64),
+	buffer.RGB(220, 80, 80),
+	buffer.RGB(147, 112, 219),
+	buffer.RGB(255, 192, 203),
+	buffer.RGB(100, 200, 100),
+}
+
+// FunnelChart renders a conversion funnel.
 type FunnelChart struct {
 	BaseComponent
-	mu     sync.Mutex
-	slices []FunnelSlice
+	mu     sync.RWMutex
+	stages []FunnelStage
+	style  FunnelChartStyle
 }
 
-// NewFunnelChart creates a funnel chart.
-func NewFunnelChart(slices []FunnelSlice) *FunnelChart {
-	return &FunnelChart{
-		BaseComponent: BaseComponent{id: GenerateID("funnel")},
-		slices:        slices,
+// NewFunnelChart creates an empty funnel chart.
+func NewFunnelChart() *FunnelChart {
+	fc := &FunnelChart{
+		style: DefaultFunnelChartStyle(),
 	}
+	fc.SetID(GenerateID("funnel"))
+	return fc
 }
 
-// SetSlices replaces all slices.
-func (f *FunnelChart) SetSlices(s []FunnelSlice) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.slices = s
-}
-
-// Slices returns a copy.
-func (f *FunnelChart) Slices() []FunnelSlice {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	out := make([]FunnelSlice, len(f.slices))
-	copy(out, f.slices)
-	return out
-}
-
-// SliceCount returns the number of stages.
-func (f *FunnelChart) SliceCount() int {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return len(f.slices)
-}
-
-// TotalValue returns the first slice value (funnel top).
-func (f *FunnelChart) TotalValue() float64 {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if len(f.slices) == 0 {
-		return 0
+// AddStage adds a funnel level.
+func (fc *FunnelChart) AddStage(s FunnelStage) *FunnelChart {
+	fc.mu.Lock()
+	if s.Color.Type == 0 {
+		s.Color = funnelPalette[len(fc.stages)%len(funnelPalette)]
 	}
-	return f.slices[0].Value
+	fc.stages = append(fc.stages, s)
+	fc.mu.Unlock()
+	return fc
 }
 
-// Measure returns the desired size.
-func (f *FunnelChart) Measure(cs Constraints) Size {
-	maxW := cs.MaxWidth
-	if maxW <= 0 {
-		maxW = 40
+// SetStages replaces all stages.
+func (fc *FunnelChart) SetStages(stages []FunnelStage) *FunnelChart {
+	fc.mu.Lock()
+	fc.stages = stages
+	fc.mu.Unlock()
+	return fc
+}
+
+// Stages returns the current stages.
+func (fc *FunnelChart) Stages() []FunnelStage {
+	fc.mu.RLock()
+	defer fc.mu.RUnlock()
+	return fc.stages
+}
+
+// StageCount returns the number of stages.
+func (fc *FunnelChart) StageCount() int {
+	fc.mu.RLock()
+	defer fc.mu.RUnlock()
+	return len(fc.stages)
+}
+
+// Clear removes all stages.
+func (fc *FunnelChart) Clear() *FunnelChart {
+	fc.mu.Lock()
+	fc.stages = fc.stages[:0]
+	fc.mu.Unlock()
+	return fc
+}
+
+// SetStyle sets the visual style.
+func (fc *FunnelChart) SetStyle(s FunnelChartStyle) *FunnelChart {
+	fc.mu.Lock()
+	fc.style = s
+	fc.mu.Unlock()
+	return fc
+}
+
+// Style returns the current style.
+func (fc *FunnelChart) Style() FunnelChartStyle {
+	fc.mu.RLock()
+	defer fc.mu.RUnlock()
+	return fc.style
+}
+
+// Measure computes the desired size.
+func (fc *FunnelChart) Measure(cs Constraints) Size {
+	fc.mu.RLock()
+	defer fc.mu.RUnlock()
+	w := 40
+	h := len(fc.stages)*2 + 1
+	if h < 5 {
+		h = 5
 	}
-	h := f.SliceCount()
-	if h < 1 {
-		h = 1
+	if cs.MaxWidth > 0 && w > cs.MaxWidth {
+		w = cs.MaxWidth
 	}
-	return Size{W: maxW, H: h}
+	if cs.MaxHeight > 0 && h > cs.MaxHeight {
+		h = cs.MaxHeight
+	}
+	return Size{W: w, H: h}
 }
 
 // Paint renders the funnel chart.
-func (f *FunnelChart) Paint(buf *buffer.Buffer) {
-	f.mu.Lock()
-	slices := f.slices
-	f.mu.Unlock()
+func (fc *FunnelChart) Paint(buf *buffer.Buffer) {
+	fc.mu.Lock()
+	defer fc.mu.Unlock()
 
-	if len(slices) == 0 {
+	b := fc.bounds
+	if b.W < 6 || b.H < 3 || len(fc.stages) == 0 {
 		return
 	}
 
-	b := f.Bounds()
-	if b.W <= 0 || b.H <= 0 {
-		return
-	}
-
-	th := theme.Get()
-	colors := []buffer.Color{th.Accent, th.Success, th.Warning, th.Error, th.BorderMuted, th.Muted}
-
-	maxVal := slices[0].Value
+	maxVal := fc.stages[0].Value
 	if maxVal <= 0 {
 		return
 	}
 
-	for i, slice := range slices {
-		if i >= b.H {
+	stageH := b.H / len(fc.stages)
+	if stageH < 1 {
+		stageH = 1
+	}
+
+	centerX := b.X + b.W/2
+
+	for i, stage := range fc.stages {
+		y0 := b.Y + i*stageH
+		if y0 >= b.Y+b.H {
 			break
 		}
 
-		y := b.Y + i
-		// Width proportional to value
-		ratio := slice.Value / maxVal
+		ratio := stage.Value / maxVal
 		if ratio < 0 {
 			ratio = 0
 		}
-		barW := int(ratio * float64(b.W))
-		if barW < 1 {
-			barW = 1
+		stageW := int(ratio * float64(b.W))
+		if stageW < 2 {
+			stageW = 2
 		}
 
-		// Center the bar
-		offset := (b.W - barW) / 2
-
-		color := colors[i%len(colors)]
-
-		// Fill bar
-		for x := 0; x < barW; x++ {
-			buf.SetCell(b.X+offset+x, y, buffer.Cell{
-				Rune:  ' ',
-				Width: 1,
-				Bg:    color,
-			})
+		// Center the stage bar
+		startX := centerX - stageW/2
+		if startX < b.X {
+			startX = b.X
 		}
 
-		// Draw label inside bar if space allows
-		labelW := utf8.RuneCountInString(slice.Label)
-		if labelW > 0 && labelW < barW-4 {
-			lx := b.X + offset + (barW-labelW)/2
-			buf.DrawText(lx, y, slice.Label, buffer.Style{Fg: th.Bg, Bg: color})
+		// Draw stage bar rows
+		for row := 0; row < stageH && y0+row < b.Y+b.H; row++ {
+			for x := 0; x < stageW; x++ {
+				ax := startX + x
+				if ax >= b.X+b.W {
+					break
+				}
+				buf.SetCell(ax, y0+row, buffer.Cell{
+					Rune:  '█',
+					Fg:    stage.Color,
+					Bg:    fc.style.Stage.Bg,
+					Flags: fc.style.Stage.Flags,
+					Width: 1,
+				})
+			}
+		}
+
+		// Draw label centered on the stage
+		if stageH >= 1 && stage.Label != "" {
+			labelY := y0 + stageH/2
+			if labelY >= b.Y+b.H {
+				labelY = b.Y + b.H - 1
+			}
+			labelRunes := []rune(stage.Label)
+			labelX := centerX - len(labelRunes)/2
+			if labelX < b.X {
+				labelX = b.X
+			}
+			for _, r := range labelRunes {
+				if labelX >= b.X+b.W {
+					break
+				}
+				buf.SetCell(labelX, labelY, buffer.Cell{
+					Rune:  r,
+					Fg:    fc.style.Label.Fg,
+					Bg:    stage.Color,
+					Flags: fc.style.Label.Flags,
+					Width: 1,
+				})
+				labelX++
+			}
 		}
 	}
 }
+
+// Children returns nil.
+func (fc *FunnelChart) Children() []Component { return nil }

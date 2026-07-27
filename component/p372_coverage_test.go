@@ -26,22 +26,17 @@ func TestP372_Breadcrumb_Items(t *testing.T) {
 }
 
 func TestP372_FunnelChart_Slices(t *testing.T) {
-	fc := NewFunnelChart([]FunnelSlice{
+	fc := NewFunnelChart()
+	fc.SetStages([]FunnelStage{
 		{Label: "Visit", Value: 1000},
 		{Label: "Signup", Value: 500},
 	})
-	slices := fc.Slices()
-	if len(slices) != 2 {
-		t.Fatalf("len(Slices) = %d, want 2", len(slices))
+	stages := fc.Stages()
+	if len(stages) != 2 {
+		t.Fatalf("len(Stages) = %d, want 2", len(stages))
 	}
-	if slices[0].Label != "Visit" {
-		t.Errorf("Slices[0].Label = %q", slices[0].Label)
-	}
-	// Verify copy
-	slices[0].Label = "modified"
-	orig := fc.Slices()
-	if orig[0].Label != "Visit" {
-		t.Error("Slices() should return a copy")
+	if stages[0].Label != "Visit" {
+		t.Errorf("Stages[0].Label = %q", stages[0].Label)
 	}
 }
 

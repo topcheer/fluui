@@ -681,7 +681,8 @@ func ExampleComboBox() {
 }
 
 func ExampleFunnelChart() {
-	fc := component.NewFunnelChart(nil)
+	fc := component.NewFunnelChart()
+	fc.AddStage(component.FunnelStage{Label: "Visit", Value: 1000})
 	fmt.Printf("Has funnel: %v\n", fc != nil)
 	// Output: Has funnel: true
 }
