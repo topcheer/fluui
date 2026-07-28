@@ -1139,3 +1139,19 @@ func ExampleAIStreamRenderer() {
 	// Output: Status: 2 Tokens: 10
 }
 
+func ExampleHeatmapGrid() {
+	hg := component.NewHeatmapGrid(7, 20)
+	hg.Set(0, 0, 5)
+	hg.Set(0, 1, 12)
+	fmt.Printf("Cells: %d Filled: %d\n", hg.CellCount(), hg.FilledCount())
+	// Output: Cells: 140 Filled: 2
+}
+
+func ExampleTreemapChart() {
+	tc := component.NewTreemapChart()
+	tc.AddNode(component.TreemapNode{Label: "Docs", Value: 40})
+	tc.AddNode(component.TreemapNode{Label: "Photos", Value: 30})
+	fmt.Printf("Total: %.0f\n", tc.TotalValue())
+	// Output: Total: 70
+}
+
