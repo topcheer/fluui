@@ -1175,3 +1175,12 @@ func ExampleStopReasonBadge() {
 	// Output: stop: ✓
 }
 
+func ExampleThinkingTrace() {
+	tt := component.NewThinkingTrace()
+	tt.Start()
+	tt.Append("Analyzing input...")
+	tt.Complete()
+	fmt.Printf("State: %d Collapsed: %v\n", tt.State(), tt.IsCollapsed())
+	// Output: State: 2 Collapsed: true
+}
+
