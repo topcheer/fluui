@@ -1162,3 +1162,16 @@ func ExampleCodeBlockStream() {
 	// Output: Lines: 1 Lang: go
 }
 
+func ExampleTokenMeter() {
+	tm := component.NewTokenMeter(128000)
+	tm.SetUsed(45000)
+	fmt.Printf("Used: %d%% Remaining: %d\n", int(tm.Percent()), tm.Remaining())
+	// Output: Used: 35% Remaining: 83000
+}
+
+func ExampleStopReasonBadge() {
+	sr := component.NewStopReasonBadge(component.StopReasonStop)
+	fmt.Printf("%s: %c\n", sr.ReasonText(), sr.ReasonIcon())
+	// Output: stop: ✓
+}
+
