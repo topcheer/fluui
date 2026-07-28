@@ -1155,3 +1155,10 @@ func ExampleTreemapChart() {
 	// Output: Total: 70
 }
 
+func ExampleCodeBlockStream() {
+	cbs := component.NewCodeBlockStream("go")
+	cbs.SetCode("x := 42")
+	fmt.Printf("Lines: %d Lang: %s\n", cbs.LineCount(), cbs.Language())
+	// Output: Lines: 1 Lang: go
+}
+
