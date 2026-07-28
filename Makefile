@@ -35,6 +35,14 @@ bench:
 bench-ai:
 	GOCACHE=$(GOCACHE) go test -bench="MessageBubble|ConversationView|ChatComposer|ToolCallView|CitationsBlock|TokenUsageWidget|ThinkingIndicator|SegmentedControl|SkeletonLoader" -benchmem -benchtime=500ms -run=^$$ ./component/
 
+## bench-charts: Run chart component benchmarks
+bench-charts:
+	GOCACHE=$(GOCACHE) go test -bench="BarChart|LineChart|Sparkline|RadarChart|PieChart|FunnelChart|GanttChart|WaterfallChart|SunburstChart|CandlestickChart|NetworkGraph|BubbleChart|OrgChart|ProgressTimeline|HeatmapGrid|TreemapChart|StockTicker|AIStreamRenderer|SentimentBar|ModelBadge|StreamingMarkdownDiff" -benchmem -benchtime=500ms -run=^$$ ./component/
+
+## bench-zero: Run zero-alloc Paint benchmarks
+bench-zero:
+	GOCACHE=$(GOCACHE) go test -bench="Paint" -benchmem -benchtime=1000x -run=^$$ ./component/ | grep -E "allocs|Benchmark"
+
 ## coverage: Generate coverage report
 coverage:
 	GOCACHE=$(GOCACHE) go test -short -count=1 -coverprofile=cov.out ./component/ ./block/ ./app/ ./markdown/ ./render/ ./internal/buffer/ ./internal/term/ ./theme/ ./ai/
@@ -80,4 +88,4 @@ release:
 ## version: Print current version
 version:
 	@echo "Fluui $$(GOCACHE=$(GOCACHE) go run -ldflags '-X github.com/topcheer/fluui.Version=$$(git describe --tags --always --dirty 2>/dev/null || echo dev)' ./cmd/demo -- --version 2>/dev/null || echo 'dev')"
-	@echo "Components: 102+ | Protocols: 23"
+	@echo "Components: 150+ | Charts: 17 | Protocols: 23"
