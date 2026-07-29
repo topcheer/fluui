@@ -1184,3 +1184,26 @@ func ExampleThinkingTrace() {
 	// Output: State: 2 Collapsed: true
 }
 
+
+// ExampleCostTracker demonstrates cost tracking for AI API usage.
+func ExampleCostTracker() {
+	ct := component.NewCostTracker()
+	ct.SetPricing(15.0, 60.0) // $15/M input, $60/M output
+	ct.AddTokens(50000, 12000)
+	ct.SetBudget(5.0)
+	fmt.Printf("In:%d Out:%d Total:%d Cost:$%.4f Budget:$%.2f OverBudget:%v\n",
+		ct.InputTokens(), ct.OutputTokens(), ct.TotalTokens(),
+		ct.Cost(), ct.Budget(), ct.IsOverBudget())
+	// Output: In:50000 Out:12000 Total:62000 Cost:$1.4700 Budget:$5.00 OverBudget:false
+}
+
+// ExampleResponseInspector demonstrates AI response metadata inspection.
+func ExampleResponseInspector() {
+	ri := component.NewResponseInspector()
+	ri.SetModel("gpt-4o")
+	ri.SetTokens(120, 350)
+	ri.SetFinishReason(component.FinishStop)
+	fmt.Printf("Model:%s Tokens:%d Finish:%s\n",
+		ri.Model(), ri.TotalTokens(), ri.FinishReason())
+	// Output: Model:gpt-4o Tokens:470 Finish:stop
+}
