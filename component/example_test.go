@@ -1217,3 +1217,13 @@ func ExampleContextWindowBar() {
 		cwb.Used(), cwb.ContextLimit(), cwb.UsagePercent())
 	// Output: Used:95000 Limit:128000 Pct:74.2%
 }
+
+// ExampleRateLimitIndicator demonstrates API rate limit status display.
+func ExampleRateLimitIndicator() {
+	rl := component.NewRateLimitIndicator()
+	rl.SetLimit(5000)
+	rl.SetRemaining(3200)
+	fmt.Printf("Remaining:%d Limit:%d Used:%.0f%% Limited:%v\n",
+		rl.Remaining(), rl.Limit(), rl.UsagePercent(), rl.IsRateLimited())
+	// Output: Remaining:3200 Limit:5000 Used:36% Limited:false
+}
