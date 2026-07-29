@@ -1365,3 +1365,19 @@ func ExampleStepProgress() {
 	fmt.Printf("Steps:%d Current:%d\n", sp.StepCount(), sp.CurrentStep())
 	// Output: Steps:3 Current:1
 }
+
+// ExampleMarkdownStrikethrough demonstrates strikethrough rendering.
+func ExampleMarkdownStrikethrough() {
+	ms := component.NewMarkdownStrikethrough()
+	ms.SetMarkdown("~~deprecated~~ new API")
+	fmt.Printf("Struck:%d\n", ms.StrikethroughCount())
+	// Output: Struck:1
+}
+
+// ExampleMarkdownEmphasis demonstrates bold/italic rendering.
+func ExampleMarkdownEmphasis() {
+	me := component.NewMarkdownEmphasis()
+	me.SetMarkdown("**bold** and *italic*")
+	fmt.Printf("Bold:%d Italic:%d\n", me.BoldCount(), me.ItalicCount())
+	// Output: Bold:1 Italic:1
+}
