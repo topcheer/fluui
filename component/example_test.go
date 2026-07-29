@@ -1419,3 +1419,20 @@ func ExampleImagePreview() {
 	fmt.Printf("Format:%s %dx%d\n", ip.Format(), w, h)
 	// Output: Format:PNG 800x600
 }
+
+// ExampleMarkdownLink demonstrates hyperlink rendering.
+func ExampleMarkdownLink() {
+	ml := component.NewMarkdownLink()
+	ml.SetMarkdown("Visit [Fluui](https://fluui.dev) now.")
+	fmt.Printf("Links:%d\n", ml.LinkCount())
+	// Output: Links:1
+}
+
+// ExampleTagCloud demonstrates weighted tag cloud.
+func ExampleTagCloud() {
+	tc := component.NewTagCloud()
+	tc.AddTag("go", 80)
+	tc.AddTag("tui", 50)
+	fmt.Printf("Tags:%d\n", tc.TagCount())
+	// Output: Tags:2
+}
