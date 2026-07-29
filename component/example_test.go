@@ -1525,3 +1525,20 @@ func ExampleChipBadge() {
 	fmt.Printf("Chips:%d\n", cb.ChipCount())
 	// Output: Chips:1
 }
+
+// ExampleMarkdownSuperscript demonstrates superscript rendering.
+func ExampleMarkdownSuperscript() {
+	ms := component.NewMarkdownSuperscript()
+	ms.SetMarkdown("E = mc^2^")
+	fmt.Printf("Superscripts:%d\n", ms.SuperscriptCount())
+	// Output: Superscripts:1
+}
+
+// ExampleGaugeCluster demonstrates multi-gauge grid display.
+func ExampleGaugeCluster() {
+	gc := component.NewGaugeCluster()
+	gc.AddGauge("CPU", 75, 100)
+	gc.AddGauge("Memory", 50, 100)
+	fmt.Printf("Gauges:%d\n", gc.GaugeCount())
+	// Output: Gauges:2
+}
