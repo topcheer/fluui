@@ -1346,3 +1346,22 @@ func ExampleMarkdownHorizontalRule() {
 	fmt.Printf("Lines:%d Rules:%d\n", hr.LineCount(), hr.RuleCount())
 	// Output: Lines:3 Rules:1
 }
+
+// ExampleMarkdownInlineCode demonstrates inline code and fenced block rendering.
+func ExampleMarkdownInlineCode() {
+	mic := component.NewMarkdownInlineCode()
+	mic.SetMarkdown("Use `fmt.Println` to print.\n```go\nfunc main() {}\n```")
+	fmt.Printf("Inline:%d Blocks:%d\n", mic.InlineCodeCount(), mic.CodeBlockCount())
+	// Output: Inline:1 Blocks:2
+}
+
+// ExampleStepProgress demonstrates multi-step progress indicator.
+func ExampleStepProgress() {
+	sp := component.NewStepProgress()
+	sp.AddStep("Account")
+	sp.AddStep("Profile")
+	sp.AddStep("Confirm")
+	sp.SetCurrentStep(1)
+	fmt.Printf("Steps:%d Current:%d\n", sp.StepCount(), sp.CurrentStep())
+	// Output: Steps:3 Current:1
+}
