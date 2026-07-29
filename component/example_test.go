@@ -1207,3 +1207,13 @@ func ExampleResponseInspector() {
 		ri.Model(), ri.TotalTokens(), ri.FinishReason())
 	// Output: Model:gpt-4o Tokens:470 Finish:stop
 }
+
+// ExampleContextWindowBar demonstrates context window usage visualization.
+func ExampleContextWindowBar() {
+	cwb := component.NewContextWindowBar()
+	cwb.SetContextLimit(128000)
+	cwb.SetUsed(95000)
+	fmt.Printf("Used:%d Limit:%d Pct:%.1f%%\n",
+		cwb.Used(), cwb.ContextLimit(), cwb.UsagePercent())
+	// Output: Used:95000 Limit:128000 Pct:74.2%
+}
