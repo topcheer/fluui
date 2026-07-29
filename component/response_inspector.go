@@ -67,6 +67,9 @@ type ResponseInspector struct {
 	outputTokens int
 	finishReason ResponseFinishReason
 	temperature  float64
+	tempStr      string // cached formatted temperature
+	latencyStr   string // cached formatted latency
+	tokenStr     string // cached formatted tokens
 
 	style ResponseInspectorStyle
 }
@@ -99,6 +102,7 @@ func (ri *ResponseInspector) Model() string {
 func (ri *ResponseInspector) SetLatency(d time.Duration) *ResponseInspector {
 	ri.mu.Lock()
 	ri.latency = d
+	ri.latencyStr = formatInspectorDuration(d)
 	ri.mu.Unlock()
 	return ri
 }
@@ -115,6 +119,7 @@ func (ri *ResponseInspector) SetTokens(input, output int) *ResponseInspector {
 	ri.mu.Lock()
 	ri.inputTokens = input
 	ri.outputTokens = output
+	ri.tokenStr = " " + itoa(input) + " in / " + itoa(output) + " out"
 	ri.mu.Unlock()
 	return ri
 }
@@ -159,6 +164,7 @@ func (ri *ResponseInspector) FinishReason() ResponseFinishReason {
 func (ri *ResponseInspector) SetTemperature(t float64) *ResponseInspector {
 	ri.mu.Lock()
 	ri.temperature = t
+	ri.tempStr = strconv.FormatFloat(t, 'f', 1, 64)
 	ri.mu.Unlock()
 	return ri
 }
@@ -259,10 +265,10 @@ func (ri *ResponseInspector) Paint(buf *buffer.Buffer) {
 	}
 	rows := [...]metaRow{
 		{"Model:", " " + ri.model},
-		{"Latency:", " " + formatInspectorDuration(ri.latency)},
-		{"Tokens:", " " + itoa(ri.inputTokens) + " in / " + itoa(ri.outputTokens) + " out"},
+		{"Latency:", " " + ri.latencyStr},
+		{"Tokens:", ri.tokenStr},
 		{"Finish:", " " + string(ri.finishReason)},
-		{"Temp:", " " + strconv.FormatFloat(ri.temperature, 'f', 1, 64)},
+		{"Temp:", " " + ri.tempStr},
 	}
 
 	for idx, row := range rows {

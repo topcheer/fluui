@@ -45,8 +45,9 @@ type RateLimitIndicator struct {
 
 	limit      int
 	remaining  int
-	resetTime  time.Time
-	retryAfter time.Duration
+	resetTime   time.Time
+	retryAfter  time.Duration
+	countStr    string // cached remaining/limit string
 
 	style RateLimitStyle
 }
@@ -66,6 +67,7 @@ func NewRateLimitIndicator() *RateLimitIndicator {
 func (rl *RateLimitIndicator) SetLimit(n int) *RateLimitIndicator {
 	rl.mu.Lock()
 	rl.limit = n
+	rl.countStr = " " + itoa(rl.remaining) + "/" + itoa(rl.limit)
 	rl.mu.Unlock()
 	return rl
 }
@@ -81,6 +83,7 @@ func (rl *RateLimitIndicator) Limit() int {
 func (rl *RateLimitIndicator) SetRemaining(n int) *RateLimitIndicator {
 	rl.mu.Lock()
 	rl.remaining = n
+	rl.countStr = " " + itoa(rl.remaining) + "/" + itoa(rl.limit)
 	rl.mu.Unlock()
 	return rl
 }
@@ -205,8 +208,8 @@ func (rl *RateLimitIndicator) Paint(buf *buffer.Buffer) {
 		col++
 	}
 
-	// " remaining/limit"
-	text := " " + itoa(rl.remaining) + "/" + itoa(rl.limit)
+	// " remaining/limit" — use cached string
+	text := rl.countStr
 	for _, r := range text {
 		if col < buf.Width {
 			buf.SetCell(col, y, buffer.Cell{Rune: r, Fg: valueStyle.Fg, Bg: valueStyle.Bg, Flags: valueStyle.Flags, Width: 1})
@@ -214,24 +217,42 @@ func (rl *RateLimitIndicator) Paint(buf *buffer.Buffer) {
 		col++
 	}
 
-	// Retry-after or reset countdown
+	// Retry-after or reset countdown — write directly using cached byte buffers
 	if rl.retryAfter > 0 {
-		retryStr := " retry:" + formatInspectorDuration(rl.retryAfter)
-		for _, r := range retryStr {
+		critStyle := rl.style.Critical
+		retryPrefix := [...]byte{' ', 'r', 'e', 't', 'r', 'y', ':'}
+		for i := 0; i < len(retryPrefix); i++ {
 			if col < buf.Width {
-				buf.SetCell(col, y, buffer.Cell{Rune: r, Fg: rl.style.Critical.Fg, Bg: rl.style.Critical.Bg, Flags: rl.style.Critical.Flags, Width: 1})
+				buf.SetCell(col, y, buffer.Cell{Rune: rune(retryPrefix[i]), Fg: critStyle.Fg, Bg: critStyle.Bg, Flags: critStyle.Flags, Width: 1})
+				col++
 			}
-			col++
+		}
+		var durBuf [16]byte
+		durLen := formatDurationBytes(rl.retryAfter, durBuf[:])
+		for i := 0; i < durLen; i++ {
+			if col < buf.Width {
+				buf.SetCell(col, y, buffer.Cell{Rune: rune(durBuf[i]), Fg: critStyle.Fg, Bg: critStyle.Bg, Flags: critStyle.Flags, Width: 1})
+				col++
+			}
 		}
 	} else if !rl.resetTime.IsZero() {
 		until := time.Until(rl.resetTime)
 		if until > 0 {
-			resetStr := " reset:" + formatInspectorDuration(until)
-			for _, r := range resetStr {
+			lblStyle := rl.style.Label
+			resetPrefix := [...]byte{' ', 'r', 'e', 's', 'e', 't', ':'}
+			for i := 0; i < len(resetPrefix); i++ {
 				if col < buf.Width {
-					buf.SetCell(col, y, buffer.Cell{Rune: r, Fg: rl.style.Label.Fg, Bg: rl.style.Label.Bg, Flags: rl.style.Label.Flags, Width: 1})
+					buf.SetCell(col, y, buffer.Cell{Rune: rune(resetPrefix[i]), Fg: lblStyle.Fg, Bg: lblStyle.Bg, Flags: lblStyle.Flags, Width: 1})
+					col++
 				}
-				col++
+			}
+			var durBuf [16]byte
+			durLen := formatDurationBytes(until, durBuf[:])
+			for i := 0; i < durLen; i++ {
+				if col < buf.Width {
+					buf.SetCell(col, y, buffer.Cell{Rune: rune(durBuf[i]), Fg: lblStyle.Fg, Bg: lblStyle.Bg, Flags: lblStyle.Flags, Width: 1})
+					col++
+				}
 			}
 		}
 	}

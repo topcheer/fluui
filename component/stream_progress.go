@@ -66,6 +66,10 @@ type StreamProgressIndicator struct {
 	endTime     time.Time
 	state       StreamState
 	barWidth    int
+	pctStr      [16]byte // pre-allocated buffer for percent string
+	pctLen      int
+	tokStr      [16]byte // pre-allocated buffer for token count string
+	tokLen      int
 
 	style StreamProgressStyle
 }
@@ -318,14 +322,23 @@ func (sp *StreamProgressIndicator) Paint(buf *buffer.Buffer) {
 		pct = 100
 	}
 
-	// Draw integer percentage
-	pctStr := " " + itoa(int(pct)) + "%"
+	// Draw integer percentage — use cached byte buffer (zero alloc)
+	sp.pctLen = 0
+	sp.pctStr[0] = ' '
+	sp.pctLen = 1
+	pctDigits := itoa(int(pct))
+	for i := 0; i < len(pctDigits); i++ {
+		sp.pctStr[sp.pctLen] = pctDigits[i]
+		sp.pctLen++
+	}
+	sp.pctStr[sp.pctLen] = '%'
+	sp.pctLen++
 	pctStyle := sp.style.Value
-	for _, r := range pctStr {
+	for i := 0; i < sp.pctLen; i++ {
 		if col >= x+w-1 || col >= buf.Width {
 			break
 		}
-		buf.SetCell(col, y+1, buffer.Cell{Rune: r, Fg: pctStyle.Fg, Bg: pctStyle.Bg, Flags: pctStyle.Flags, Width: 1})
+		buf.SetCell(col, y+1, buffer.Cell{Rune: rune(sp.pctStr[i]), Fg: pctStyle.Fg, Bg: pctStyle.Bg, Flags: pctStyle.Flags, Width: 1})
 		col++
 	}
 
@@ -333,14 +346,27 @@ func (sp *StreamProgressIndicator) Paint(buf *buffer.Buffer) {
 	labelStyle := sp.style.Label
 	valueStyle := sp.style.Value
 
-	// Tokens
+	// Tokens — use cached byte buffer (zero alloc)
 	col = x + 1
-	tokensStr := itoa(sp.tokensRecv) + " tok"
-	for _, r := range tokensStr {
+	sp.tokLen = 0
+	tokDigits := itoa(sp.tokensRecv)
+	for i := 0; i < len(tokDigits); i++ {
+		sp.tokStr[sp.tokLen] = tokDigits[i]
+		sp.tokLen++
+	}
+	sp.tokStr[sp.tokLen] = ' '
+	sp.tokLen++
+	sp.tokStr[sp.tokLen] = 't'
+	sp.tokLen++
+	sp.tokStr[sp.tokLen] = 'o'
+	sp.tokLen++
+	sp.tokStr[sp.tokLen] = 'k'
+	sp.tokLen++
+	for i := 0; i < sp.tokLen; i++ {
 		if col >= x+w-1 || col >= buf.Width {
 			break
 		}
-		buf.SetCell(col, y+2, buffer.Cell{Rune: r, Fg: valueStyle.Fg, Bg: valueStyle.Bg, Flags: valueStyle.Flags, Width: 1})
+		buf.SetCell(col, y+2, buffer.Cell{Rune: rune(sp.tokStr[i]), Fg: valueStyle.Fg, Bg: valueStyle.Bg, Flags: valueStyle.Flags, Width: 1})
 		col++
 	}
 
@@ -358,22 +384,75 @@ func (sp *StreamProgressIndicator) Paint(buf *buffer.Buffer) {
 		col++
 	}
 
-	// Elapsed time
+	// Elapsed time — write directly using itoa into cached buffer (zero alloc)
 	if !sp.startTime.IsZero() {
 		end := sp.endTime
 		if end.IsZero() {
 			end = time.Now()
 		}
 		elapsed := end.Sub(sp.startTime)
-		elapsedStr := formatInspectorDuration(elapsed)
-		for _, r := range elapsedStr {
+		// Format duration directly into cached buffer without string alloc
+		var durBuf [16]byte
+		durLen := formatDurationBytes(elapsed, durBuf[:])
+		for i := 0; i < durLen; i++ {
 			if col >= x+w-1 || col >= buf.Width {
 				break
 			}
-			buf.SetCell(col, y+2, buffer.Cell{Rune: r, Fg: valueStyle.Fg, Bg: valueStyle.Bg, Flags: valueStyle.Flags, Width: 1})
+			buf.SetCell(col, y+2, buffer.Cell{Rune: rune(durBuf[i]), Fg: valueStyle.Fg, Bg: valueStyle.Bg, Flags: valueStyle.Flags, Width: 1})
 			col++
 		}
 	}
+}
+
+// formatDurationBytes formats a duration into the provided byte slice without allocation.
+// Returns the number of bytes written.
+func formatDurationBytes(d time.Duration, buf []byte) int {
+	if d < time.Microsecond {
+		n := writeItoaBytes(buf, int(d.Nanoseconds()))
+		buf[n] = 'n'
+		buf[n+1] = 's'
+		return n + 2
+	}
+	if d < time.Millisecond {
+		n := writeItoaBytes(buf, int(d.Microseconds()))
+		buf[n] = 'u'
+		buf[n+1] = 's'
+		return n + 2
+	}
+	if d < time.Second {
+		n := writeItoaBytes(buf, int(d.Milliseconds()))
+		buf[n] = 'm'
+		buf[n+1] = 's'
+		return n + 2
+	}
+	n := writeItoaBytes(buf, int(d.Seconds()))
+	buf[n] = 's'
+	return n + 1
+}
+
+// writeItoaBytes writes an integer into buf and returns bytes written.
+func writeItoaBytes(buf []byte, n int) int {
+	if n == 0 {
+		buf[0] = '0'
+		return 1
+	}
+	if n < 0 {
+		buf[0] = '-'
+		n = -n
+		return 1 + writeItoaBytes(buf[1:], n)
+	}
+	// Write digits in reverse
+	var temp [12]byte
+	len := 0
+	for n > 0 {
+		temp[len] = byte('0' + n%10)
+		n /= 10
+		len++
+	}
+	for i := 0; i < len; i++ {
+		buf[i] = temp[len-1-i]
+	}
+	return len
 }
 
 // Children returns nil.

@@ -45,10 +45,11 @@ type ContextWindowBar struct {
 	BaseComponent
 	mu sync.Mutex
 
-	limit     int
-	used      int
-	barWidth  int
-	showLabel bool
+	limit       int
+	used        int
+	barWidth    int
+	showLabel   bool
+	usageStr    string // cached formatted usage string
 
 	style ContextWindowBarStyle
 }
@@ -69,6 +70,7 @@ func NewContextWindowBar() *ContextWindowBar {
 func (cwb *ContextWindowBar) SetContextLimit(n int) *ContextWindowBar {
 	cwb.mu.Lock()
 	cwb.limit = n
+	cwb.usageStr = " " + itoa(cwb.used) + "/" + formatTokenCount(cwb.limit)
 	cwb.mu.Unlock()
 	return cwb
 }
@@ -84,6 +86,7 @@ func (cwb *ContextWindowBar) ContextLimit() int {
 func (cwb *ContextWindowBar) SetUsed(n int) *ContextWindowBar {
 	cwb.mu.Lock()
 	cwb.used = n
+	cwb.usageStr = " " + itoa(cwb.used) + "/" + formatTokenCount(cwb.limit)
 	cwb.mu.Unlock()
 	return cwb
 }
@@ -209,9 +212,8 @@ func (cwb *ContextWindowBar) Paint(buf *buffer.Buffer) {
 		col++
 	}
 
-	// Draw usage text after bar
-	usageStr := " " + itoa(cwb.used) + "/" + formatTokenCount(cwb.limit)
-	for _, r := range usageStr {
+	// Draw usage text after bar — use cached string
+	for _, r := range cwb.usageStr {
 		if col < buf.Width {
 			buf.SetCell(col, y, buffer.Cell{Rune: r, Fg: cwb.style.Label.Fg, Bg: cwb.style.Label.Bg, Flags: cwb.style.Label.Flags, Width: 1})
 		}

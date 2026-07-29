@@ -35,6 +35,7 @@ type FuncCall struct {
 	Name     string
 	Args     string
 	Duration time.Duration
+	DurStr   string // cached formatted duration (pre-allocated)
 	Status   CallStatus
 	Indent   int // nesting level
 }
@@ -94,6 +95,7 @@ func (fcv *FunctionCallVisualizer) AddCall(name, args string, duration time.Dura
 		Name:     name,
 		Args:     args,
 		Duration: duration,
+		DurStr:   formatInspectorDuration(duration),
 		Status:   status,
 		Indent:   0,
 	})
@@ -108,6 +110,7 @@ func (fcv *FunctionCallVisualizer) AddNestedCall(name, args string, duration tim
 		Name:     name,
 		Args:     args,
 		Duration: duration,
+		DurStr:   formatInspectorDuration(duration),
 		Status:   status,
 		Indent:   indent,
 	})
@@ -292,8 +295,8 @@ func (fcv *FunctionCallVisualizer) Paint(buf *buffer.Buffer) {
 			}
 		}
 
-		// Duration at the right edge — iterate string directly, no []rune alloc
-		durStr := formatInspectorDuration(call.Duration)
+		// Duration at the right edge — use cached string from AddCall (zero-alloc)
+		durStr := call.DurStr
 		durLen := len(durStr)
 		durStart := x + w - 2 - durLen
 		if durStart < col {
