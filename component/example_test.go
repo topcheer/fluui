@@ -1507,3 +1507,21 @@ func ExampleStatusBarSegment() {
 	fmt.Printf("Segments:%d\n", sb.SegmentCount())
 	// Output: Segments:2
 }
+
+// ExampleMarkdownEmoji demonstrates emoji shortcode rendering.
+func ExampleMarkdownEmoji() {
+	me := component.NewMarkdownEmoji()
+	me.SetMarkdown("Hello :smile: :heart:")
+	fmt.Printf("Emojis:%d\n", me.EmojiCount())
+	// Output: Emojis:2
+}
+
+// ExampleChipBadge demonstrates removable tag chips.
+func ExampleChipBadge() {
+	cb := component.NewChipBadge()
+	cb.AddChip("go")
+	cb.AddChip("tui")
+	cb.RemoveChip(0)
+	fmt.Printf("Chips:%d\n", cb.ChipCount())
+	// Output: Chips:1
+}
