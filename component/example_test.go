@@ -1490,3 +1490,20 @@ func ExampleMarkdownHeading() {
 	fmt.Printf("Level:%d Text:%s\n", mh.Level(), mh.Text())
 	// Output: Level:2 Text:Section Title
 }
+
+// ExampleMarkdownDefinitionList demonstrates definition list rendering.
+func ExampleMarkdownDefinitionList() {
+	dl := component.NewMarkdownDefinitionList()
+	dl.SetMarkdown("Go\n: A compiled language")
+	fmt.Printf("Terms:%d\n", dl.TermCount())
+	// Output: Terms:1
+}
+
+// ExampleStatusBarSegment demonstrates status bar items.
+func ExampleStatusBarSegment() {
+	sb := component.NewStatusBarSegment()
+	sb.AddSegment("Branch", "main", buffer.RGB(255,255,255), buffer.RGB(34,197,94))
+	sb.AddSegment("Errors", "0", buffer.RGB(255,255,255), buffer.RGB(239,68,68))
+	fmt.Printf("Segments:%d\n", sb.SegmentCount())
+	// Output: Segments:2
+}
