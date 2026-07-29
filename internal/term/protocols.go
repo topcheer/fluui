@@ -1502,3 +1502,66 @@ const SelectiveEraseToEnd = "\x1b[?0J"
 
 // SelectiveEraseToStart erases unprotected content from start to cursor.
 const SelectiveEraseToStart = "\x1b[?1J"
+
+// ─── DECSET/DECRST: Private Mode Set/Reset ───
+//
+// DECSET (CSI ? Pn h) and DECRST (CSI ? Pn l) control terminal private modes
+// like alternate screen, cursor visibility, mouse tracking, and more.
+
+// ─── OSC12: Cursor Color ───
+//
+// OSC 12 sets or queries the text cursor color.
+
+// SetCursorColor sets the cursor color from an RGB hex string (#RRGGBB).
+func SetCursorColor(hex string) string {
+	return "\x1b]12;" + hex + "\x07"
+}
+
+// ResetCursorColor resets the cursor color to terminal default.
+func ResetCursorColor() string {
+	return "\x1b]112\x07"
+}
+
+// ─── OSC9: Simple Notification (iTerm2/XTerm) ───
+//
+// OSC 9 sends a simple desktop notification.
+
+// NotifySimple sends a desktop notification via OSC 9 (growl-style).
+func NotifySimple(message string) string {
+	return "\x1b]9;" + escapeOSCString(message) + "\x07"
+}
+
+// ─── OSC777: URxvt Notification (rxvt-unicode) ───
+//
+// OSC 777 is a desktop notification sequence used by rxvt-unicode and
+// compatible terminals.
+
+// NotifyURxvt sends a notification with title and message via OSC 777.
+func NotifyURxvt(title, message string) string {
+	return "\x1b]777;notify;" + escapeOSCString(title) + ";" + escapeOSCString(message) + "\x07"
+}
+
+// ─── OSC1337: iTerm2 Marks ───
+//
+// OSC 1337 provides iTerm2-specific features including marks and
+// proprietary image protocol.
+
+// SetITermMark sets a mark at the current cursor position (iTerm2).
+func SetITermMark() string {
+	return "\x1b]1337;SetMark\x07"
+}
+
+// StealFocus steals focus to the terminal window (iTerm2).
+func StealFocus() string {
+	return "\x1b]1337;StealFocus\x07"
+}
+
+// ─── DECSCA: Protected Attributes ───
+//
+// DECSCA (CSI Ps " q) sets the character protection attribute.
+
+// SetProtected marks subsequent characters as protected.
+func SetProtected() string { return "\x1b[1\"q" }
+
+// SetUnprotected marks subsequent characters as unprotected (default).
+func SetUnprotected() string { return "\x1b[0\"q" }
