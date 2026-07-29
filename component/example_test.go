@@ -1542,3 +1542,21 @@ func ExampleGaugeCluster() {
 	fmt.Printf("Gauges:%d\n", gc.GaugeCount())
 	// Output: Gauges:2
 }
+
+// ExampleMarkdownSubscript demonstrates subscript rendering.
+func ExampleMarkdownSubscript() {
+	ms := component.NewMarkdownSubscript()
+	ms.SetMarkdown("H~2~O")
+	fmt.Printf("Subscripts:%d\n", ms.SubscriptCount())
+	// Output: Subscripts:1
+}
+
+// ExampleMultiSelect demonstrates multi-selection list.
+func ExampleMultiSelect() {
+	ms := component.NewMultiSelect()
+	ms.AddOption("Apple")
+	ms.AddOption("Banana")
+	ms.Toggle(0)
+	fmt.Printf("Options:%d Selected:%d\n", ms.OptionCount(), ms.SelectedCount())
+	// Output: Options:2 Selected:1
+}
