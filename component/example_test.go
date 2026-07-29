@@ -1261,3 +1261,12 @@ func ExampleMergeView() {
 		mv.LeftLabel(), mv.RightLabel(), mv.LineCount(), mv.HasConflicts())
 	// Output: Left:ours Right:theirs Lines:4 Conflicts:false
 }
+
+// ExampleFunctionCallVisualizer demonstrates AI tool call chain display.
+func ExampleFunctionCallVisualizer() {
+	fcv := component.NewFunctionCallVisualizer()
+	fcv.AddCall("search_web", `{"q":"go tui"}`, 120000000, component.CallSuccess)
+	fcv.AddCall("read_file", `{"path":"main.go"}`, 5000000, component.CallError)
+	fmt.Printf("Calls:%d\n", fcv.CallCount())
+	// Output: Calls:2
+}
