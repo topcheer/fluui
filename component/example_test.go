@@ -1227,3 +1227,13 @@ func ExampleRateLimitIndicator() {
 		rl.Remaining(), rl.Limit(), rl.UsagePercent(), rl.IsRateLimited())
 	// Output: Remaining:3200 Limit:5000 Used:36% Limited:false
 }
+
+// ExampleSankeyChart demonstrates flow diagram visualization.
+func ExampleSankeyChart() {
+	sc := component.NewSankeyChart()
+	sc.AddFlow("Revenue", "Marketing", 500)
+	sc.AddFlow("Revenue", "Engineering", 800)
+	fmt.Printf("Sources:%v Targets:%v Flows:%d\n",
+		sc.Sources(), sc.Targets(), len(sc.Flows()))
+	// Output: Sources:[Revenue] Targets:[Marketing Engineering] Flows:2
+}
