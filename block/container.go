@@ -89,6 +89,19 @@ func (c *BlockContainer) Blocks() []Block {
 	return result
 }
 
+// ForEachBlock iterates over all blocks without allocating a new slice.
+// The callback receives each block in order. If the callback returns false,
+// iteration stops. The read lock is held for the entire iteration.
+func (c *BlockContainer) ForEachBlock(fn func(b Block) bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	for _, b := range c.blocks {
+		if !fn(b) {
+			return
+		}
+	}
+}
+
 // Len returns the number of blocks.
 func (c *BlockContainer) Len() int {
 	c.mu.RLock()
