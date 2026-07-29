@@ -1597,3 +1597,20 @@ func ExampleAIPanelHeader() {
 	fmt.Printf("Model:%s Status:%d\n", h.Model(), h.Status())
 	// Output: Model:GPT-4o Status:2
 }
+
+// ExamplePasswordStrength demonstrates password strength meter.
+func ExamplePasswordStrength() {
+	ps := component.NewPasswordStrength()
+	ps.SetPassword("abc")
+	fmt.Printf("Level:%d\n", ps.Level())
+	// Output: Level:0
+}
+
+// ExampleAITokenFlow demonstrates AI pipeline token flow.
+func ExampleAITokenFlow() {
+	tf := component.NewAITokenFlow()
+	tf.AddStage("Input", 500, buffer.RGB(96, 165, 250))
+	tf.AddStage("Output", 200, buffer.RGB(34, 197, 94))
+	fmt.Printf("Stages:%d\n", tf.StageCount())
+	// Output: Stages:2
+}
