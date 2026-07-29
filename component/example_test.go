@@ -1291,3 +1291,23 @@ func ExampleStreamProgressIndicator() {
 		sp.TokensReceived(), sp.Percent(), sp.State())
 	// Output: Tokens:250 Pct:50% State:1
 }
+
+// ExampleAIConfidenceBar demonstrates AI confidence score visualization.
+func ExampleAIConfidenceBar() {
+	cb := component.NewAIConfidenceBar()
+	cb.SetLabel("Prediction")
+	cb.SetConfidence(85.5)
+	fmt.Printf("Label:%s Confidence:%.1f\n", cb.Label(), cb.Confidence())
+	// Output: Label:Prediction Confidence:85.5
+}
+
+// ExampleMarkdownTable demonstrates markdown pipe table rendering.
+func ExampleMarkdownTable() {
+	mt := component.NewMarkdownTable()
+	mt.SetMarkdown(`| Name | Age |
+|------|-----|
+| Alice | 30 |
+| Bob | 25 |`)
+	fmt.Printf("Rows:%d Cols:%d\n", mt.RowCount(), mt.ColumnCount())
+	// Output: Rows:2 Cols:2
+}
