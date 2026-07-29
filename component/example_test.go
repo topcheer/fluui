@@ -1453,3 +1453,23 @@ func ExampleLegend() {
 	fmt.Printf("Entries:%d\n", l.EntryCount())
 	// Output: Entries:2
 }
+
+// ExampleKeyHintBar demonstrates keyboard shortcut badge display.
+func ExampleKeyHintBar() {
+	kb := component.NewKeyHintBar()
+	kb.AddHint("Q", "Quit")
+	kb.AddHint("S", "Save")
+	fmt.Printf("Hints:%d\n", kb.HintCount())
+	// Output: Hints:2
+}
+
+// ExampleDataLabel demonstrates labeled data value display.
+func ExampleDataLabel() {
+	dl := component.NewDataLabel()
+	dl.SetLabel("Revenue")
+	dl.SetValue(42.5)
+	dl.SetUnit("K")
+	dl.SetTrend(component.DataTrendUp)
+	fmt.Printf("Label:%s Value:%.1f Trend:%d\n", dl.Label(), dl.Value(), dl.Trend())
+	// Output: Label:Revenue Value:42.5 Trend:1
+}
