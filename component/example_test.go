@@ -1237,3 +1237,17 @@ func ExampleSankeyChart() {
 		sc.Sources(), sc.Targets(), len(sc.Flows()))
 	// Output: Sources:[Revenue] Targets:[Marketing Engineering] Flows:2
 }
+
+// ExampleScatterPlot demonstrates 2D scatter plot visualization.
+func ExampleScatterPlot() {
+	sp := component.NewScatterPlot()
+	sp.SetXRange(0, 100)
+	sp.SetYRange(0, 100)
+	sp.AddPoint(10, 20)
+	sp.AddPoint(50, 80)
+	xMin, xMax := sp.XRange()
+	yMin, yMax := sp.YRange()
+	fmt.Printf("Points:%d X:(%.0f,%.0f) Y:(%.0f,%.0f)\n",
+		sp.PointCount(), xMin, xMax, yMin, yMax)
+	// Output: Points:2 X:(0,100) Y:(0,100)
+}
