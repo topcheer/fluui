@@ -1436,3 +1436,20 @@ func ExampleTagCloud() {
 	fmt.Printf("Tags:%d\n", tc.TagCount())
 	// Output: Tags:2
 }
+
+// ExampleMarkdownFootnote demonstrates footnote rendering.
+func ExampleMarkdownFootnote() {
+	mf := component.NewMarkdownFootnote()
+	mf.SetMarkdown("See[^1] for details.\n\n[^1]: https://example.com")
+	fmt.Printf("Footnotes:%d\n", mf.FootnoteCount())
+	// Output: Footnotes:1
+}
+
+// ExampleLegend demonstrates chart legend display.
+func ExampleLegend() {
+	l := component.NewLegend()
+	l.AddEntry("Revenue", buffer.RGB(34, 197, 94))
+	l.AddEntry("Costs", buffer.RGB(239, 68, 68))
+	fmt.Printf("Entries:%d\n", l.EntryCount())
+	// Output: Entries:2
+}
