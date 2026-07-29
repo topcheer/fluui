@@ -1399,3 +1399,23 @@ func ExampleBreadcrumbTrail() {
 	fmt.Printf("Crumbs:%d\n", bt.CrumbCount())
 	// Output: Crumbs:3
 }
+
+// ExampleNotificationStack demonstrates notification stack rendering.
+func ExampleNotificationStack() {
+	ns := component.NewNotificationStack()
+	ns.AddNotification("Build", "OK", component.NotifSuccess)
+	ns.AddNotification("Warn", "Deprecated", component.NotifWarning)
+	fmt.Printf("Count:%d\n", ns.Count())
+	// Output: Count:2
+}
+
+// ExampleImagePreview demonstrates image preview placeholder.
+func ExampleImagePreview() {
+	ip := component.NewImagePreview()
+	ip.SetFormat("PNG")
+	ip.SetDimensions(800, 600)
+	ip.SetLabel("photo.png")
+	w, h := ip.Dimensions()
+	fmt.Printf("Format:%s %dx%d\n", ip.Format(), w, h)
+	// Output: Format:PNG 800x600
+}
