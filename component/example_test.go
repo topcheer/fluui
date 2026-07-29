@@ -1251,3 +1251,13 @@ func ExampleScatterPlot() {
 		sp.PointCount(), xMin, xMax, yMin, yMax)
 	// Output: Points:2 X:(0,100) Y:(0,100)
 }
+
+// ExampleMergeView demonstrates side-by-side diff/merge visualization.
+func ExampleMergeView() {
+	mv := component.NewMergeView()
+	mv.SetLeft("ours", "same\nold\nsame")
+	mv.SetRight("theirs", "same\nnew\nsame")
+	fmt.Printf("Left:%s Right:%s Lines:%d Conflicts:%v\n",
+		mv.LeftLabel(), mv.RightLabel(), mv.LineCount(), mv.HasConflicts())
+	// Output: Left:ours Right:theirs Lines:4 Conflicts:false
+}
