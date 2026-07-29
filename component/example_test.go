@@ -1381,3 +1381,21 @@ func ExampleMarkdownEmphasis() {
 	fmt.Printf("Bold:%d Italic:%d\n", me.BoldCount(), me.ItalicCount())
 	// Output: Bold:1 Italic:1
 }
+
+// ExampleMarkdownList demonstrates ordered/unordered list rendering.
+func ExampleMarkdownList() {
+	ml := component.NewMarkdownList()
+	ml.SetMarkdown("- Apple\n- Banana")
+	fmt.Printf("Items:%d Type:%s\n", ml.ItemCount(), ml.ListType())
+	// Output: Items:2 Type:unordered
+}
+
+// ExampleBreadcrumbTrail demonstrates path breadcrumb navigation.
+func ExampleBreadcrumbTrail() {
+	bt := component.NewBreadcrumbTrail()
+	bt.AddCrumb("Home")
+	bt.AddCrumb("Docs")
+	bt.AddCrumb("API")
+	fmt.Printf("Crumbs:%d\n", bt.CrumbCount())
+	// Output: Crumbs:3
+}
