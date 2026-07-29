@@ -2,6 +2,7 @@ package component_test
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/topcheer/fluui/component"
 	"github.com/topcheer/fluui/internal/buffer"
@@ -1559,4 +1560,40 @@ func ExampleMultiSelect() {
 	ms.Toggle(0)
 	fmt.Printf("Options:%d Selected:%d\n", ms.OptionCount(), ms.SelectedCount())
 	// Output: Options:2 Selected:1
+}
+
+// ExampleMarkdownImage demonstrates image placeholder rendering.
+func ExampleMarkdownImage() {
+	mi := component.NewMarkdownImage()
+	mi.SetMarkdown("![Logo](https://example.com/logo.png)")
+	fmt.Printf("Images:%d\n", mi.ImageCount())
+	// Output: Images:1
+}
+
+// ExampleSpinnerDots demonstrates animated loading dots.
+func ExampleSpinnerDots() {
+	sd := component.NewSpinnerDots()
+	sd.SetLabel("Loading")
+	sd.SetDotCount(3)
+	sd.Advance()
+	fmt.Printf("Dots:%d Current:%d\n", sd.DotCount(), sd.Current())
+	// Output: Dots:3 Current:1
+}
+
+// ExampleActivityFeed demonstrates activity timeline rendering.
+func ExampleActivityFeed() {
+	af := component.NewActivityFeed()
+	af.AddEntry("alice", "pushed commit", time.Now())
+	fmt.Printf("Entries:%d\n", af.EntryCount())
+	// Output: Entries:1
+}
+
+// ExampleAIPanelHeader demonstrates AI chat panel header.
+func ExampleAIPanelHeader() {
+	h := component.NewAIPanelHeader()
+	h.SetModel("GPT-4o")
+	h.SetProvider("OpenAI")
+	h.SetStatus(component.AIStatusStreaming)
+	fmt.Printf("Model:%s Status:%d\n", h.Model(), h.Status())
+	// Output: Model:GPT-4o Status:2
 }
