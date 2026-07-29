@@ -1280,3 +1280,14 @@ func ExampleCodeEditor() {
 		ce.Language(), ce.LineCount(), ce.CursorLine())
 	// Output: Lang:go Lines:2 Cursor:-1
 }
+
+// ExampleStreamProgressIndicator demonstrates AI streaming progress display.
+func ExampleStreamProgressIndicator() {
+	sp := component.NewStreamProgressIndicator()
+	sp.SetExpected(500)
+	sp.Start()
+	sp.AddTokens(250)
+	fmt.Printf("Tokens:%d Pct:%.0f%% State:%d\n",
+		sp.TokensReceived(), sp.Percent(), sp.State())
+	// Output: Tokens:250 Pct:50% State:1
+}
