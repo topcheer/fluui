@@ -1419,3 +1419,86 @@ const DisableKittyKeyboard = "\x1b[<u"
 // CSI < u disables it.
 
 
+
+// ─── Sixel Graphics Support (DCS q) ───
+//
+// Sixel is a DEC graphics protocol that encodes pixel images using a compact
+// character-based format. Supported by xterm, mlterm, mintty, RLogin, and
+// many VT340-compatible terminals. The terminal reports Sixel capability
+// in the DA1 response (attribute bit 4 of the first parameter).
+
+// QuerySixelCapability generates a DA1 request that can be used to determine
+// if the terminal supports Sixel graphics. The caller should parse the
+// response with ParseDA1Response and check if attribute 4 is set.
+func QuerySixelCapability() string {
+	return "\x1b[c" // DA1 request — same as primary device attributes
+}
+
+// SixelStart begins a Sixel graphics sequence.
+// DCS = integer parameter(s) q ... ST
+// The DCS introducer is ESC P (0x1b 0x50), and the string terminator is ESC \ (0x1b 0x5c).
+func SixelStart(palette int) string {
+	if palette > 0 {
+		return "\x1bP" + intToStr(palette) + "q"
+	}
+	return "\x1bPq"
+}
+
+// SixelEnd terminates a Sixel graphics sequence.
+func SixelEnd() string {
+	return "\x1b\\"
+}
+
+// ─── DECRQM: Request Mode ───
+//
+// DECRQM (Request Mode) queries the current state of a DEC private or ANSI
+// mode. The terminal responds with DECRPM (Report Mode).
+// Format: CSI ? Pn $ p (DEC private) or CSI Pn $ p (ANSI)
+
+// RequestDECMode generates a DECRQM request for a DEC private mode number.
+// Example: RequestDECMode(2026) queries synchronized output state.
+func RequestDECMode(mode int) string {
+	return "\x1b[?" + intToStr(mode) + "$p"
+}
+
+// RequestANSIMode generates a DECRQM request for an ANSI mode number.
+// Example: RequestANSIMode(4) queries insert/replace mode.
+func RequestANSIMode(mode int) string {
+	return "\x1b[" + intToStr(mode) + "$p"
+}
+
+// ─── OSC 52: Clipboard Access ───
+//
+// OSC 52 provides clipboard read/write access. Supported by xterm, mintty,
+// and many modern terminals. The data must be base64-encoded.
+
+// OSC52Copy writes base64-encoded text to the system clipboard via OSC 52.
+// The b64 parameter should be base64-encoded clipboard content.
+func OSC52Copy(b64 string) string {
+	return "\x1b]52;c;" + b64 + "\x07"
+}
+
+// OSC52CopySelection writes base64-encoded text to the primary selection.
+func OSC52CopySelection(b64 string) string {
+	return "\x1b]52;p;" + b64 + "\x07"
+}
+
+// OSC52Query requests the current clipboard content via OSC 52.
+// The terminal responds with the base64-encoded clipboard data.
+func OSC52Query() string {
+	return "\x1b]52;c;?\x07"
+}
+
+// ─── DECSED: Selective Erase in Display ───
+//
+// DECSED (CSI ? Pn J) erases lines in the display without affecting
+// protected characters. Useful for TUI redraws that preserve borders.
+
+// SelectiveEraseDisplay erases all unprotected content in the display.
+const SelectiveEraseDisplay = "\x1b[?2J"
+
+// SelectiveEraseToEnd erases unprotected content from cursor to end of display.
+const SelectiveEraseToEnd = "\x1b[?0J"
+
+// SelectiveEraseToStart erases unprotected content from start to cursor.
+const SelectiveEraseToStart = "\x1b[?1J"
