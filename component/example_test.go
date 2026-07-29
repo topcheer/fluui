@@ -1270,3 +1270,13 @@ func ExampleFunctionCallVisualizer() {
 	fmt.Printf("Calls:%d\n", fcv.CallCount())
 	// Output: Calls:2
 }
+
+// ExampleCodeEditor demonstrates syntax-highlighted code display.
+func ExampleCodeEditor() {
+	ce := component.NewCodeEditor()
+	ce.SetLanguage("go")
+	ce.SetCode("package main\nfunc main() {}")
+	fmt.Printf("Lang:%s Lines:%d Cursor:%d\n",
+		ce.Language(), ce.LineCount(), ce.CursorLine())
+	// Output: Lang:go Lines:2 Cursor:-1
+}
