@@ -1473,3 +1473,20 @@ func ExampleDataLabel() {
 	fmt.Printf("Label:%s Value:%.1f Trend:%d\n", dl.Label(), dl.Value(), dl.Trend())
 	// Output: Label:Revenue Value:42.5 Trend:1
 }
+
+// ExampleMiniGauge demonstrates compact gauge rendering.
+func ExampleMiniGauge() {
+	mg := component.NewMiniGauge()
+	mg.SetLabel("CPU")
+	mg.SetValue(75)
+	fmt.Printf("Value:%.0f\n", mg.Value())
+	// Output: Value:75
+}
+
+// ExampleMarkdownHeading demonstrates heading rendering.
+func ExampleMarkdownHeading() {
+	mh := component.NewMarkdownHeading()
+	mh.SetMarkdown("## Section Title")
+	fmt.Printf("Level:%d Text:%s\n", mh.Level(), mh.Text())
+	// Output: Level:2 Text:Section Title
+}
