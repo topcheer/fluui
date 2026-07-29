@@ -333,60 +333,78 @@ func (ce *CodeEditor) Paint(buf *buffer.Buffer) {
 				col++
 			}
 		} else {
-			// Tokenize by spaces — simple word-level highlighting
-			words := strings.Fields(line)
-			wordIdx := 0
-			lineRunes := []rune(line)
-			runeIdx := 0
+				// Tokenize by scanning runes directly — avoids strings.Fields and []rune allocations
+				normalStyle := ce.style.Normal
+				strStyle := ce.style.String
+				inString := false
+				wordStart := -1
 
-			for _, word := range words {
-				// Find the word in the line starting from runeIdx
-				wordRunes := []rune(word)
-				// Skip whitespace before this word
-				for runeIdx < len(lineRunes) {
-					// Check if the remaining line matches the word at this position
-					match := true
-					for j := 0; j < len(wordRunes); j++ {
-						if runeIdx+j >= len(lineRunes) || lineRunes[runeIdx+j] != wordRunes[j] {
-							match = false
-							break
-						}
-					}
-					if match {
+				for i, r := range line {
+					if col >= codeEndX || col >= buf.Width {
 						break
 					}
-					// Draw whitespace
-					if col < codeEndX && col < buf.Width {
-						buf.SetCell(col, rowY, buffer.Cell{Rune: lineRunes[runeIdx], Fg: ce.style.Normal.Fg, Bg: ce.style.Normal.Bg, Flags: ce.style.Normal.Flags, Width: 1})
-						col++
-					}
-					runeIdx++
-				}
 
-				// Check if word is inside a string (contains quotes)
-				if strings.Contains(word, "\"") {
-					strStyle := ce.style.String
-					for _, r := range word {
-						if col >= codeEndX || col >= buf.Width {
-							break
+					// Track string state
+					if r == '"' {
+						inString = !inString
+						if wordStart < 0 {
+							wordStart = i
 						}
+						// Draw the quote char as string style
 						buf.SetCell(col, rowY, buffer.Cell{Rune: r, Fg: strStyle.Fg, Bg: strStyle.Bg, Flags: strStyle.Flags, Width: 1})
 						col++
+						continue
 					}
-				} else {
-					tokenStyle := ce.classifyTokenLocked(word)
-					for _, r := range word {
-						if col >= codeEndX || col >= buf.Width {
-							break
+
+					if inString {
+						// Inside string — all chars get string style
+						buf.SetCell(col, rowY, buffer.Cell{Rune: r, Fg: strStyle.Fg, Bg: strStyle.Bg, Flags: strStyle.Flags, Width: 1})
+						col++
+						continue
+					}
+
+					// Check for word boundary (space, tab, punctuation that ends words)
+					isWordChar := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
+						(r >= '0' && r <= '9') || r == '_' || r == '.'
+
+					if isWordChar {
+						if wordStart < 0 {
+							wordStart = i
 						}
-						buf.SetCell(col, rowY, buffer.Cell{Rune: r, Fg: tokenStyle.Fg, Bg: tokenStyle.Bg, Flags: tokenStyle.Flags, Width: 1})
+						// Don't draw yet — accumulate word to check if keyword
+					} else {
+						// Word boundary — flush accumulated word if any
+						if wordStart >= 0 {
+							// Extract the word from line using indices
+							word := line[wordStart:i]
+							tokenStyle := ce.classifyTokenLocked(word)
+							for _, wr := range word {
+								if col >= codeEndX || col >= buf.Width {
+									break
+								}
+								buf.SetCell(col, rowY, buffer.Cell{Rune: wr, Fg: tokenStyle.Fg, Bg: tokenStyle.Bg, Flags: tokenStyle.Flags, Width: 1})
+								col++
+							}
+							wordStart = -1
+						}
+						// Draw the non-word character in normal style
+						buf.SetCell(col, rowY, buffer.Cell{Rune: r, Fg: normalStyle.Fg, Bg: normalStyle.Bg, Flags: normalStyle.Flags, Width: 1})
 						col++
 					}
 				}
-				runeIdx += len(wordRunes)
-				wordIdx++
+				// Flush trailing word
+				if wordStart >= 0 && col < codeEndX && col < buf.Width {
+					word := line[wordStart:]
+					tokenStyle := ce.classifyTokenLocked(word)
+					for _, wr := range word {
+						if col >= codeEndX || col >= buf.Width {
+							break
+						}
+						buf.SetCell(col, rowY, buffer.Cell{Rune: wr, Fg: tokenStyle.Fg, Bg: tokenStyle.Bg, Flags: tokenStyle.Flags, Width: 1})
+						col++
+					}
+				}
 			}
-		}
 
 		// Cursor indicator — underline the entire line
 		if idx == ce.cursorLine {

@@ -268,7 +268,7 @@ func (fcv *FunctionCallVisualizer) Paint(buf *buffer.Buffer) {
 			col++
 		}
 
-		// Args summary (truncated)
+		// Args summary (truncated) — iterate string directly, no []rune alloc
 		argsStyle := fcv.style.Args
 		if col < x+w-1 && col < buf.Width {
 			buf.SetCell(col, rowY, buffer.Cell{Rune: ' ', Fg: argsStyle.Fg, Bg: argsStyle.Bg, Flags: argsStyle.Flags, Width: 1})
@@ -276,33 +276,36 @@ func (fcv *FunctionCallVisualizer) Paint(buf *buffer.Buffer) {
 		}
 		// Truncate args to fit remaining space
 		remaining := x + w - 2 - col
-		if remaining > 0 && remaining < buf.Width {
-			argRunes := []rune(call.Args)
-			if len(argRunes) > remaining-8 {
-				argRunes = argRunes[:remaining-8]
-			}
-			for _, r := range argRunes {
+		maxArgLen := remaining - 8
+		if maxArgLen > 0 {
+			argCount := 0
+			for _, r := range call.Args {
+				if argCount >= maxArgLen {
+					break
+				}
 				if col >= x+w-1 || col >= buf.Width {
 					break
 				}
 				buf.SetCell(col, rowY, buffer.Cell{Rune: r, Fg: argsStyle.Fg, Bg: argsStyle.Bg, Flags: argsStyle.Flags, Width: 1})
 				col++
+				argCount++
 			}
 		}
 
-		// Duration at the right edge
+		// Duration at the right edge — iterate string directly, no []rune alloc
 		durStr := formatInspectorDuration(call.Duration)
-		durRunes := []rune(durStr)
-		durStart := x + w - 2 - len(durRunes)
+		durLen := len(durStr)
+		durStart := x + w - 2 - durLen
 		if durStart < col {
 			durStart = col
 		}
 		durStyle := fcv.style.Duration
-		for i, r := range durRunes {
-			cx := durStart + i
-			if cx < x+w-1 && cx < buf.Width {
-				buf.SetCell(cx, rowY, buffer.Cell{Rune: r, Fg: durStyle.Fg, Bg: durStyle.Bg, Flags: durStyle.Flags, Width: 1})
+		durCol := durStart
+		for _, r := range durStr {
+			if durCol < x+w-1 && durCol < buf.Width {
+				buf.SetCell(durCol, rowY, buffer.Cell{Rune: r, Fg: durStyle.Fg, Bg: durStyle.Bg, Flags: durStyle.Flags, Width: 1})
 			}
+			durCol++
 		}
 	}
 }

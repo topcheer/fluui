@@ -52,8 +52,13 @@ type SankeyChart struct {
 	style SankeyChartStyle
 
 	// cached layout
-	cachedNodes    map[string]int
-	cachedTotalVal int
+	cachedNodes     map[string]int
+	cachedSources   []string
+	cachedTargets   []string
+	cachedTotalVal  int
+	cachedDirty     bool
+	cachedSrcVals   map[string]int
+	cachedTgtVals   map[string]int
 }
 
 // NewSankeyChart creates a SankeyChart with defaults.
@@ -69,6 +74,7 @@ func NewSankeyChart() *SankeyChart {
 func (sc *SankeyChart) AddFlow(source, target string, value int) *SankeyChart {
 	sc.mu.Lock()
 	sc.flows = append(sc.flows, SankeyFlow{Source: source, Target: target, Value: value})
+	sc.cachedDirty = true
 	sc.mu.Unlock()
 	return sc
 }
@@ -77,6 +83,7 @@ func (sc *SankeyChart) AddFlow(source, target string, value int) *SankeyChart {
 func (sc *SankeyChart) SetFlows(flows []SankeyFlow) *SankeyChart {
 	sc.mu.Lock()
 	sc.flows = flows
+	sc.cachedDirty = true
 	sc.mu.Unlock()
 	return sc
 }
@@ -98,29 +105,60 @@ func (sc *SankeyChart) SetStyle(s SankeyChartStyle) *SankeyChart {
 	return sc
 }
 
-// computeLayout builds the node positions and total value.
+// computeLayout builds the node positions, source/target lists, and total value.
+// Results are cached for Paint to avoid allocations on every render.
 func (sc *SankeyChart) computeLayout() {
-	sc.cachedNodes = make(map[string]int)
+	if !sc.cachedDirty && sc.cachedNodes != nil {
+		return // already computed, no changes
+	}
+	sc.cachedDirty = false
+	if sc.cachedNodes == nil {
+		sc.cachedNodes = make(map[string]int)
+		sc.cachedSrcVals = make(map[string]int)
+		sc.cachedTgtVals = make(map[string]int)
+	} else {
+		for k := range sc.cachedNodes {
+			delete(sc.cachedNodes, k)
+		}
+		for k := range sc.cachedSrcVals {
+			delete(sc.cachedSrcVals, k)
+		}
+		for k := range sc.cachedTgtVals {
+			delete(sc.cachedTgtVals, k)
+		}
+	}
+	sc.cachedSources = sc.cachedSources[:0]
+	sc.cachedTargets = sc.cachedTargets[:0]
 	sc.cachedTotalVal = 0
-	sourceVals := make(map[string]int)
-	targetVals := make(map[string]int)
+
+	srcSeen := make(map[string]bool)
+	tgtSeen := make(map[string]bool)
+
 	for _, f := range sc.flows {
-		sourceVals[f.Source] += f.Value
-		targetVals[f.Target] += f.Value
+		sc.cachedSrcVals[f.Source] += f.Value
+		sc.cachedTgtVals[f.Target] += f.Value
 		if f.Value > sc.cachedTotalVal {
 			sc.cachedTotalVal = f.Value
 		}
+		if !srcSeen[f.Source] {
+			srcSeen[f.Source] = true
+			sc.cachedSources = append(sc.cachedSources, f.Source)
+		}
+		if !tgtSeen[f.Target] {
+			tgtSeen[f.Target] = true
+			sc.cachedTargets = append(sc.cachedTargets, f.Target)
+		}
 	}
-	// Merge all node names
-	for name, v := range sourceVals {
-		if tv, ok := targetVals[name]; ok {
+	// Merge node values
+	for name, v := range sc.cachedSrcVals {
+		if tv, ok := sc.cachedTgtVals[name]; ok {
 			if tv > v {
-				sourceVals[name] = tv
+				sc.cachedSrcVals[name] = tv
 			}
 		}
-		sc.cachedNodes[name] = sourceVals[name]
+		sc.cachedNodes[name] = sc.cachedSrcVals[name]
 	}
-	for name, v := range targetVals {
+	for name, v := range sc.cachedTgtVals {
 		if _, exists := sc.cachedNodes[name]; !exists {
 			sc.cachedNodes[name] = v
 		}
@@ -200,9 +238,9 @@ func (sc *SankeyChart) Paint(buf *buffer.Buffer) {
 		return
 	}
 
-	// Separate sources and targets
-	sources := sc.sourcesLocked()
-	targets := sc.targetsLocked()
+	// Use cached sources/targets from computeLayout (no allocation)
+	sources := sc.cachedSources
+	targets := sc.cachedTargets
 
 	// Calculate node heights proportional to values
 	sourceMaxVal := 0
