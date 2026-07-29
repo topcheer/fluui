@@ -1311,3 +1311,21 @@ func ExampleMarkdownTable() {
 	fmt.Printf("Rows:%d Cols:%d\n", mt.RowCount(), mt.ColumnCount())
 	// Output: Rows:2 Cols:2
 }
+
+// ExampleMarkdownBlockquote demonstrates blockquote rendering.
+func ExampleMarkdownBlockquote() {
+	bq := component.NewMarkdownBlockquote()
+	bq.SetMarkdown("> To be or not to be.\n>> — Shakespeare")
+	fmt.Printf("Lines:%d\n", bq.LineCount())
+	// Output: Lines:2
+}
+
+// ExampleCarousel demonstrates paginated content navigation.
+func ExampleCarousel() {
+	c := component.NewCarousel()
+	c.AddSlide("Welcome", "Get started!")
+	c.AddSlide("Features", "160+ components")
+	c.Next()
+	fmt.Printf("Slides:%d Current:%d\n", c.SlideCount(), c.CurrentIndex())
+	// Output: Slides:2 Current:1
+}
