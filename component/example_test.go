@@ -1329,3 +1329,20 @@ func ExampleCarousel() {
 	fmt.Printf("Slides:%d Current:%d\n", c.SlideCount(), c.CurrentIndex())
 	// Output: Slides:2 Current:1
 }
+
+// ExampleMarkdownTaskList demonstrates task list rendering.
+func ExampleMarkdownTaskList() {
+	tl := component.NewMarkdownTaskList()
+	tl.SetMarkdown("- [ ] Pending\n- [x] Done")
+	tl.ToggleItem(0)
+	fmt.Printf("Completed:%d Total:%d\n", tl.CompletedCount(), tl.TaskCount())
+	// Output: Completed:2 Total:2
+}
+
+// ExampleMarkdownHorizontalRule demonstrates horizontal rule rendering.
+func ExampleMarkdownHorizontalRule() {
+	hr := component.NewMarkdownHorizontalRule()
+	hr.SetMarkdown("Above\n---\nBelow")
+	fmt.Printf("Lines:%d Rules:%d\n", hr.LineCount(), hr.RuleCount())
+	// Output: Lines:3 Rules:1
+}
